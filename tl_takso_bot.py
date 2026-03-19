@@ -14,9 +14,10 @@ import telebot
 from telebot import types
 import json
 import datetime
+import os
 
 # ── КОНФИГ ──────────────────────────────────────────────
-BOT_TOKEN = "8613594864:AAFxRqjrCrmy7X9v6GDQpY-_lCfDX3O7heo"  # ← ваш токен
+BOT_TOKEN = os.environ.get("BOT_TOKEN")  # читаем из Railway переменных
 
 # ID чата/группы водителей — создайте группу в Telegram и вставьте ID сюда
 # Как получить ID: добавьте @userinfobot в группу
