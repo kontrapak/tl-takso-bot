@@ -10,7 +10,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 ADMIN_ID = 1873195803
 
 # Ссылка на Mini App (ЗАМЕНИ НА СВОЮ!)
-MINI_APP_URL = "https://твой-логин.github.io/название-репозитория/tl-takso-app.html"
+MINI_APP_URL = "https://kontrapak.github.io/название-репозитория/tl-takso-app.html"
 
 orders = {}
 user_state = {}
