@@ -6,10 +6,8 @@ import os
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ── ADMIN ──
 ADMIN_ID = 1873195803
 
-# ── ХРАНИЛИЩЕ ──
 orders = {}
 user_state = {}
 drivers = {}
@@ -32,6 +30,13 @@ def is_approved_driver(uid):
 
 def get_lang(uid):
     return user_state.get(uid, {}).get("lang", "ru")
+
+def has_active_order(driver_id):
+    """Проверяет есть ли у водителя активный заказ — FIX #7"""
+    for order in orders.values():
+        if order.get("driver_id") == driver_id and order.get("status") in ["accepted", "arrived"]:
+            return True
+    return False
 
 # ── ПЕРЕВОДЫ ──
 T = {
@@ -84,6 +89,16 @@ T = {
     "card": {"ru": "💳 Карта", "et": "💳 Kaart", "en": "💳 Card"},
     "cash": {"ru": "💵 Наличные", "et": "💵 Sularaha", "en": "💵 Cash"},
     "cancel_order": {"ru": "❌ Отменить заказ", "et": "❌ Tühista tellimus", "en": "❌ Cancel order"},
+    "order_cancelled": {
+        "ru": "❌ Заказ отменён. Что-то ещё?",
+        "et": "❌ Tellimus tühistatud. Veel midagi?",
+        "en": "❌ Order cancelled. Anything else?"
+    },
+    "driver_cancelled": {
+        "ru": "⚠️ Клиент отменил заказ.",
+        "et": "⚠️ Klient tühistas tellimuse.",
+        "en": "⚠️ Client cancelled the order."
+    },
     "waiting": {
         "ru": "Ожидайте, водитель скоро примет заказ 🚖",
         "et": "Oodake, juht võtab tellimuse varsti vastu 🚖",
@@ -140,9 +155,9 @@ T = {
         "en": "😔 Your application was rejected. Please contact support."
     },
     "balance": {
-        "ru": "💰 Ваш баланс: *{bal}€*\n\nПри наличной оплате списывается 1€ за поездку.\nПополните баланс чтобы продолжить работу.",
-        "et": "💰 Teie saldo: *{bal}€*\n\nSularaha maksmisel arvestatakse 1€ sõidu kohta.\nTäiendage saldot töö jätkamiseks.",
-        "en": "💰 Your balance: *{bal}€*\n\n1€ is deducted per cash trip.\nTop up your balance to continue working."
+        "ru": "💰 Ваш баланс: *{bal}€*\n\nПри наличной оплате списывается 1€ за поездку.",
+        "et": "💰 Teie saldo: *{bal}€*\n\nSularaha maksmisel arvestatakse 1€ sõidu kohta.",
+        "en": "💰 Your balance: *{bal}€*\n\n1€ is deducted per cash trip."
     },
     "low_balance": {
         "ru": "⚠️ Ваш баланс низкий: *{bal}€*. Пополните счёт!",
@@ -153,6 +168,26 @@ T = {
         "ru": "❌ Недостаточно средств на балансе. Пополните счёт чтобы получать заказы.",
         "et": "❌ Kontol pole piisavalt vahendeid. Täiendage kontot tellimuste saamiseks.",
         "en": "❌ Insufficient balance. Top up to receive orders."
+    },
+    "driver_busy": {
+        "ru": "⚠️ У вас уже есть активный заказ. Завершите его перед принятием нового.",
+        "et": "⚠️ Teil on juba aktiivne tellimus. Lõpetage see enne uue vastuvõtmist.",
+        "en": "⚠️ You already have an active order. Please complete it first."
+    },
+    "msg_sent_driver": {
+        "ru": "✉️ Сообщение отправлено водителю",
+        "et": "✉️ Sõnum saadetud juhile",
+        "en": "✉️ Message sent to driver"
+    },
+    "msg_sent_client": {
+        "ru": "✉️ Сообщение отправлено клиенту",
+        "et": "✉️ Sõnum saadetud kliendile",
+        "en": "✉️ Message sent to client"
+    },
+    "no_active_order": {
+        "ru": "У вас нет активного заказа. Нажмите кнопку чтобы заказать такси 🚖",
+        "et": "Teil pole aktiivset tellimust. Vajutage nuppu takso tellimiseks 🚖",
+        "en": "You have no active order. Press the button to order a taxi 🚖"
     },
 }
 
@@ -209,14 +244,18 @@ def time_kb(uid):
     return kb
 
 def price_kb(uid):
+    lang = get_lang(uid)
+    city  = "Город"     if lang=="ru" else "Linn"      if lang=="et" else "City"
+    far   = "Далеко"    if lang=="ru" else "Kaugele"   if lang=="et" else "Far"
+    air   = "Аэропорт"  if lang=="ru" else "Lennujaam" if lang=="et" else "Airport"
     kb = types.InlineKeyboardMarkup()
     kb.row(
         types.InlineKeyboardButton("8€ — Mustamäe", callback_data="price_8"),
-        types.InlineKeyboardButton("10€ — " + ("Город" if get_lang(uid)=="ru" else "Linn" if get_lang(uid)=="et" else "City"), callback_data="price_10")
+        types.InlineKeyboardButton(f"10€ — {city}", callback_data="price_10")
     )
     kb.row(
-        types.InlineKeyboardButton("15€ — " + ("Далеко" if get_lang(uid)=="ru" else "Kaugele" if get_lang(uid)=="et" else "Far"), callback_data="price_15"),
-        types.InlineKeyboardButton("20€ — " + ("Аэропорт" if get_lang(uid)=="ru" else "Lennujaam" if get_lang(uid)=="et" else "Airport"), callback_data="price_20")
+        types.InlineKeyboardButton(f"15€ — {far}", callback_data="price_15"),
+        types.InlineKeyboardButton(f"20€ — {air}", callback_data="price_20")
     )
     return kb
 
@@ -261,7 +300,8 @@ def cmd_start(msg):
     uid = msg.from_user.id
     if is_admin(uid):
         user_state[uid] = {"role": "admin", "lang": "ru"}
-        bot.send_message(uid, "👨‍💼 *Панель администратора TL.TAKSO*", parse_mode="Markdown", reply_markup=main_menu_admin())
+        bot.send_message(uid, "👨‍💼 *Панель администратора TL.TAKSO*",
+                         parse_mode="Markdown", reply_markup=main_menu_admin())
         return
     if is_approved_driver(uid):
         user_state[uid] = {"role": "driver", "lang": get_lang(uid)}
@@ -299,7 +339,8 @@ def cb_role(call):
             return
         user_state[uid]["role"] = "driver_reg"
         user_state[uid]["step"] = "name"
-        bot.edit_message_text(t("reg_driver", uid), call.message.chat.id, call.message.message_id, parse_mode="Markdown")
+        bot.edit_message_text(t("reg_driver", uid), call.message.chat.id,
+                              call.message.message_id, parse_mode="Markdown")
 
 # ── РЕГИСТРАЦИЯ ВОДИТЕЛЯ ──
 @bot.message_handler(func=lambda m: user_state.get(m.from_user.id, {}).get("step") == "name")
@@ -359,25 +400,31 @@ def cb_approve(call):
             "approved": True, "online": False,
             "full_name": pending["full_name"], "car": pending["car"],
             "phone": pending["phone"], "lang": pending.get("lang", "ru"),
-            "earnings": 0, "trips": 0, "balance": 10.0
+            "earnings": 0, "trips": 0,
+            "commission": 0,  # FIX #1 — отдельно храним сбор TL
+            "balance": 10.0
         }
         del pending_drivers[driver_id]
         bot.edit_message_text(f"✅ Водитель *{pending['full_name']}* одобрен!",
                               call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         user_state[driver_id] = {"role": "driver", "lang": pending.get("lang", "ru")}
-        bot.send_message(driver_id, t("approved", driver_id), parse_mode="Markdown",
-                         reply_markup=main_menu_driver(driver_id))
+        bot.send_message(driver_id, t("approved", driver_id),
+                         parse_mode="Markdown", reply_markup=main_menu_driver(driver_id))
     elif action == "reject":
-        lang = pending.get("lang", "ru")
         del pending_drivers[driver_id]
         bot.edit_message_text(f"❌ Водитель *{pending['full_name']}* отклонён.",
                               call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         bot.send_message(driver_id, t("rejected", driver_id))
 
 # ── ЗАКАЗ ТАКСИ ──
-@bot.message_handler(func=lambda m: m.text in [t("order_taxi", m.from_user.id), "🚖 Заказать такси", "🚖 Telli takso", "🚖 Order taxi"])
+@bot.message_handler(func=lambda m: m.text in ["🚖 Заказать такси", "🚖 Telli takso", "🚖 Order taxi"])
 def order_start(msg):
     uid = msg.from_user.id
+    # Проверяем нет ли уже активного заказа у клиента
+    existing = user_state.get(uid, {}).get("current_order")
+    if existing and existing in orders and orders[existing]["status"] in ["pending", "accepted", "arrived"]:
+        bot.send_message(uid, "⏳ У вас уже есть активный заказ!", reply_markup=main_menu_client(uid))
+        return
     user_state[uid]["step"] = "from"
     bot.send_message(uid, t("ask_from", uid), reply_markup=types.ReplyKeyboardRemove())
 
@@ -402,8 +449,8 @@ def cb_time(call):
     times = {"now": t("now", uid), "15": t("in15", uid), "30": t("in30", uid)}
     user_state[uid]["time"] = times.get(t_val, t("now", uid))
     user_state[uid]["step"] = "price"
-    bot.edit_message_text(t("ask_price", uid), call.message.chat.id, call.message.message_id,
-                          reply_markup=price_kb(uid))
+    bot.edit_message_text(t("ask_price", uid), call.message.chat.id,
+                          call.message.message_id, reply_markup=price_kb(uid))
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("price_"))
 def cb_price(call):
@@ -411,8 +458,8 @@ def cb_price(call):
     price = int(call.data.split("_")[1])
     user_state[uid]["price"] = price
     user_state[uid]["step"] = "payment"
-    bot.edit_message_text(t("ask_payment", uid), call.message.chat.id, call.message.message_id,
-                          reply_markup=payment_kb(uid))
+    bot.edit_message_text(t("ask_payment", uid), call.message.chat.id,
+                          call.message.message_id, reply_markup=payment_kb(uid))
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("pay_"))
 def cb_payment(call):
@@ -455,15 +502,20 @@ def notify_drivers(oid):
             f"🕐 {order['created']}")
     sent = 0
     for driver_id, d in drivers.items():
-        if d.get("online") and d.get("approved"):
-            if d.get("balance", 0) <= 0:
-                bot.send_message(driver_id, t("no_balance", driver_id))
-                continue
-            try:
-                bot.send_message(driver_id, text, parse_mode="Markdown", reply_markup=driver_order_kb(oid))
-                sent += 1
-            except Exception as e:
-                print(f"Ошибка: {e}")
+        if not (d.get("online") and d.get("approved")):
+            continue
+        if d.get("balance", 0) <= 0:
+            bot.send_message(driver_id, t("no_balance", driver_id))
+            continue
+        # FIX #7 — не отправляем заказ занятому водителю
+        if has_active_order(driver_id):
+            continue
+        try:
+            bot.send_message(driver_id, text, parse_mode="Markdown",
+                             reply_markup=driver_order_kb(oid))
+            sent += 1
+        except Exception as e:
+            print(f"Ошибка отправки водителю {driver_id}: {e}")
     if sent == 0:
         bot.send_message(order["client_id"], t("no_drivers", order["client_id"]))
 
@@ -484,21 +536,29 @@ def cb_driver_response(call):
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
         return
     if action == "accept":
+        # FIX #7 — проверяем нет ли активного заказа
+        if has_active_order(driver_id):
+            bot.answer_callback_query(call.id, t("driver_busy", driver_id))
+            return
         order["status"] = "accepted"
         order["driver_id"] = driver_id
         order["driver_name"] = drivers[driver_id]["full_name"]
         drivers[driver_id]["trips"] += 1
         drivers[driver_id]["earnings"] += order["driver_gets"]
+        drivers[driver_id]["commission"] += 1  # FIX #1
         if order.get("pay_type") == "cash":
             drivers[driver_id]["balance"] = round(drivers[driver_id].get("balance", 0) - 1, 2)
             if drivers[driver_id]["balance"] <= 3:
-                bot.send_message(driver_id, t("low_balance", driver_id, bal=drivers[driver_id]["balance"]), parse_mode="Markdown")
+                bot.send_message(driver_id,
+                    t("low_balance", driver_id, bal=drivers[driver_id]["balance"]),
+                    parse_mode="Markdown")
         bot.edit_message_text(
             f"✅ *Заказ #{oid}*\n\n"
             f"👤 {order['client_name']}\n"
             f"📍 {order['from']}\n🏁 {order['to']}\n"
             f"💳 {order['payment']}\n"
-            f"💰 {order['driver_gets']}€\n\n📍 Нажмите когда прибудете!",
+            f"💰 {order['driver_gets']}€\n\n"
+            f"📍 Нажмите когда прибудете!",
             call.message.chat.id, call.message.message_id,
             parse_mode="Markdown", reply_markup=driver_active_kb(oid))
         client_id = order["client_id"]
@@ -511,28 +571,37 @@ def cb_driver_response(call):
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
         bot.answer_callback_query(call.id, "Отклонён")
 
-# ── Я ПРИБЫЛ ──
+# ── Я ПРИБЫЛ — FIX #2 ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("arrived_"))
 def cb_arrived(call):
     oid = call.data.split("_", 1)[1]
     order = orders.get(oid)
-    if not order: return
+    if not order:
+        return
+    # FIX #2 — проверяем статус, чтобы не было двойного уведомления
+    if order["status"] == "arrived":
+        bot.answer_callback_query(call.id, "✅ Уже отправлено")
+        return
     order["status"] = "arrived"
-    bot.answer_callback_query(call.id, "✅")
+    bot.answer_callback_query(call.id, "✅ Клиент уведомлён!")
     client_id = order["client_id"]
     bot.send_message(client_id,
         t("arrived", client_id, name=order["driver_name"]),
         parse_mode="Markdown")
 
-# ── ЗАВЕРШЕНО ──
+# ── ПОЕЗДКА ЗАВЕРШЕНА ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("done_"))
 def cb_done(call):
     oid = call.data.split("_", 1)[1]
     order = orders.get(oid)
-    if not order: return
+    if not order:
+        return
+    if order["status"] == "done":
+        bot.answer_callback_query(call.id, "✅ Уже завершено")
+        return
     order["status"] = "done"
     bot.edit_message_text(
-        f"✅ *#{oid} завершён!*\n\n💰 {order['driver_gets']}€\nСпасибо! 🚖",
+        f"✅ *Поездка #{oid} завершена!*\n\n💰 {order['driver_gets']}€\nСпасибо! 🚖",
         call.message.chat.id, call.message.message_id, parse_mode="Markdown")
     client_id = order["client_id"]
     bot.send_message(client_id, t("trip_done", client_id),
@@ -542,31 +611,56 @@ def cb_done(call):
 @bot.message_handler(func=lambda m: m.text in ["🟢 Я онлайн", "🟢 Olen online", "🟢 I'm online"])
 def driver_online(msg):
     uid = msg.from_user.id
-    if not is_approved_driver(uid): return
+    if not is_approved_driver(uid):
+        return
     drivers[uid]["online"] = True
     bot.send_message(uid, t("online", uid), reply_markup=main_menu_driver(uid))
 
 @bot.message_handler(func=lambda m: m.text in ["⚫ Я офлайн", "⚫ Olen offline", "⚫ I'm offline"])
 def driver_offline(msg):
     uid = msg.from_user.id
-    if not is_approved_driver(uid): return
+    if not is_approved_driver(uid):
+        return
     drivers[uid]["online"] = False
     bot.send_message(uid, t("offline", uid), reply_markup=main_menu_driver(uid))
 
-# ── ЗАРАБОТОК ──
+# ── ЗАРАБОТОК — FIX #1 и #8 ──
 @bot.message_handler(func=lambda m: m.text in ["📊 Заработок сегодня", "📊 Täna teenitud", "📊 Today's earnings"])
 def driver_earnings(msg):
     uid = msg.from_user.id
-    if not is_approved_driver(uid): return
+    if not is_approved_driver(uid):
+        return
     d = drivers[uid]
+    commission = d.get("commission", d["trips"])  # FIX #1
     bot.send_message(uid,
-        t("balance", uid, bal=d.get("balance", 0)) + f"\n\n"
+        f"{t('balance', uid, bal=d.get('balance', 0))}\n\n"
         f"🚖 Поездок: {d['trips']}\n"
         f"💰 Заработано: {d['earnings']}€\n"
-        f"📦 Сбор TL: {d['trips']}€",
+        f"📦 Сбор TL.TAKSO: {commission}€",
         parse_mode="Markdown", reply_markup=main_menu_driver(uid))
 
-# ── АДМИН ПАНЕЛЬ ──
+# ── ОТМЕНА ЗАКАЗА — FIX #3 и #5 ──
+@bot.callback_query_handler(func=lambda c: c.data == "cancel_order")
+def cb_cancel(call):
+    uid = call.from_user.id
+    oid = user_state.get(uid, {}).get("current_order")
+    if oid and oid in orders:
+        order = orders[oid]
+        if order["status"] in ["pending", "accepted", "arrived"]:
+            order["status"] = "cancelled"
+            # FIX #3 — уведомляем водителя если он уже принял заказ
+            driver_id = order.get("driver_id")
+            if driver_id:
+                try:
+                    bot.send_message(driver_id, t("driver_cancelled", driver_id))
+                except:
+                    pass
+    # FIX #5 — нормальное сообщение вместо просто "❌"
+    bot.edit_message_text(t("order_cancelled", uid),
+                          call.message.chat.id, call.message.message_id)
+    bot.send_message(uid, t("order_cancelled", uid), reply_markup=main_menu_client(uid))
+
+# ── АДМИН ПАНЕЛЬ — FIX #8 ──
 @bot.message_handler(func=lambda m: m.text == "👥 Водители онлайн" and is_admin(m.from_user.id))
 def admin_drivers(msg):
     online = [(uid, d) for uid, d in drivers.items() if d.get("online") and d.get("approved")]
@@ -575,7 +669,8 @@ def admin_drivers(msg):
         return
     text = f"🟢 *Онлайн: {len(online)}*\n\n"
     for uid, d in online:
-        text += f"👤 {d['full_name']}\n🚗 {d['car']}\n📱 {d['phone']}\n💰 Баланс: {d.get('balance',0)}€\n\n"
+        busy = "🚖 Занят" if has_active_order(uid) else "✅ Свободен"
+        text += f"👤 {d['full_name']}\n🚗 {d['car']}\n📱 {d['phone']}\n💰 Баланс: {d.get('balance',0)}€\n{busy}\n\n"
     bot.send_message(msg.chat.id, text, parse_mode="Markdown", reply_markup=main_menu_admin())
 
 @bot.message_handler(func=lambda m: m.text == "📋 Все заказы" and is_admin(m.from_user.id))
@@ -594,43 +689,52 @@ def admin_orders(msg):
 def admin_stats(msg):
     total = len(orders)
     done = len([o for o in orders.values() if o['status'] == 'done'])
-    revenue = sum(1 for o in orders.values() if o['status'] == 'done')
+    # FIX #8 — правильный подсчёт сбора
+    revenue = sum(d.get("commission", 0) for d in drivers.values())
     all_drv = len(drivers)
     online = len([d for d in drivers.values() if d.get("online")])
     pending = len(pending_drivers)
     bot.send_message(msg.chat.id,
         f"📊 *Статистика TL.TAKSO*\n\n"
-        f"🚖 Всего заказов: {total}\n✅ Завершено: {done}\n"
-        f"💰 Сбор TL: {revenue}€\n\n"
-        f"👥 Водителей: {all_drv}\n🟢 Онлайн: {online}\n⏳ Ждут: {pending}",
+        f"🚖 Всего заказов: {total}\n"
+        f"✅ Завершено: {done}\n"
+        f"💰 Сбор TL.TAKSO: {revenue}€\n\n"
+        f"👥 Водителей: {all_drv}\n"
+        f"🟢 Онлайн: {online}\n"
+        f"⏳ Ждут одобрения: {pending}",
         parse_mode="Markdown", reply_markup=main_menu_admin())
 
 @bot.message_handler(func=lambda m: m.text == "🚫 Заблокировать" and is_admin(m.from_user.id))
 def admin_block(msg):
-    if not drivers:
+    approved = [(uid, d) for uid, d in drivers.items() if d.get("approved")]
+    if not approved:
         bot.send_message(msg.chat.id, "Водителей нет", reply_markup=main_menu_admin())
         return
     kb = types.InlineKeyboardMarkup()
-    for uid, d in drivers.items():
-        if d.get("approved"):
-            kb.add(types.InlineKeyboardButton(f"🚫 {d['full_name']} · {d['car']}", callback_data=f"block_{uid}"))
+    for uid, d in approved:
+        kb.add(types.InlineKeyboardButton(
+            f"🚫 {d['full_name']} · {d['car']}",
+            callback_data=f"block_{uid}"))
     bot.send_message(msg.chat.id, "Выберите водителя:", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("block_"))
 def cb_block(call):
-    if not is_admin(call.from_user.id): return
+    if not is_admin(call.from_user.id):
+        return
     driver_id = int(call.data.split("_")[1])
     if driver_id in drivers:
         name = drivers[driver_id]['full_name']
         drivers[driver_id]['approved'] = False
         drivers[driver_id]['online'] = False
         bot.edit_message_text(f"🚫 *{name}* заблокирован.",
-                              call.message.chat.id, call.message.message_id, parse_mode="Markdown")
+                              call.message.chat.id, call.message.message_id,
+                              parse_mode="Markdown")
         try:
-            bot.send_message(driver_id, "⛔ Ваш аккаунт заблокирован.")
-        except: pass
+            bot.send_message(driver_id, "⛔ Ваш аккаунт заблокирован. Обратитесь к администратору.")
+        except:
+            pass
 
-# ── ЧАТ ──
+# ── ЧАТ — FIX #6 ──
 IGNORE = ["🚖 Заказать такси","🚖 Telli takso","🚖 Order taxi",
           "📋 Мои поездки","📋 Minu sõidud","📋 My trips",
           "💬 Поддержка","💬 Tugi","💬 Support",
@@ -651,31 +755,30 @@ def relay_message(msg):
     if role == "client":
         oid = user_state[uid].get("current_order")
         if oid and oid in orders:
-            driver_id = orders[oid].get("driver_id")
-            if driver_id:
-                bot.send_message(driver_id, f"💬 *{msg.from_user.first_name}:*\n{msg.text}", parse_mode="Markdown")
-                bot.send_message(uid, "✉️")
-            else:
-                bot.send_message(uid, "⏳")
-        else:
-            bot.send_message(uid, "🚖", reply_markup=main_menu_client(uid))
+            order = orders[oid]
+            if order["status"] in ["accepted","arrived"]:
+                driver_id = order.get("driver_id")
+                if driver_id:
+                    bot.send_message(driver_id,
+                        f"💬 *{msg.from_user.first_name}:*\n{msg.text}",
+                        parse_mode="Markdown")
+                    # FIX #6 — нормальное подтверждение
+                    bot.send_message(uid, t("msg_sent_driver", uid))
+                    return
+            elif order["status"] == "pending":
+                bot.send_message(uid, "⏳ " + t("waiting", uid))
+                return
+        bot.send_message(uid, t("no_active_order", uid), reply_markup=main_menu_client(uid))
     elif role == "driver":
         for oid, order in orders.items():
             if order.get("driver_id") == uid and order.get("status") in ["accepted","arrived"]:
-                bot.send_message(order["client_id"], f"💬 *{msg.from_user.first_name}:*\n{msg.text}", parse_mode="Markdown")
-                bot.send_message(uid, "✉️")
+                bot.send_message(order["client_id"],
+                    f"💬 *{msg.from_user.first_name}:*\n{msg.text}",
+                    parse_mode="Markdown")
+                # FIX #6
+                bot.send_message(uid, t("msg_sent_client", uid))
                 return
         bot.send_message(uid, "—", reply_markup=main_menu_driver(uid))
-
-# ── ОТМЕНА ──
-@bot.callback_query_handler(func=lambda c: c.data == "cancel_order")
-def cb_cancel(call):
-    uid = call.from_user.id
-    oid = user_state.get(uid, {}).get("current_order")
-    if oid and oid in orders:
-        orders[oid]["status"] = "cancelled"
-        bot.edit_message_text("❌", call.message.chat.id, call.message.message_id)
-    bot.send_message(uid, "❌", reply_markup=main_menu_client(uid))
 
 # ── ПОДДЕРЖКА ──
 @bot.message_handler(func=lambda m: m.text in ["💬 Поддержка","💬 Tugi","💬 Support"])
