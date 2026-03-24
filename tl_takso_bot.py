@@ -9,7 +9,9 @@ app = Flask(__name__) # <--- ДОБАВИТЬ ЭТО
 
 @app.route('/')
 def main_page():
-    return send_from_directory('.', 'index') # <--- ЭТО ОТКРЫВАЕТ ТВОЙ ФАЙЛ index
+ @app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(os.path.join(os.path.dirname(__file__), 'static'), filename)   
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory('static', filename)
