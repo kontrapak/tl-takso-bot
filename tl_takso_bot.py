@@ -3,6 +3,16 @@ from telebot import types
 import datetime
 import os
 import json
+from flask import Flask, send_from_directory  # <--- ДОБАВИТЬ ЭТО
+
+app = Flask(__name__) # <--- ДОБАВИТЬ ЭТО
+
+@app.route('/')
+def main_page():
+    return send_from_directory('.', 'index') # <--- ЭТО ОТКРЫВАЕТ ТВОЙ ФАЙЛ index
+
+import os
+import json
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
