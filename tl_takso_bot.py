@@ -581,4 +581,16 @@ def support(msg):
 # ── ЗАПУСК ──
 if __name__ == "__main__":
     print("🚖 TL.TAKSO Bot запущен!")
-    bot.infinity_polling()
+    if __name__ == "__main__":
+    # 1. Запуск бота в отдельном потоке (фоном)
+    from threading import Thread
+    def run_bot():
+        bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    
+    Thread(target=run_bot).start()
+    
+    # 2. Запуск веб-сервера для сайта (основной процесс)
+    # Railway сам даст нужный порт через переменную PORT
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
