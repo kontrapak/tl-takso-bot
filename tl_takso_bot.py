@@ -585,7 +585,7 @@ if __name__ == "__main__":
     # 1. Запуск бота в отдельном потоке (фоном)
     from threading import Thread
     def run_bot():
-        bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
     
     Thread(target=run_bot).start()
     
