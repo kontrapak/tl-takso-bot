@@ -17,7 +17,7 @@ import json
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
-ADMIN_ID = none
+ADMIN_ID =  1873195803 # <--- ВСТАВЬ СВОИ ЦИФРЫ (из @userinfobot)
 
 # Ссылка на Mini App (ЗАМЕНИ НА СВОЮ!)
 MINI_APP_URL = "https://tltakso.github.io/название-репозитория/tl-takso-app.html"
