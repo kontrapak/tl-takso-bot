@@ -1,2 +1,2 @@
-web: gunicorn tl_takso_bot:app
+web: python tl_takso_bot.py
 
