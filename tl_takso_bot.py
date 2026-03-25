@@ -8,16 +8,20 @@ import json
 from flask import Flask, send_from_directory
 
 app = Flask(__name__)
-
-@app.route('/')
-def main_page():
-    return "tltakso"
-
-# Дальше идет весь ваш код бота...
-
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory(os.path.join(os.path.dirname(__file__), 'static'), filename)
+
+import os
+import json
+
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+bot = telebot.TeleBot(BOT_TOKEN)
+
+ADMIN_ID = 1873195803  # <--- ВСТАВЬ СВОИ ЦИФРЫ (из @userinfobot)
+
+# Ссылка на Mini App (ЗАМЕНИ НА СВОЮ!)
+MINI_APP_URL = "https://tltakso.github.io/название-репозитория/tl-takso-app.html"
 import os
 import json
 
