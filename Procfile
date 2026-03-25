@@ -1,2 +1,2 @@
-worker: python tl_takso_bot.py
+web: python tl_takso_bot.py
 
