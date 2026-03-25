@@ -7,9 +7,8 @@ import os
 import json
 from flask import Flask, send_from_directory
 app = Flask(__name__)
-
 @app.route('/')
-def main_page():
+def home():
     return "tltakso"
 
 @app.route('/static/<path:filename>')
