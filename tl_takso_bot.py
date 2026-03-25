@@ -13,7 +13,7 @@ def main_page():
 
 @app.route('/static/<path:filename>')
 def static_files(filename):
-    return send_from_directory(os.path.join(os.path.dirname(__file__), 'static')
+    return send_from_directory(os.path.join(os.path.dirname(__file__), 'static'), filename)
 import os
 import json
 
