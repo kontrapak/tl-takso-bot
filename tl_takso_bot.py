@@ -1,15 +1,19 @@
 import telebot
 from telebot import types
+import telebot
+from telebot import types
 import datetime
 import os
 import json
-from flask import Flask, send_from_directory  # <--- ДОБАВИТЬ ЭТО
+from flask import Flask, send_from_directory
 
-app = Flask(__name__) # <--- ДОБАВИТЬ ЭТО
+app = Flask(__name__)
 
 @app.route('/')
 def main_page():
-    return "TL.TAKSO работает!"
+    return "tltakso"
+
+# Дальше идет весь ваш код бота...
 
 @app.route('/static/<path:filename>')
 def static_files(filename):
