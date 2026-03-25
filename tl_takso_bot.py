@@ -6,8 +6,12 @@ import datetime
 import os
 import json
 from flask import Flask, send_from_directory
-
 app = Flask(__name__)
+
+@app.route('/')
+def main_page():
+    return "tltakso"
+
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory(os.path.join(os.path.dirname(__file__), 'static'), filename)
