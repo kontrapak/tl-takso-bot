@@ -1,33 +1,25 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой первый сайт</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        h1 {
-            color: #2c3e50;
-        }
-        p {
-            color: #34495e;
-        }
-        a {
-            color: #2980b9;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
-    <h1>Привет! Это мой сайт на GitHub Pages</h1>
-    <p>Файл <code>index.html</code> работает прямо из репозитория.</p>
-    <p><a href="https://github.com/">Посетить GitHub</a></p>
-</body>
-</html>
+Создаю Mini App! Токен получил, делаю сейчас.
+
+Готово! Вот что внутри:
+
+**🗺 Карта** — Таллинн, тёмная тема, жёлтые дороги Mapbox, наклон 30°
+
+**💰 4 тарифа** — Мустамяэ 8€ / Город 10€ / Далеко 15€ / Аэропорт 20€
+
+**📍 Выбор маршрута в 3 шага:**
+1. Двигаешь карту → подтверждаешь ОТКУДА
+2. Двигаешь карту → подтверждаешь КУДА
+3. Нажимаешь ЗАКАЗАТЬ → данные уходят в бот
+
+---
+
+## Как загрузить на GitHub:
+
+1. Скачай файл `index.html`
+2. Зайди в репозиторий на GitHub
+3. Удали старый `Index.txt`
+4. Загрузи новый `index.html` (кнопка **Add file → Upload files**)
+5. Settings → Pages → выбери ветку `основной` → Save
+6. Сделай репозиторий **публичным** (Settings → Danger Zone → Change visibility)
+
+Через 2-3 минуты сайт будет живой по адресу `https://ТВОЙюзернейм.github.io/tl-takso-bot/`
