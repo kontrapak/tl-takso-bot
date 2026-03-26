@@ -1,25 +1,87 @@
-Создаю Mini App! Токен получил, делаю сейчас.
-
-Готово! Вот что внутри:
-
-**🗺 Карта** — Таллинн, тёмная тема, жёлтые дороги Mapbox, наклон 30°
-
-**💰 4 тарифа** — Мустамяэ 8€ / Город 10€ / Далеко 15€ / Аэропорт 20€
-
-**📍 Выбор маршрута в 3 шага:**
-1. Двигаешь карту → подтверждаешь ОТКУДА
-2. Двигаешь карту → подтверждаешь КУДА
-3. Нажимаешь ЗАКАЗАТЬ → данные уходят в бот
-
----
-
-## Как загрузить на GitHub:
-
-1. Скачай файл `index.html`
-2. Зайди в репозиторий на GitHub
-3. Удали старый `Index.txt`
-4. Загрузи новый `index.html` (кнопка **Add file → Upload files**)
-5. Settings → Pages → выбери ветку `основной` → Save
-6. Сделай репозиторий **публичным** (Settings → Danger Zone → Change visibility)
-
-Через 2-3 минуты сайт будет живой по адресу `https://ТВОЙюзернейм.github.io/tl-takso-bot/`
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>TL.TAKSO</title>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{--black:#0a0a0a;--yellow:#FFD600;--panel:rgba(10,10,10,0.92);--border:rgba(255,214,0,0.18);--text:#f0f0f0;--muted:#888}
+    html,body{height:100%;width:100%;background:var(--black);color:var(--text);font-family:'IBM Plex Mono',monospace;overflow:hidden}
+    #map{position:absolute;inset:0;width:100%;height:100%}
+    .header{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;background:linear-gradient(to bottom,rgba(10,10,10,0.95) 60%,transparent)}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--yellow);line-height:1}
+    .logo span{color:#fff;font-size:18px;display:block;letter-spacing:6px}
+    .status-dot{width:8px;height:8px;border-radius:50%;background:#00e676;box-shadow:0 0 8px #00e676;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.3)}}
+    .panel{position:absolute;bottom:0;left:0;right:0;z-index:10;background:var(--panel);border-top:1px solid var(--border);backdrop-filter:blur(20px);padding:20px 18px 32px}
+    .panel-handle{width:40px;height:3px;background:var(--border);border-radius:2px;margin:0 auto 18px}
+    .zone-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+    .zone-card{background:rgba(255,214,0,0.05);border:1px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;transition:all 0.2s}
+    .zone-card.active{border-color:var(--yellow);box-shadow:0 0 12px rgba(255,214,0,0.3);background:rgba(255,214,0,0.08)}
+    .zone-name{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+    .zone-price{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--yellow);line-height:1}
+    .input-group{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+    .input-wrap{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+    .input-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .dot-from{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+    .dot-to{background:#fff;box-shadow:0 0 6px rgba(255,255,255,0.5)}
+    .input-wrap input{background:none;border:none;outline:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;width:100%}
+    .input-wrap input::placeholder{color:var(--muted)}
+    .btn-order{width:100%;padding:16px;background:var(--yellow);color:#000;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;border:none;border-radius:10px;cursor:pointer;transition:all 0.2s}
+    .btn-order:active{transform:scale(0.98)}
+    .map-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);z-index:5;pointer-events:none}
+    .toast{position:absolute;top:80px;left:50%;transform:translateX(-50%);background:var(--yellow);color:#000;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;padding:10px 20px;border-radius:20px;z-index:20;opacity:0;transition:opacity 0.3s;white-space:nowrap}
+    .toast.show{opacity:1}
+    .step-indicator{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+    .step-num{background:var(--yellow);color:#000;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div class="map-pin">
+  <svg width="36" height="48" viewBox="0 0 36 48" fill="none">
+    <path d="M18 0C8.06 0 0 8.06 0 18C0 31.5 18 48 18 48C18 48 36 31.5 36 18C36 8.06 27.94 0 18 0Z" fill="#FFD600"/>
+    <circle cx="18" cy="18" r="7" fill="#0a0a0a"/>
+  </svg>
+</div>
+<div class="header">
+  <div class="logo">TL<span>TAKSO</span></div>
+  <div class="status-dot"></div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="panel">
+  <div class="panel-handle"></div>
+  <div class="zone-row">
+    <div class="zone-card" data-price="8" onclick="selectZone(this)"><div class="zone-name">Мустамяэ</div><div class="zone-price">8€</div></div>
+    <div class="zone-card" data-price="10" onclick="selectZone(this)"><div class="zone-name">Город</div><div class="zone-price">10€</div></div>
+    <div class="zone-card" data-price="15" onclick="selectZone(this)"><div class="zone-name">Далеко</div><div class="zone-price">15€</div></div>
+    <div class="zone-card" data-price="20" onclick="selectZone(this)"><div class="zone-name">Аэропорт</div><div class="zone-price">20€</div></div>
+  </div>
+  <div class="step-indicator">
+    <div class="step-num" id="stepNum">1</div>
+    <span id="stepText">Укажи точку отправления</span>
+  </div>
+  <div class="input-group">
+    <div class="input-wrap"><div class="input-dot dot-from"></div><input id="fromInput" placeholder="Откуда..." readonly></div>
+    <div class="input-wrap"><div class="input-dot dot-to"></div><input id="toInput" placeholder="Куда..." readonly></div>
+  </div>
+  <button class="btn-order" id="orderBtn" onclick="handleOrder()">ЗАКАЗАТЬ ТАКСИ</button>
+</div>
+<script>
+mapboxgl.accessToken='pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
+const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/dark-v11',center:[24.7536,59.4370],zoom:12,pitch:30,attributionControl:false});
+map.on('load',()=>{['road-primary','road-secondary-tertiary','road-street','road-motorway-trunk'].forEach(l=>{if(map.getLayer(l)){map.setPaintProperty(l,'line-color','#FFD600');map.setPaintProperty(l,'line-opacity',0.6)}})});
+let step=1,fromCoords=null,toCoords=null,selectedPrice=null;
+function selectZone(el){document.querySelectorAll('.zone-card').forEach(c=>c.classList.remove('active'));el.classList.add('active');selectedPrice=el.dataset.price;document.getElementById('orderBtn').innerHTML='ЗАКАЗАТЬ — '+selectedPrice+'€'}
+let t=null;
+map.on('moveend',async()=>{clearTimeout(t);t=setTimeout(async()=>{const c=map.getCenter();const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${c.lng},${c.lat}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=1`);const d=await r.json();const a=d.features?.[0]?.place_name?.split(',')[0]||'';if(step===1)document.getElementById('fromInput').value=a;else if(step===2)document.getElementById('toInput').value=a},400)});
+async function handleOrder(){if(!selectedPrice){showToast('⚠️ Выбери тариф');return}if(step===1){fromCoords=[...Object.values(map.getCenter())];step=2;document.getElementById('stepNum').textContent='2';document.getElementById('stepText').textContent='Укажи точку назначения';showToast('📍 Отправление выбрано')}else if(step===2){toCoords=[...Object.values(map.getCenter())];step=3;document.getElementById('stepNum').textContent='✓';document.getElementById('stepNum').style.background='#00e676';document.getElementById('stepText').textContent='Маршрут готов';document.getElementById('orderBtn').textContent='🚖 ПОДТВЕРДИТЬ ЗАКАЗ';showToast('✅ Маршрут готов')}else{const from=document.getElementById('fromInput').value;const to=document.getElementById('toInput').value;if(window.Telegram?.WebApp){window.Telegram.WebApp.sendData(JSON.stringify({from,to,price:selectedPrice}))}else{window.open('https://t.me/TLTAKSO_bot','_blank')}showToast('🚖 Заказ отправлен!')}}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+if(window.Telegram?.WebApp){window.Telegram.WebApp.ready();window.Telegram.WebApp.expand()}
+</script>
+</body>
+</html>
