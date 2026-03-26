@@ -7,8 +7,7 @@ from flask import Flask, send_from_directory
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "tltakso"
-
+    return send_from_directory(os.path.dirname(__file__), 'index.html')
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory(os.path.join(os.path.dirname(__file__), 'static'), filename)
