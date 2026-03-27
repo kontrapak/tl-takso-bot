@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TL.TAKSO - Водитель</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body{background:#0a0a0a;color:#fff;font-family:monospace;padding:20px}
+        .order{background:#FFD60020;border:1px solid #FFD600;border-radius:12px;padding:15px;margin:10px 0}
+        .order-price{font-size:24px;color:#FFD600;margin:10px 0}
+        button{background:#FFD600;color:#000;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:16px}
+        .status-online{background:#00e676;color:#000;padding:5px 10px;border-radius:20px;display:inline-block}
+        .status-offline{background:#ff4444;color:#fff;padding:5px 10px;border-radius:20px;display:inline-block}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚖 Панель водителя</h1>
+        <div id="statusBadge" class="status-online">🟢 Онлайн</div>
+    </div>
+    
+    <div id="ordersList">⏳ Загрузка заказов...</div>
+    
+    <div style="position:fixed;bottom:20px;left:20px;right:20px;display:flex;gap:10px">
+        <button onclick="setOnline(true)" style="flex:1">🟢 Онлайн</button>
+        <button onclick="setOnline(false)" style="flex:1;background:#333">🔴 Офлайн</button>
+    </div>
+
+    <script>
+        let isOnline = true;
+        let driverId = localStorage.getItem('driverId') || 'driver_' + Math.random().toString(36).substr(2, 6);
+        localStorage.setItem('driverId', driverId);
+        
+        function setOnline(status) {
+            isOnline = status;
+            const badge = document.getElementById('statusBadge');
+            if (status) {
+                badge.className = 'status-online';
+                badge.innerHTML = '🟢 Онлайн';
+                loadOrders();
+            } else {
+                badge.className = 'status-offline';
+                badge.innerHTML = '🔴 Офлайн';
+                document.getElementById('ordersList').innerHTML = '<div style="text-align:center;padding:40px;color:#666">⛔ Вы офлайн</div>';
+            }
+        }
+        
+        async function loadOrders() {
+            if (!isOnline) return;
+            try {
+                const res = await fetch('/api/orders');
+                const orders = await res.json();
+                if (orders.length === 0) {
+                    document.getElementById('ordersList').innerHTML = '<div style="text-align:center;padding:40px;color:#666">🚕 Нет заказов</div>';
+                    return;
+                }
+                document.getElementById('ordersList').innerHTML = orders.map(order => `
+                    <div class="order">
+                        <div>📋 Заказ #${order.id}</div>
+                        <div class="order-price">${order.price}€</div>
+                        <div>📍 ${order.from_address}</div>
+                        <div>🎯 ${order.to_address}</div>
+                        <button onclick="acceptOrder(${order.id})">✅ ПРИНЯТЬ</button>
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function acceptOrder(orderId) {
+            try {
+                const res = await fetch(`/api/orders/${orderId}/accept`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ driver_id: driverId, driver_name: `Водитель` })
+                });
+                if (res.ok) {
+                    alert(`✅ Заказ #${orderId} принят!`);
+                    loadOrders();
+                } else {
+                    alert('❌ Заказ уже принят');
+                    loadOrders();
+                }
+            } catch(e) { alert('Ошибка'); }
+        }
+        
+        setInterval(loadOrders, 3000);
+        loadOrders();
+    </script>
+</body>
+</html>
