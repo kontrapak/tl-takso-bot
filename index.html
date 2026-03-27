@@ -3,228 +3,763 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>TL.TAKSO</title>
+  <title>TL.TAKSO — Ценовые зоны на карте</title>
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    :root{--black:#0a0a0a;--yellow:#FFD600;--panel:rgba(10,10,10,0.95);--border:rgba(255,214,0,0.18);--text:#f0f0f0;--muted:#666;--red:#ff4444}
-    html,body{height:100%;width:100%;background:var(--black);color:var(--text);font-family:'IBM Plex Mono',monospace;overflow:hidden}
-    #map{position:absolute;inset:0}
-    .header{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;background:linear-gradient(to bottom,rgba(10,10,10,0.95) 60%,transparent)}
-    .logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--yellow);line-height:1}
-    .logo span{color:#fff;font-size:16px;display:block;letter-spacing:6px}
-    .status-dot{width:8px;height:8px;border-radius:50%;background:#00e676;box-shadow:0 0 8px #00e676;animation:pulse 2s infinite}
-    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
-    .map-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);z-index:5;pointer-events:none}
-    .panel{position:absolute;bottom:0;left:0;right:0;z-index:10;background:var(--panel);border-top:1px solid var(--border);backdrop-filter:blur(20px);padding:16px 16px 28px}
-    .panel-handle{width:36px;height:3px;background:var(--border);border-radius:2px;margin:0 auto 14px}
-    .zone-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
-    .zone-card{background:rgba(255,214,0,0.04);border:1px solid var(--border);border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;transition:all .2s}
-    .zone-card.active{border-color:var(--yellow);box-shadow:0 0 10px rgba(255,214,0,0.25);background:rgba(255,214,0,0.08)}
-    .zone-name{font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
-    .zone-price{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--yellow);line-height:1}
-    .step-indicator{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
-    .step-num{background:var(--yellow);color:#000;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
-    .input-group{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
-    .input-row{display:flex;gap:8px;align-items:center}
-    .input-wrap{flex:1;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
-    .input-wrap.active-input{border-color:rgba(255,214,0,0.5)}
-    .input-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-    .dot-from{background:var(--yellow);box-shadow:0 0 5px var(--yellow)}
-    .dot-to{background:#fff;box-shadow:0 0 5px rgba(255,255,255,.4)}
-    .input-wrap input{background:none;border:none;outline:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;width:100%}
-    .input-wrap input::placeholder{color:var(--muted)}
-    .geo-inline{background:rgba(255,214,0,0.08);border:1px solid var(--border);border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0;transition:all .2s}
-    .geo-inline:active{border-color:var(--yellow);transform:scale(0.92)}
-    .autocomplete{position:absolute;left:16px;right:16px;background:#111;border:1px solid var(--border);border-radius:8px;z-index:20;max-height:150px;overflow-y:auto;display:none}
-    .autocomplete-item{padding:10px 14px;font-size:12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);color:var(--text)}
-    .autocomplete-item:active{background:rgba(255,214,0,0.1)}
-    .btn-row{display:flex;gap:8px}
-    .btn-order{flex:1;padding:14px;background:var(--yellow);color:#000;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;border:none;border-radius:10px;cursor:pointer;transition:all .2s}
-    .btn-order:active{transform:scale(0.98)}
-    .btn-cancel{padding:14px 16px;background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:20px;border-radius:10px;cursor:pointer;transition:all .2s;display:none}
-    .btn-cancel:active{transform:scale(0.98)}
-    .toast{position:absolute;top:75px;left:50%;transform:translateX(-50%);background:var(--yellow);color:#000;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:9px 18px;border-radius:20px;z-index:30;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}
-    .toast.show{opacity:1}
-    .toast.error{background:var(--red);color:#fff}
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --black: #0a0a0a;
+      --yellow: #FFD600;
+      --panel: rgba(10, 10, 10, 0.96);
+      --border: rgba(255, 214, 0, 0.2);
+      --text: #f0f0f0;
+      --muted: #888;
+      --red: #ff4444;
+      --zone-blue: rgba(0, 100, 255, 0.25);
+      --zone-green: rgba(0, 200, 100, 0.25);
+      --zone-orange: rgba(255, 100, 0, 0.25);
+      --zone-red: rgba(200, 0, 50, 0.25);
+    }
+
+    body, html {
+      height: 100%;
+      width: 100%;
+      background: var(--black);
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      overflow: hidden;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* ценовые зоны — геометрические слои будут добавлены в скрипте */
+    .header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px 10px;
+      background: linear-gradient(to bottom, rgba(10, 10, 10, 0.95) 60%, transparent);
+      pointer-events: none;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: 3px;
+      color: var(--yellow);
+      line-height: 1;
+    }
+
+    .logo span {
+      color: #fff;
+      font-size: 16px;
+      display: block;
+      letter-spacing: 6px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00e676;
+      box-shadow: 0 0 8px #00e676;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.5;
+        transform: scale(1.3);
+      }
+    }
+
+    .map-pin {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -100%);
+      z-index: 5;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+    }
+
+    .panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      padding: 12px 16px 26px;
+      border-radius: 20px 20px 0 0;
+      transition: transform 0.2s;
+    }
+
+    .panel-handle {
+      width: 36px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 14px;
+    }
+
+    .zone-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .zone-card {
+      background: rgba(255, 214, 0, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 4px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .zone-card.active {
+      border-color: var(--yellow);
+      box-shadow: 0 0 12px rgba(255, 214, 0, 0.4);
+      background: rgba(255, 214, 0, 0.12);
+      transform: scale(0.98);
+    }
+
+    .zone-name {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .zone-price {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      color: var(--yellow);
+      line-height: 1;
+    }
+
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .step-num {
+      background: var(--yellow);
+      color: #000;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 14px;
+      transition: all 0.2s;
+    }
+
+    .input-wrap.active-input {
+      border-color: var(--yellow);
+      background: rgba(255, 214, 0, 0.06);
+    }
+
+    .input-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-from {
+      background: var(--yellow);
+      box-shadow: 0 0 6px var(--yellow);
+    }
+
+    .dot-to {
+      background: #fff;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+    }
+
+    .input-wrap input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .input-wrap input::placeholder {
+      color: var(--muted);
+    }
+
+    .geo-inline {
+      background: rgba(255, 214, 0, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 20px;
+      transition: all 0.2s;
+    }
+
+    .geo-inline:active {
+      border-color: var(--yellow);
+      transform: scale(0.94);
+    }
+
+    .autocomplete {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      background: #0f0f0f;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      z-index: 25;
+      max-height: 180px;
+      overflow-y: auto;
+      display: none;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .autocomplete-item {
+      padding: 12px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text);
+    }
+
+    .autocomplete-item:active {
+      background: rgba(255, 214, 0, 0.15);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .btn-order {
+      flex: 1;
+      padding: 14px;
+      background: var(--yellow);
+      color: #000;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .btn-order:active {
+      transform: scale(0.97);
+    }
+
+    .btn-cancel {
+      padding: 14px 20px;
+      background: rgba(255, 68, 68, 0.12);
+      border: 1px solid rgba(255, 68, 68, 0.5);
+      color: var(--red);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: none;
+      backdrop-filter: blur(4px);
+    }
+
+    .btn-cancel:active {
+      transform: scale(0.96);
+      background: rgba(255, 68, 68, 0.25);
+    }
+
+    .toast {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--yellow);
+      color: #000;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 40px;
+      z-index: 40;
+      opacity: 0;
+      transition: opacity 0.25s;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .toast.error {
+      background: var(--red);
+      color: #fff;
+    }
+
+    @media (max-width: 450px) {
+      .zone-price {
+        font-size: 18px;
+      }
+
+      .zone-name {
+        font-size: 8px;
+      }
+
+      .btn-order {
+        font-size: 18px;
+        padding: 12px;
+      }
+    }
   </style>
 </head>
+
 <body>
-<div id="map"></div>
-<div class="map-pin">
-  <svg width="34" height="46" viewBox="0 0 36 48" fill="none">
-    <path d="M18 0C8.06 0 0 8.06 0 18C0 31.5 18 48 18 48C18 48 36 31.5 36 18C36 8.06 27.94 0 18 0Z" fill="#FFD600"/>
-    <circle cx="18" cy="18" r="7" fill="#0a0a0a"/>
-  </svg>
-</div>
-<div class="header">
-  <div class="logo">TL<span>TAKSO</span></div>
-  <div class="status-dot"></div>
-</div>
-<div class="toast" id="toast"></div>
-<div class="autocomplete" id="autocomplete"></div>
-<div class="panel">
-  <div class="panel-handle"></div>
-  <div class="zone-row">
-    <div class="zone-card" data-price="8" onclick="selectZone(this)"><div class="zone-name">Мустамяэ</div><div class="zone-price">8€</div></div>
-    <div class="zone-card" data-price="10" onclick="selectZone(this)"><div class="zone-name">Город</div><div class="zone-price">10€</div></div>
-    <div class="zone-card" data-price="15" onclick="selectZone(this)"><div class="zone-name">Далеко</div><div class="zone-price">15€</div></div>
-    <div class="zone-card" data-price="20" onclick="selectZone(this)"><div class="zone-name">Аэропорт</div><div class="zone-price">20€</div></div>
+  <div id="map"></div>
+  <div class="map-pin">
+    <svg width="32" height="44" viewBox="0 0 36 48" fill="none">
+      <path d="M18 0C8.06 0 0 8.06 0 18C0 31.5 18 48 18 48C18 48 36 31.5 36 18C36 8.06 27.94 0 18 0Z" fill="#FFD600" />
+      <circle cx="18" cy="18" r="7" fill="#0a0a0a" />
+    </svg>
   </div>
-  <div class="step-indicator">
-    <div class="step-num" id="stepNum">→</div>
-    <span id="stepText">Укажи откуда и куда</span>
+  <div class="header">
+    <div class="logo">TL<span>TAKSO</span></div>
+    <div class="status-dot"></div>
   </div>
-  <div class="input-group">
-    <div class="input-row">
-      <div class="input-wrap" id="fromWrap">
-        <div class="input-dot dot-from"></div>
-        <input id="fromInput" placeholder="Откуда... (введи или двигай карту)" oninput="onAddressInput('from')" onfocus="setActiveField('from')">
-      </div>
-      <div class="geo-inline" onclick="getGeo('from')">📍</div>
+  <div class="toast" id="toast"></div>
+  <div class="autocomplete" id="autocomplete"></div>
+  <div class="panel">
+    <div class="panel-handle"></div>
+    <div class="zone-row">
+      <div class="zone-card" data-price="8" data-zone-id="mustamae" onclick="selectZone(this)"><div class="zone-name">Мустамяэ</div><div class="zone-price">8€</div></div>
+      <div class="zone-card" data-price="10" data-zone-id="kesklinn" onclick="selectZone(this)"><div class="zone-name">Город</div><div class="zone-price">10€</div></div>
+      <div class="zone-card" data-price="15" data-zone-id="far" onclick="selectZone(this)"><div class="zone-name">Далеко</div><div class="zone-price">15€</div></div>
+      <div class="zone-card" data-price="20" data-zone-id="airport" onclick="selectZone(this)"><div class="zone-name">Аэропорт</div><div class="zone-price">20€</div></div>
     </div>
-    <div class="input-row">
-      <div class="input-wrap" id="toWrap">
-        <div class="input-dot dot-to"></div>
-        <input id="toInput" placeholder="Куда... (введи или двигай карту)" oninput="onAddressInput('to')" onfocus="setActiveField('to')">
+    <div class="step-indicator">
+      <div class="step-num" id="stepNum">📍</div>
+      <span id="stepText">Выбери адреса или двигай карту</span>
+    </div>
+    <div class="input-group">
+      <div class="input-row">
+        <div class="input-wrap" id="fromWrap">
+          <div class="input-dot dot-from"></div>
+          <input id="fromInput" placeholder="Откуда... (адрес или геолокация)" oninput="onAddressInput('from')" onfocus="setActiveField('from')">
+        </div>
+        <div class="geo-inline" onclick="getGeo('from')">📍</div>
       </div>
-      <div class="geo-inline" onclick="getGeo('to')">📍</div>
+      <div class="input-row">
+        <div class="input-wrap" id="toWrap">
+          <div class="input-dot dot-to"></div>
+          <input id="toInput" placeholder="Куда... (адрес или карта)" oninput="onAddressInput('to')" onfocus="setActiveField('to')">
+        </div>
+        <div class="geo-inline" onclick="getGeo('to')">📍</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-order" id="orderBtn" onclick="handleOrder()">ЗАКАЗАТЬ ТАКСИ</button>
+      <button class="btn-cancel" id="cancelBtn" onclick="cancelOrder()">✕ ОТМЕНА</button>
     </div>
   </div>
-  <div class="btn-row">
-    <button class="btn-order" id="orderBtn" onclick="handleOrder()">ЗАКАЗАТЬ ТАКСИ</button>
-    <button class="btn-cancel" id="cancelBtn" onclick="cancelOrder()">✕ ОТМЕНА</button>
-  </div>
-</div>
 
-<script>
-mapboxgl.accessToken='pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
-const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/dark-v11',center:[24.7536,59.4370],zoom:12,pitch:25,attributionControl:false});
-map.on('load',()=>{['road-primary','road-secondary-tertiary','road-street','road-motorway-trunk'].forEach(l=>{if(map.getLayer(l)){map.setPaintProperty(l,'line-color','#FFD600');map.setPaintProperty(l,'line-opacity',0.55)}})});
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [24.7536, 59.4370],
+      zoom: 12,
+      pitch: 40,
+      attributionControl: false
+    });
 
-let selectedPrice=null,activeField='from',geocodeTimer=null,searchTimer=null;
-let fromCoords=null,toCoords=null;
+    // ========== ЦЕНОВЫЕ ЗОНЫ (полигоны с подсветкой) ==========
+    // Определяем геометрии зон Таллинна (упрощённые полигоны для демонстрации подсветки)
+    const priceZones = [
+      { id: 'mustamae', name: 'Мустамяэ', price: 8, color: 'rgba(0, 200, 100, 0.35)', borderColor: '#00cc66', coords: [[24.63, 59.40], [24.68, 59.395], [24.70, 59.41], [24.68, 59.43], [24.64, 59.435], [24.61, 59.425], [24.63, 59.40]] },
+      { id: 'kesklinn', name: 'Город (центр)', price: 10, color: 'rgba(255, 214, 0, 0.3)', borderColor: '#FFD600', coords: [[24.725, 59.425], [24.765, 59.427], [24.77, 59.44], [24.74, 59.445], [24.71, 59.44], [24.725, 59.425]] },
+      { id: 'far', name: 'Далеко (восток)', price: 15, color: 'rgba(255, 100, 0, 0.35)', borderColor: '#ff6600', coords: [[24.82, 59.42], [24.88, 59.43], [24.89, 59.45], [24.85, 59.455], [24.80, 59.44], [24.82, 59.42]] },
+      { id: 'airport', name: 'Аэропорт', price: 20, color: 'rgba(220, 50, 80, 0.4)', borderColor: '#ff3366', coords: [[24.79, 59.41], [24.83, 59.415], [24.832, 59.423], [24.80, 59.425], [24.785, 59.418], [24.79, 59.41]] }
+    ];
 
-function setActiveField(f){
-  activeField=f;
-  document.getElementById('fromWrap').classList.toggle('active-input',f==='from');
-  document.getElementById('toWrap').classList.toggle('active-input',f==='to');
-}
+    let selectedPrice = null;
+    let activeField = 'from';
+    let geocodeTimer = null;
+    let searchTimer = null;
+    let fromCoords = null;
+    let toCoords = null;
+    let currentOrderActive = false;   // флаг для кнопки отмены
 
-function selectZone(el){
-  document.querySelectorAll('.zone-card').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-  selectedPrice=el.dataset.price;
-  document.getElementById('orderBtn').textContent='ЗАКАЗАТЬ — '+selectedPrice+'€';
-}
+    // Функция добавления слоёв ценовых зон на карту
+    function addPriceZones() {
+      priceZones.forEach(zone => {
+        const sourceId = `zone-${zone.id}`;
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
+        if (map.getLayer(`zone-fill-${zone.id}`)) map.removeLayer(`zone-fill-${zone.id}`);
+        if (map.getLayer(`zone-line-${zone.id}`)) map.removeLayer(`zone-line-${zone.id}`);
 
-map.on('moveend',async()=>{
-  clearTimeout(geocodeTimer);
-  geocodeTimer=setTimeout(async()=>{
-    const c=map.getCenter();
-    const addr=await geocodeCoords(c.lng,c.lat);
-    const inp=document.getElementById(activeField==='from'?'fromInput':'toInput');
-    if(!inp.dataset.locked)inp.value=addr;
-  },400);
-});
+        map.addSource(sourceId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [zone.coords]
+            },
+            properties: { price: zone.price, name: zone.name }
+          }
+        });
 
-async function geocodeCoords(lng,lat){
-  try{const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=1`);const d=await r.json();return d.features?.[0]?.place_name?.split(',').slice(0,2).join(',')||'';}catch{return'';}
-}
+        map.addLayer({
+          id: `zone-fill-${zone.id}`,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': zone.color,
+            'fill-opacity': 0.45,
+            'fill-outline-color': zone.borderColor
+          }
+        });
+        map.addLayer({
+          id: `zone-line-${zone.id}`,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': zone.borderColor,
+            'line-width': 2,
+            'line-dasharray': [3, 4],
+            'line-opacity': 0.85
+          }
+        });
+      });
+    }
 
-async function onAddressInput(field){
-  const inp=document.getElementById(field==='from'?'fromInput':'toInput');
-  inp.dataset.locked='';
-  if(field==='from')fromCoords=null;else toCoords=null;
-  clearTimeout(searchTimer);
-  if(inp.value.length<3){hideAC();return;}
-  searchTimer=setTimeout(async()=>{
-    try{const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inp.value)}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=5&proximity=24.7536,59.4370&bbox=24.4,59.25,25.1,59.65`);const d=await r.json();showAC(d.features||[],field);}catch{}
-  },400);
-}
+    map.on('load', () => {
+      addPriceZones();
 
-function showAC(features,field){
-  const ac=document.getElementById('autocomplete');
-  if(!features.length){ac.style.display='none';return;}
-  ac.innerHTML=features.map(f=>`<div class="autocomplete-item" onclick="selectAddr('${field}',${f.center[0]},${f.center[1]},\`${f.place_name.replace(/`/g,"'")}\`)">${f.place_name.split(',').slice(0,2).join(',')}</div>`).join('');
-  const panel=document.querySelector('.panel');
-  ac.style.bottom=(window.innerHeight-panel.getBoundingClientRect().top+8)+'px';
-  ac.style.display='block';
-}
+      // дороги подсветим жёлтым акцентом
+      ['road-primary', 'road-secondary-tertiary', 'road-street', 'road-motorway-trunk'].forEach(l => {
+        if (map.getLayer(l)) {
+          map.setPaintProperty(l, 'line-color', '#FFD600');
+          map.setPaintProperty(l, 'line-opacity', 0.45);
+        }
+      });
 
-function hideAC(){document.getElementById('autocomplete').style.display='none';}
+      // добавим интерактив: при клике на зону можно подсветить карточку
+      map.on('click', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: Object.keys(map.getStyle().layers).filter(l => l.startsWith('zone-fill-')) });
+        if (features.length) {
+          const sourceData = features[0].source;
+          const zoneId = sourceData.replace('zone-', '');
+          const matchedZone = priceZones.find(z => z.id === zoneId);
+          if (matchedZone) {
+            const card = Array.from(document.querySelectorAll('.zone-card')).find(c => c.dataset.zoneId === zoneId);
+            if (card) selectZone(card);
+            showToast(`📍 ${matchedZone.name} — ${matchedZone.price}€`, false);
+          }
+        }
+      });
+    });
 
-function selectAddr(field,lng,lat,name){
-  const short=name.split(',').slice(0,2).join(',');
-  const inp=document.getElementById(field==='from'?'fromInput':'toInput');
-  inp.value=short;inp.dataset.locked='1';
-  if(field==='from')fromCoords=[lng,lat];else toCoords=[lng,lat];
-  map.flyTo({center:[lng,lat],zoom:15,duration:700});
-  hideAC();
-}
+    function selectZone(el) {
+      document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      selectedPrice = el.dataset.price;
+      document.getElementById('orderBtn').textContent = `ЗАКАЗАТЬ — ${selectedPrice}€`;
+      // анимация подсветки зоны на карте (моргание)
+      const zoneId = el.dataset.zoneId;
+      const layerFill = `zone-fill-${zoneId}`;
+      if (map.getLayer(layerFill)) {
+        map.setPaintProperty(layerFill, 'fill-opacity', 0.75);
+        setTimeout(() => {
+          if (map.getLayer(layerFill)) map.setPaintProperty(layerFill, 'fill-opacity', 0.45);
+        }, 500);
+      }
+    }
 
-function getGeo(field){
-  if(!navigator.geolocation){showToast('⚠️ Геолокация недоступна',true);return;}
-  showToast('📡 Определяю позицию...');
-  navigator.geolocation.getCurrentPosition(async pos=>{
-    const{longitude:lng,latitude:lat}=pos.coords;
-    const addr=await geocodeCoords(lng,lat);
-    const inp=document.getElementById(field==='from'?'fromInput':'toInput');
-    inp.value=addr;inp.dataset.locked='1';
-    if(field==='from')fromCoords=[lng,lat];else toCoords=[lng,lat];
-    map.flyTo({center:[lng,lat],zoom:15,duration:700});
-    showToast('📍 Позиция определена');
-  },()=>showToast('⚠️ Нет доступа к геолокации',true));
-}
+    function setActiveField(field) {
+      activeField = field;
+      document.getElementById('fromWrap').classList.toggle('active-input', field === 'from');
+      document.getElementById('toWrap').classList.toggle('active-input', field === 'to');
+    }
 
-async function resolveInput(field){
-  const inp=document.getElementById(field==='from'?'fromInput':'toInput');
-  if(field==='from'&&fromCoords)return fromCoords;
-  if(field==='to'&&toCoords)return toCoords;
-  const val=inp.value.trim();
-  if(!val)return null;
-  try{const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(val)}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=1&proximity=24.7536,59.4370`);const d=await r.json();if(d.features?.[0]){const[lng,lat]=d.features[0].center;inp.value=d.features[0].place_name.split(',').slice(0,2).join(',');inp.dataset.locked='1';return[lng,lat];}}catch{}
-  return map.getCenter().toArray();
-}
+    // При движении карты обновляем адрес в активном поле
+    map.on('moveend', async () => {
+      clearTimeout(geocodeTimer);
+      geocodeTimer = setTimeout(async () => {
+        const center = map.getCenter();
+        const addr = await geocodeCoords(center.lng, center.lat);
+        const inp = document.getElementById(activeField === 'from' ? 'fromInput' : 'toInput');
+        if (!inp.dataset.locked && addr) {
+          inp.value = addr;
+          if (activeField === 'from') fromCoords = null;
+          else toCoords = null;
+        }
+      }, 450);
+    });
 
-async function handleOrder(){
-  hideAC();
-  if(!selectedPrice){showToast('⚠️ Выбери тариф',true);return;}
-  const fv=document.getElementById('fromInput').value.trim();
-  const tv=document.getElementById('toInput').value.trim();
-  if(!fv){showToast('⚠️ Укажи откуда',true);setActiveField('from');return;}
-  if(!tv){showToast('⚠️ Укажи куда',true);setActiveField('to');return;}
-  if(!fromCoords)fromCoords=await resolveInput('from');
-  if(!toCoords)toCoords=await resolveInput('to');
-  const data={from:document.getElementById('fromInput').value,fromCoords,to:document.getElementById('toInput').value,toCoords,price:selectedPrice};
-  if(window.Telegram?.WebApp)window.Telegram.WebApp.sendData(JSON.stringify(data));
-  else window.open('https://t.me/TLTaksoBot','_blank');
-  document.getElementById('cancelBtn').style.display='block';
-  document.getElementById('orderBtn').textContent='🚖 ЗАКАЗ ОТПРАВЛЕН';
-  document.getElementById('orderBtn').style.opacity='0.6';
-  showToast('🚖 Заказ отправлен!');
-}
+    async function geocodeCoords(lng, lat) {
+      try {
+        const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=1`);
+        const data = await res.json();
+        if (data.features && data.features[0]) {
+          return data.features[0].place_name.split(',').slice(0, 2).join(',');
+        }
+        return '';
+      } catch (e) { return ''; }
+    }
 
-function cancelOrder(){
-  if(window.Telegram?.WebApp)window.Telegram.WebApp.sendData(JSON.stringify({action:'cancel'}));
-  fromCoords=null;toCoords=null;
-  ['fromInput','toInput'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).dataset.locked='';});
-  document.getElementById('cancelBtn').style.display='none';
-  document.getElementById('orderBtn').textContent=selectedPrice?'ЗАКАЗАТЬ — '+selectedPrice+'€':'ЗАКАЗАТЬ ТАКСИ';
-  document.getElementById('orderBtn').style.opacity='1';
-  showToast('❌ Заказ отменён');
-}
+    async function onAddressInput(field) {
+      const inp = document.getElementById(field === 'from' ? 'fromInput' : 'toInput');
+      inp.dataset.locked = '';  // сброс блокировки
+      if (field === 'from') fromCoords = null;
+      else toCoords = null;
 
-function showToast(msg,isError=false){
-  const t=document.getElementById('toast');t.textContent=msg;
-  t.className='toast show'+(isError?' error':'');
-  clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',2500);
-}
+      clearTimeout(searchTimer);
+      const query = inp.value.trim();
+      if (query.length < 3) {
+        hideAC();
+        return;
+      }
+      searchTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=5&proximity=24.7536,59.4370&bbox=24.4,59.25,25.1,59.65`);
+          const data = await res.json();
+          showAC(data.features || [], field);
+        } catch (e) { hideAC(); }
+      }, 380);
+    }
 
-map.on('click',hideAC);
-if(window.Telegram?.WebApp){window.Telegram.WebApp.ready();window.Telegram.WebApp.expand();}
-</script>
+    function showAC(features, field) {
+      const ac = document.getElementById('autocomplete');
+      if (!features.length) {
+        ac.style.display = 'none';
+        return;
+      }
+      ac.innerHTML = features.map(f => {
+        const shortName = f.place_name.split(',').slice(0, 2).join(',');
+        return `<div class="autocomplete-item" onclick="selectAddr('${field}', ${f.center[0]}, ${f.center[1]}, \`${shortName.replace(/`/g, "'")}\`)">${shortName}</div>`;
+      }).join('');
+      const panel = document.querySelector('.panel');
+      const panelTop = panel.getBoundingClientRect().top;
+      ac.style.bottom = `${window.innerHeight - panelTop + 10}px`;
+      ac.style.display = 'block';
+    }
+
+    function hideAC() {
+      document.getElementById('autocomplete').style.display = 'none';
+    }
+
+    function selectAddr(field, lng, lat, name) {
+      const inp = document.getElementById(field === 'from' ? 'fromInput' : 'toInput');
+      inp.value = name;
+      inp.dataset.locked = '1';
+      if (field === 'from') fromCoords = [lng, lat];
+      else toCoords = [lng, lat];
+      map.flyTo({ center: [lng, lat], zoom: 15, duration: 700 });
+      hideAC();
+    }
+
+    function getGeo(field) {
+      if (!navigator.geolocation) {
+        showToast('❌ Геолокация не поддерживается', true);
+        return;
+      }
+      showToast('🔍 Определение местоположения...');
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { longitude, latitude } = pos.coords;
+        const addr = await geocodeCoords(longitude, latitude);
+        const inp = document.getElementById(field === 'from' ? 'fromInput' : 'toInput');
+        inp.value = addr || 'Текущая позиция';
+        inp.dataset.locked = '1';
+        if (field === 'from') fromCoords = [longitude, latitude];
+        else toCoords = [longitude, latitude];
+        map.flyTo({ center: [longitude, latitude], zoom: 14, duration: 800 });
+        showToast('📍 Геопозиция добавлена');
+      }, () => {
+        showToast('⚠️ Доступ к геолокации запрещён', true);
+      });
+    }
+
+    async function resolveInputCoords(field) {
+      const inp = document.getElementById(field === 'from' ? 'fromInput' : 'toInput');
+      if (field === 'from' && fromCoords) return fromCoords;
+      if (field === 'to' && toCoords) return toCoords;
+      const value = inp.value.trim();
+      if (!value) return null;
+      try {
+        const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(value)}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=1&proximity=24.7536,59.4370`);
+        const data = await res.json();
+        if (data.features && data.features[0]) {
+          const [lng, lat] = data.features[0].center;
+          const short = data.features[0].place_name.split(',').slice(0, 2).join(',');
+          inp.value = short;
+          inp.dataset.locked = '1';
+          return [lng, lat];
+        }
+      } catch (e) { }
+      return map.getCenter().toArray();
+    }
+
+    async function handleOrder() {
+      hideAC();
+      if (!selectedPrice) {
+        showToast('⚠️ Выберите тарифную зону (кликните по карточке)', true);
+        return;
+      }
+      const fromVal = document.getElementById('fromInput').value.trim();
+      const toVal = document.getElementById('toInput').value.trim();
+      if (!fromVal) {
+        showToast('📍 Укажите адрес отправления', true);
+        setActiveField('from');
+        return;
+      }
+      if (!toVal) {
+        showToast('📍 Укажите адрес назначения', true);
+        setActiveField('to');
+        return;
+      }
+
+      if (!fromCoords) fromCoords = await resolveInputCoords('from');
+      if (!toCoords) toCoords = await resolveInputCoords('to');
+
+      const orderData = {
+        from: document.getElementById('fromInput').value,
+        fromCoords,
+        to: document.getElementById('toInput').value,
+        toCoords,
+        price: selectedPrice,
+        timestamp: Date.now()
+      };
+
+      // отправка в Telegram WebApp или симуляция
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.sendData(JSON.stringify(orderData));
+      } else {
+        console.log('Order data:', orderData);
+        // имитация для браузера
+        window.open('https://t.me/TLTaksoBot', '_blank');
+      }
+
+      currentOrderActive = true;
+      document.getElementById('cancelBtn').style.display = 'block';
+      document.getElementById('orderBtn').textContent = '🚖 ЗАКАЗ ОТПРАВЛЕН';
+      document.getElementById('orderBtn').style.opacity = '0.75';
+      showToast(`✅ Заказ на ${selectedPrice}€ отправлен! Отмена доступна 3 минуты`);
+      // автоотмена через 3 минуты (демо)
+      setTimeout(() => {
+        if (currentOrderActive) cancelOrder(true);
+      }, 180000);
+    }
+
+    function cancelOrder(auto = false) {
+      if (!currentOrderActive && !auto) return;
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.sendData(JSON.stringify({ action: 'cancel', reason: auto ? 'timeout' : 'manual' }));
+      }
+      fromCoords = null;
+      toCoords = null;
+      document.getElementById('fromInput').value = '';
+      document.getElementById('toInput').value = '';
+      document.getElementById('toInput').dataset.locked = '';
+      document.getElementById('fromInput').dataset.locked = '';
+      document.getElementById('cancelBtn').style.display = 'none';
+      const priceText = selectedPrice ? `ЗАКАЗАТЬ — ${selectedPrice}€` : 'ЗАКАЗАТЬ ТАКСИ';
+      document.getElementById('orderBtn').textContent = priceText;
+      document.getElementById('orderBtn').style.opacity = '1';
+      currentOrderActive = false;
+      showToast(auto ? '⏱️ Заказ отменён по истечении времени' : '❌ Заказ отменён', auto ? false : true);
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = `toast show ${isError ? 'error' : ''}`;
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    map.on('click', hideAC);
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    }
+    // начальная активация
+    setActiveField('from');
+  </script>
 </body>
 </html>
