@@ -4,14 +4,25 @@ import datetime
 import os
 import json
 from flask import Flask, send_from_directory
+
 app = Flask(__name__)
+
+# Главная страница (клиент)
 @app.route('/')
 def home():
     return send_from_directory(os.path.dirname(__file__), 'index.html')
+
+# Страница водителя (добавить эту функцию!)
+@app.route('/driver.html')
+def driver():
+    return send_from_directory(os.path.join(os.path.dirname(__file__), 'static'), 'driver.html')
+
+# Статические файлы из папки static
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory(os.path.join(os.path.dirname(__file__), 'static'), filename)
 
+import os
 import os
 import json
 
