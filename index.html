@@ -9,41 +9,52 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    :root{--black:#0a0a0a;--yellow:#FFD600;--panel:rgba(10,10,10,0.92);--border:rgba(255,214,0,0.18);--text:#f0f0f0;--muted:#888}
+    :root{--black:#0a0a0a;--yellow:#FFD600;--panel:rgba(10,10,10,0.95);--border:rgba(255,214,0,0.18);--text:#f0f0f0;--muted:#666;--red:#ff4444}
     html,body{height:100%;width:100%;background:var(--black);color:var(--text);font-family:'IBM Plex Mono',monospace;overflow:hidden}
-    #map{position:absolute;inset:0;width:100%;height:100%}
+    #map{position:absolute;inset:0}
     .header{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;background:linear-gradient(to bottom,rgba(10,10,10,0.95) 60%,transparent)}
-    .logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--yellow);line-height:1}
-    .logo span{color:#fff;font-size:18px;display:block;letter-spacing:6px}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--yellow);line-height:1}
+    .logo span{color:#fff;font-size:16px;display:block;letter-spacing:6px}
     .status-dot{width:8px;height:8px;border-radius:50%;background:#00e676;box-shadow:0 0 8px #00e676;animation:pulse 2s infinite}
-    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.3)}}
-    .panel{position:absolute;bottom:0;left:0;right:0;z-index:10;background:var(--panel);border-top:1px solid var(--border);backdrop-filter:blur(20px);padding:20px 18px 32px}
-    .panel-handle{width:40px;height:3px;background:var(--border);border-radius:2px;margin:0 auto 18px}
-    .zone-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
-    .zone-card{background:rgba(255,214,0,0.05);border:1px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;transition:all 0.2s}
-    .zone-card.active{border-color:var(--yellow);box-shadow:0 0 12px rgba(255,214,0,0.3);background:rgba(255,214,0,0.08)}
-    .zone-name{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
-    .zone-price{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--yellow);line-height:1}
-    .input-group{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
-    .input-wrap{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
-    .input-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-    .dot-from{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
-    .dot-to{background:#fff;box-shadow:0 0 6px rgba(255,255,255,0.5)}
-    .input-wrap input{background:none;border:none;outline:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;width:100%}
-    .input-wrap input::placeholder{color:var(--muted)}
-    .btn-order{width:100%;padding:16px;background:var(--yellow);color:#000;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;border:none;border-radius:10px;cursor:pointer;transition:all 0.2s}
-    .btn-order:active{transform:scale(0.98)}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
     .map-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);z-index:5;pointer-events:none}
-    .toast{position:absolute;top:80px;left:50%;transform:translateX(-50%);background:var(--yellow);color:#000;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;padding:10px 20px;border-radius:20px;z-index:20;opacity:0;transition:opacity 0.3s;white-space:nowrap}
+    .panel{position:absolute;bottom:0;left:0;right:0;z-index:10;background:var(--panel);border-top:1px solid var(--border);backdrop-filter:blur(20px);padding:16px 16px 28px}
+    .panel-handle{width:36px;height:3px;background:var(--border);border-radius:2px;margin:0 auto 14px}
+    .zone-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+    .zone-card{background:rgba(255,214,0,0.04);border:1px solid var(--border);border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;transition:all .2s}
+    .zone-card.active{border-color:var(--yellow);box-shadow:0 0 10px rgba(255,214,0,0.25);background:rgba(255,214,0,0.08)}
+    .zone-name{font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+    .zone-price{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--yellow);line-height:1}
+    .step-indicator{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+    .step-num{background:var(--yellow);color:#000;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+    .input-group{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+    .input-row{display:flex;gap:8px;align-items:center}
+    .input-wrap{flex:1;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+    .input-wrap.active-input{border-color:rgba(255,214,0,0.5)}
+    .input-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .dot-from{background:var(--yellow);box-shadow:0 0 5px var(--yellow)}
+    .dot-to{background:#fff;box-shadow:0 0 5px rgba(255,255,255,.4)}
+    .input-wrap input{background:none;border:none;outline:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;width:100%}
+    .input-wrap input::placeholder{color:var(--muted)}
+    .geo-inline{background:rgba(255,214,0,0.08);border:1px solid var(--border);border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0;transition:all .2s}
+    .geo-inline:active{border-color:var(--yellow);transform:scale(0.92)}
+    .autocomplete{position:absolute;left:16px;right:16px;background:#111;border:1px solid var(--border);border-radius:8px;z-index:20;max-height:150px;overflow-y:auto;display:none}
+    .autocomplete-item{padding:10px 14px;font-size:12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);color:var(--text)}
+    .autocomplete-item:active{background:rgba(255,214,0,0.1)}
+    .btn-row{display:flex;gap:8px}
+    .btn-order{flex:1;padding:14px;background:var(--yellow);color:#000;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;border:none;border-radius:10px;cursor:pointer;transition:all .2s}
+    .btn-order:active{transform:scale(0.98)}
+    .btn-cancel{padding:14px 16px;background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:20px;border-radius:10px;cursor:pointer;transition:all .2s;display:none}
+    .btn-cancel:active{transform:scale(0.98)}
+    .toast{position:absolute;top:75px;left:50%;transform:translateX(-50%);background:var(--yellow);color:#000;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:9px 18px;border-radius:20px;z-index:30;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}
     .toast.show{opacity:1}
-    .step-indicator{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
-    .step-num{background:var(--yellow);color:#000;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+    .toast.error{background:var(--red);color:#fff}
   </style>
 </head>
 <body>
 <div id="map"></div>
 <div class="map-pin">
-  <svg width="36" height="48" viewBox="0 0 36 48" fill="none">
+  <svg width="34" height="46" viewBox="0 0 36 48" fill="none">
     <path d="M18 0C8.06 0 0 8.06 0 18C0 31.5 18 48 18 48C18 48 36 31.5 36 18C36 8.06 27.94 0 18 0Z" fill="#FFD600"/>
     <circle cx="18" cy="18" r="7" fill="#0a0a0a"/>
   </svg>
@@ -53,6 +64,7 @@
   <div class="status-dot"></div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="autocomplete" id="autocomplete"></div>
 <div class="panel">
   <div class="panel-handle"></div>
   <div class="zone-row">
@@ -62,26 +74,157 @@
     <div class="zone-card" data-price="20" onclick="selectZone(this)"><div class="zone-name">Аэропорт</div><div class="zone-price">20€</div></div>
   </div>
   <div class="step-indicator">
-    <div class="step-num" id="stepNum">1</div>
-    <span id="stepText">Укажи точку отправления</span>
+    <div class="step-num" id="stepNum">→</div>
+    <span id="stepText">Укажи откуда и куда</span>
   </div>
   <div class="input-group">
-    <div class="input-wrap"><div class="input-dot dot-from"></div><input id="fromInput" placeholder="Откуда..." readonly></div>
-    <div class="input-wrap"><div class="input-dot dot-to"></div><input id="toInput" placeholder="Куда..." readonly></div>
+    <div class="input-row">
+      <div class="input-wrap" id="fromWrap">
+        <div class="input-dot dot-from"></div>
+        <input id="fromInput" placeholder="Откуда... (введи или двигай карту)" oninput="onAddressInput('from')" onfocus="setActiveField('from')">
+      </div>
+      <div class="geo-inline" onclick="getGeo('from')">📍</div>
+    </div>
+    <div class="input-row">
+      <div class="input-wrap" id="toWrap">
+        <div class="input-dot dot-to"></div>
+        <input id="toInput" placeholder="Куда... (введи или двигай карту)" oninput="onAddressInput('to')" onfocus="setActiveField('to')">
+      </div>
+      <div class="geo-inline" onclick="getGeo('to')">📍</div>
+    </div>
   </div>
-  <button class="btn-order" id="orderBtn" onclick="handleOrder()">ЗАКАЗАТЬ ТАКСИ</button>
+  <div class="btn-row">
+    <button class="btn-order" id="orderBtn" onclick="handleOrder()">ЗАКАЗАТЬ ТАКСИ</button>
+    <button class="btn-cancel" id="cancelBtn" onclick="cancelOrder()">✕ ОТМЕНА</button>
+  </div>
 </div>
+
 <script>
 mapboxgl.accessToken='pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
-const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/dark-v11',center:[24.7536,59.4370],zoom:12,pitch:30,attributionControl:false});
-map.on('load',()=>{['road-primary','road-secondary-tertiary','road-street','road-motorway-trunk'].forEach(l=>{if(map.getLayer(l)){map.setPaintProperty(l,'line-color','#FFD600');map.setPaintProperty(l,'line-opacity',0.6)}})});
-let step=1,fromCoords=null,toCoords=null,selectedPrice=null;
-function selectZone(el){document.querySelectorAll('.zone-card').forEach(c=>c.classList.remove('active'));el.classList.add('active');selectedPrice=el.dataset.price;document.getElementById('orderBtn').innerHTML='ЗАКАЗАТЬ — '+selectedPrice+'€'}
-let t=null;
-map.on('moveend',async()=>{clearTimeout(t);t=setTimeout(async()=>{const c=map.getCenter();const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${c.lng},${c.lat}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=1`);const d=await r.json();const a=d.features?.[0]?.place_name?.split(',')[0]||'';if(step===1)document.getElementById('fromInput').value=a;else if(step===2)document.getElementById('toInput').value=a},400)});
-async function handleOrder(){if(!selectedPrice){showToast('⚠️ Выбери тариф');return}if(step===1){fromCoords=[...Object.values(map.getCenter())];step=2;document.getElementById('stepNum').textContent='2';document.getElementById('stepText').textContent='Укажи точку назначения';showToast('📍 Отправление выбрано')}else if(step===2){toCoords=[...Object.values(map.getCenter())];step=3;document.getElementById('stepNum').textContent='✓';document.getElementById('stepNum').style.background='#00e676';document.getElementById('stepText').textContent='Маршрут готов';document.getElementById('orderBtn').textContent='🚖 ПОДТВЕРДИТЬ ЗАКАЗ';showToast('✅ Маршрут готов')}else{const from=document.getElementById('fromInput').value;const to=document.getElementById('toInput').value;if(window.Telegram?.WebApp){window.Telegram.WebApp.sendData(JSON.stringify({from,to,price:selectedPrice}))}else{window.open('https://t.me/TLTAKSO_bot','_blank')}showToast('🚖 Заказ отправлен!')}}
-function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
-if(window.Telegram?.WebApp){window.Telegram.WebApp.ready();window.Telegram.WebApp.expand()}
+const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/dark-v11',center:[24.7536,59.4370],zoom:12,pitch:25,attributionControl:false});
+map.on('load',()=>{['road-primary','road-secondary-tertiary','road-street','road-motorway-trunk'].forEach(l=>{if(map.getLayer(l)){map.setPaintProperty(l,'line-color','#FFD600');map.setPaintProperty(l,'line-opacity',0.55)}})});
+
+let selectedPrice=null,activeField='from',geocodeTimer=null,searchTimer=null;
+let fromCoords=null,toCoords=null;
+
+function setActiveField(f){
+  activeField=f;
+  document.getElementById('fromWrap').classList.toggle('active-input',f==='from');
+  document.getElementById('toWrap').classList.toggle('active-input',f==='to');
+}
+
+function selectZone(el){
+  document.querySelectorAll('.zone-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  selectedPrice=el.dataset.price;
+  document.getElementById('orderBtn').textContent='ЗАКАЗАТЬ — '+selectedPrice+'€';
+}
+
+map.on('moveend',async()=>{
+  clearTimeout(geocodeTimer);
+  geocodeTimer=setTimeout(async()=>{
+    const c=map.getCenter();
+    const addr=await geocodeCoords(c.lng,c.lat);
+    const inp=document.getElementById(activeField==='from'?'fromInput':'toInput');
+    if(!inp.dataset.locked)inp.value=addr;
+  },400);
+});
+
+async function geocodeCoords(lng,lat){
+  try{const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=1`);const d=await r.json();return d.features?.[0]?.place_name?.split(',').slice(0,2).join(',')||'';}catch{return'';}
+}
+
+async function onAddressInput(field){
+  const inp=document.getElementById(field==='from'?'fromInput':'toInput');
+  inp.dataset.locked='';
+  if(field==='from')fromCoords=null;else toCoords=null;
+  clearTimeout(searchTimer);
+  if(inp.value.length<3){hideAC();return;}
+  searchTimer=setTimeout(async()=>{
+    try{const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inp.value)}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=5&proximity=24.7536,59.4370&bbox=24.4,59.25,25.1,59.65`);const d=await r.json();showAC(d.features||[],field);}catch{}
+  },400);
+}
+
+function showAC(features,field){
+  const ac=document.getElementById('autocomplete');
+  if(!features.length){ac.style.display='none';return;}
+  ac.innerHTML=features.map(f=>`<div class="autocomplete-item" onclick="selectAddr('${field}',${f.center[0]},${f.center[1]},\`${f.place_name.replace(/`/g,"'")}\`)">${f.place_name.split(',').slice(0,2).join(',')}</div>`).join('');
+  const panel=document.querySelector('.panel');
+  ac.style.bottom=(window.innerHeight-panel.getBoundingClientRect().top+8)+'px';
+  ac.style.display='block';
+}
+
+function hideAC(){document.getElementById('autocomplete').style.display='none';}
+
+function selectAddr(field,lng,lat,name){
+  const short=name.split(',').slice(0,2).join(',');
+  const inp=document.getElementById(field==='from'?'fromInput':'toInput');
+  inp.value=short;inp.dataset.locked='1';
+  if(field==='from')fromCoords=[lng,lat];else toCoords=[lng,lat];
+  map.flyTo({center:[lng,lat],zoom:15,duration:700});
+  hideAC();
+}
+
+function getGeo(field){
+  if(!navigator.geolocation){showToast('⚠️ Геолокация недоступна',true);return;}
+  showToast('📡 Определяю позицию...');
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const{longitude:lng,latitude:lat}=pos.coords;
+    const addr=await geocodeCoords(lng,lat);
+    const inp=document.getElementById(field==='from'?'fromInput':'toInput');
+    inp.value=addr;inp.dataset.locked='1';
+    if(field==='from')fromCoords=[lng,lat];else toCoords=[lng,lat];
+    map.flyTo({center:[lng,lat],zoom:15,duration:700});
+    showToast('📍 Позиция определена');
+  },()=>showToast('⚠️ Нет доступа к геолокации',true));
+}
+
+async function resolveInput(field){
+  const inp=document.getElementById(field==='from'?'fromInput':'toInput');
+  if(field==='from'&&fromCoords)return fromCoords;
+  if(field==='to'&&toCoords)return toCoords;
+  const val=inp.value.trim();
+  if(!val)return null;
+  try{const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(val)}.json?access_token=${mapboxgl.accessToken}&language=ru&limit=1&proximity=24.7536,59.4370`);const d=await r.json();if(d.features?.[0]){const[lng,lat]=d.features[0].center;inp.value=d.features[0].place_name.split(',').slice(0,2).join(',');inp.dataset.locked='1';return[lng,lat];}}catch{}
+  return map.getCenter().toArray();
+}
+
+async function handleOrder(){
+  hideAC();
+  if(!selectedPrice){showToast('⚠️ Выбери тариф',true);return;}
+  const fv=document.getElementById('fromInput').value.trim();
+  const tv=document.getElementById('toInput').value.trim();
+  if(!fv){showToast('⚠️ Укажи откуда',true);setActiveField('from');return;}
+  if(!tv){showToast('⚠️ Укажи куда',true);setActiveField('to');return;}
+  if(!fromCoords)fromCoords=await resolveInput('from');
+  if(!toCoords)toCoords=await resolveInput('to');
+  const data={from:document.getElementById('fromInput').value,fromCoords,to:document.getElementById('toInput').value,toCoords,price:selectedPrice};
+  if(window.Telegram?.WebApp)window.Telegram.WebApp.sendData(JSON.stringify(data));
+  else window.open('https://t.me/TLTaksoBot','_blank');
+  document.getElementById('cancelBtn').style.display='block';
+  document.getElementById('orderBtn').textContent='🚖 ЗАКАЗ ОТПРАВЛЕН';
+  document.getElementById('orderBtn').style.opacity='0.6';
+  showToast('🚖 Заказ отправлен!');
+}
+
+function cancelOrder(){
+  if(window.Telegram?.WebApp)window.Telegram.WebApp.sendData(JSON.stringify({action:'cancel'}));
+  fromCoords=null;toCoords=null;
+  ['fromInput','toInput'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).dataset.locked='';});
+  document.getElementById('cancelBtn').style.display='none';
+  document.getElementById('orderBtn').textContent=selectedPrice?'ЗАКАЗАТЬ — '+selectedPrice+'€':'ЗАКАЗАТЬ ТАКСИ';
+  document.getElementById('orderBtn').style.opacity='1';
+  showToast('❌ Заказ отменён');
+}
+
+function showToast(msg,isError=false){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.className='toast show'+(isError?' error':'');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',2500);
+}
+
+map.on('click',hideAC);
+if(window.Telegram?.WebApp){window.Telegram.WebApp.ready();window.Telegram.WebApp.expand();}
 </script>
 </body>
 </html>
