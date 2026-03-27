@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TL.TAKSO - Заказ такси</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: Arial; }
         #map { height: 100vh; width: 100%; }
@@ -41,7 +42,6 @@
             border-radius: 8px;
         }
     </style>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
@@ -68,25 +68,25 @@
             if (!fromPoint) {
                 fromPoint = e.latlng;
                 if (fromMarker) map.removeLayer(fromMarker);
-                fromMarker = L.marker(fromPoint, {icon: L.icon({iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41]})}).addTo(map);
+                fromMarker = L.marker(fromPoint).addTo(map);
                 document.getElementById('info').innerHTML = '📍 Откуда: выбран ✅ | 🏁 Нажмите куда ехать';
             } else if (!toPoint) {
                 toPoint = e.latlng;
                 if (toMarker) map.removeLayer(toMarker);
-                toMarker = L.marker(toPoint, {icon: L.icon({iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41]})}).addTo(map);
+                toMarker = L.marker(toPoint).addTo(map);
                 document.getElementById('info').innerHTML = '✅ Маршрут готов! Нажмите "Отправить заказ"';
             }
         });
 
         document.getElementById('sendBtn').onclick = function() {
-            let fromAddr = document.getElementById('fromInput').value;
-            let toAddr = document.getElementById('toInput').value;
-            
             if (!fromPoint || !toPoint) {
                 alert('Сначала выберите точки на карте!');
                 return;
             }
-
+            
+            let fromAddr = document.getElementById('fromInput').value;
+            let toAddr = document.getElementById('toInput').value;
+            
             let data = {
                 from_lat: fromPoint.lat,
                 from_lon: fromPoint.lng,
@@ -97,4 +97,15 @@
                 time: "now",
                 payment: "cash",
                 price: "10",
-                driver_gets: "
+                driver_gets: "9"
+            };
+            
+            Telegram.WebApp.sendData(JSON.stringify(data));
+            Telegram.WebApp.close();
+        };
+        
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+    </script>
+</body>
+</html>
