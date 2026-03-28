@@ -1,18 +1,21 @@
-
 import telebot
 from telebot import types
 import datetime
 import os
 import json
 from flask import Flask, send_from_directory
+
 app = Flask(__name__)
+
 @app.route('/')
 def home():
-    return send_from_directory(os.path.dirname(__file__), 'index.html')
+    return send_from_directory('static', 'index.html')
+
 @app.route('/static/<path:filename>')
 def static_files(filename):
-    return send_from_directory(os.path.join(os.path.dirname(__file__), 'static'), filename)
+    return send_from_directory('static', filename)
 
+# дальше весь твой код бота...
 import os
 import json
 
