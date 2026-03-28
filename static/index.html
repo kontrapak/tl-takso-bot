@@ -11,6 +11,7 @@
         .zone.active{background:#FFD600;color:#000}
         .result{margin-top:20px;padding:10px;background:#333;border-radius:8px}
     </style>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <h1>🚖 TL.TAKSO - Заказ такси</h1>
@@ -34,6 +35,10 @@
     <div class="result" id="result"></div>
 
     <script>
+        let tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
         let selectedPrice = null;
         
         function selectZone(el) {
@@ -42,7 +47,7 @@
             selectedPrice = el.dataset.price;
         }
         
-        async function createOrder() {
+        function createOrder() {
             if (!selectedPrice) {
                 alert('Выберите тариф');
                 return;
@@ -56,29 +61,16 @@
                 return;
             }
             
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = '⏳ Отправка заказа...';
+            const orderData = {
+                from: from,
+                to: to,
+                price: selectedPrice,
+                payment: "cash",
+                time: "now"
+            };
             
-            try {
-                const res = await fetch('/api/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ from, to, price: selectedPrice })
-                });
-                
-                const data = await res.json();
-                
-                if (data.success) {
-                    resultDiv.innerHTML = `✅ Заказ #${data.orderId} отправлен! Ожидайте водителя.`;
-                    resultDiv.style.background = '#2a2a2a';
-                } else {
-                    resultDiv.innerHTML = `❌ Ошибка: ${data.error}`;
-                    resultDiv.style.background = '#ff444420';
-                }
-            } catch (e) {
-                resultDiv.innerHTML = '❌ Ошибка подключения к серверу';
-                resultDiv.style.background = '#ff444420';
-            }
+            tg.sendData(JSON.stringify(orderData));
+            tg.close();
         }
     </script>
 </body>
