@@ -15,7 +15,7 @@ def home():
 def static_files(filename):
     return @app.route('/static/<path:filename>')
 def static_files(filename):
-    return send_from_directory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static'), filename)
+    return send_from_directory(os.path.
 # дальше весь твой код бота...
 import os
 import json
