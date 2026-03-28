@@ -12,8 +12,9 @@ def home():
     return send_from_directory('static', 'index.html')
 
 @app.route('/static/<path:filename>')
-def 
-from_directory('static', filename)
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
 import os
 import json
 
