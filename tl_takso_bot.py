@@ -228,12 +228,8 @@ def get_route_static_map(from_lat, from_lon, to_lat, to_lon):
     return f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/{markers}/auto/600x300@2x?access_token={MAPBOX_TOKEN}"
 
 # ── /start ──
+
 @bot.message_handler(commands=["start"])
-@bot.message_handler(commands=["client"])
-def cmd_client(msg):
-    uid = msg.from_user.id
-    user_state[uid] = {"role": "client", "lang": get_lang(uid)}
-    bot.send_message(uid, "🚖 Режим клиента", reply_markup=main_menu_client(uid))
 def cmd_start(msg):
     uid = msg.from_user.id
     if is_admin(uid):
@@ -246,6 +242,11 @@ def cmd_start(msg):
         return
     bot.send_message(uid, "🌍 Vali keel / Выберите язык / Choose language:", reply_markup=lang_kb())
 
+@bot.message_handler(commands=["client"])
+def cmd_client(msg):
+    uid = msg.from_user.id
+    user_state[uid] = {"role": "client", "lang": get_lang(uid)}
+    bot.send_message(uid, "🚖 Режим клиента", reply_markup=main_menu_client(uid))
 # ── ВЫБОР ЯЗЫКА ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("lang_"))
 def cb_lang(call):
