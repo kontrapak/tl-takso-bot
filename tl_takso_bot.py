@@ -328,10 +328,11 @@ def order_start(msg):
     kb.add(types.InlineKeyboardButton(text="🗺️ Выбрать на карте", web_app=types.WebAppInfo(url=MINI_APP_URL)))
     
     bot.send_message(uid, "📍 Нажмите кнопку, чтобы выбрать маршрут на карте:", reply_markup=kb)
+    
     if uid not in user_state:
-    user_state[uid] = {}
-user_state[uid]["step"] = "waiting_webapp"
-
+        user_state[uid] = {}
+    user_state[uid]["step"] = "waiting_webapp"
+    
 # ── ОБРАБОТКА ДАННЫХ ИЗ MINI APP ──
 @bot.message_handler(content_types=['web_app_data'])
 def handle_webapp_data(msg):
