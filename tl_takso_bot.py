@@ -348,39 +348,32 @@ def order_start(msg):
 @bot.message_handler(content_types=['web_app_data'])
 def handle_webapp_data(msg):
     uid = msg.from_user.id
-    if user_state.get(uid, {}).get("step") != "waiting_webapp":
-        return
+    if uid not in user_state:
+        user_state[uid] = {}
     
     try:
         data = json.loads(msg.web_app_data.data)
-        
-        user_state[uid]["from_lat"] = data["from_lat"]
-        user_state[uid]["from_lon"] = data["from_lon"]
-        user_state[uid]["from"] = data["from_address"]
-        user_state[uid]["to_lat"] = data["to_lat"]
-        user_state[uid]["to_lon"] = data["to_lon"]
-        user_state[uid]["to"] = data["to_address"]
-        user_state[uid]["time"] = data["time"]
-        user_state[uid]["payment"] = data["payment"]
-        user_state[uid]["price"] = data["price"]
         
         oid = new_order_id()
         
         orders[oid] = {
             "id": oid, "client_id": uid, "client_name": msg.from_user.first_name,
-            "from": data["from_address"], "to": data["to_address"],
-            "from_lat": data["from_lat"], "from_lon": data["from_lon"],
-            "to_lat": data["to_lat"], "to_lon": data["to_lon"],
-            "time": data["time"], "payment": "💳 Карта" if data["payment"] == "card" else "💵 Наличные",
-            "pay_type": data["payment"], "price": data["price"],
-            "driver_gets": data["driver_gets"], "status": "pending",
+            "from": data.get("from_address", "—"), "to": data.get("to_address", "—"),
+            "from_lat": data.get("from_lat", 0), "from_lon": data.get("from_lon", 0),
+            "to_lat": data.get("to_lat", 0), "to_lon": data.get("to_lon", 0),
+            "time": data.get("time", "Сейчас"),
+            "payment": "💳 Карта" if data.get("payment") == "card" else "💵 Наличные",
+            "pay_type": data.get("payment", "cash"),
+            "price": data.get("price", 0),
+            "driver_gets": data.get("driver_gets", data.get("price", 0)),
+            "status": "pending",
             "created": now_str(), "driver_id": None, "client_lang": get_lang(uid)
         }
         
         user_state[uid]["current_order"] = oid
         user_state[uid]["step"] = None
         
-        bot.send_message(uid, f"✅ *Заказ #{oid} создан!*\n\n📍 {data['from_address'][:50]}\n🏁 {data['to_address'][:50]}\n💰 *{data['price']}€*\n\n⏳ Ищем водителя...", parse_mode="Markdown", reply_markup=main_menu_client(uid))
+        bot.send_message(uid, f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from'][:50]}\n🏁 {orders[oid]['to'][:50]}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...", parse_mode="Markdown", reply_markup=main_menu_client(uid))
         
         notify_drivers(oid)
         
