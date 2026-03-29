@@ -27,10 +27,9 @@ def api_orders():
                 'to_address': order.get('to', '—')
             })
     return json.dumps(result, ensure_ascii=False)
-            })
-    return json.dumps(result, ensure_ascii=False)
-
-@app.route('/api/orders/<int:order_id>/accept', methods=['PUT'])
+        
+    
+@app.route('/api/orders/<int:order_id
 def api_accept_order(order_id):
     if order_id in orders and orders[order_id]['status'] == 'pending':
         orders[order_id]['status'] = 'accepted'
