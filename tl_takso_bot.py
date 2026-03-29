@@ -6,6 +6,11 @@ import json
 from flask import Flask, send_from_directory
 
 app = Flask(__name__)
+orders = {}
+user_state = {}
+drivers = {}
+pending_drivers = {}
+order_counter = [1]
 
 @app.route('/')
 def home():
@@ -63,11 +68,6 @@ ADMIN_ID =  1873195803 # <--- ВСТАВЬ СВОИ ЦИФРЫ (из @userinfobo
 # Ссылка на Mini App (ЗАМЕНИ НА СВОЮ!)
 MINI_APP_URL = "https://tltakso.github.io/название-репозитория/tl-takso-app.html"
 
-orders = {}
-user_state = {}
-drivers = {}
-pending_drivers = {}
-order_counter = [1]
 
 def new_order_id():
     oid = f"TL{order_counter[0]:04d}"
