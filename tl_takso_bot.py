@@ -229,6 +229,11 @@ def get_route_static_map(from_lat, from_lon, to_lat, to_lon):
 
 # ── /start ──
 @bot.message_handler(commands=["start"])
+@bot.message_handler(commands=["client"])
+def cmd_client(msg):
+    uid = msg.from_user.id
+    user_state[uid] = {"role": "client", "lang": get_lang(uid)}
+    bot.send_message(uid, "🚖 Режим клиента", reply_markup=main_menu_client(uid))
 def cmd_start(msg):
     uid = msg.from_user.id
     if is_admin(uid):
