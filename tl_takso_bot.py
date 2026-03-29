@@ -60,13 +60,6 @@ MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
 import os
 import json
 
-
-ADMIN_ID =  1873195803 # <--- ВСТАВЬ СВОИ ЦИФРЫ (из @userinfobot)
-
-# Ссылка на Mini App (ЗАМЕНИ НА СВОЮ!)
-MINI_APP_URL = "https://tltakso.github.io/название-репозитория/tl-takso-app.html"
-
-
 def new_order_id():
     oid = f"TL{order_counter[0]:04d}"
     order_counter[0] += 1
