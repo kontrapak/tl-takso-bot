@@ -159,12 +159,25 @@ def main_menu_client(uid):
     kb.row(t("order_taxi", uid))
     kb.row(t("my_trips", uid), t("support", uid))
     return kb
-
 def main_menu_driver(uid):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(t("online", uid), t("offline", uid))
     kb.row(t("earnings", uid), t("support", uid))
-    
+    return kb
+DRIVER_MAP_URL = "https://web-production-f5a52.up.railway.app/static/driver.html"
+
+@bot.message_handler(func=lambda m: m.text == "🗺️ Карта" and is_approved_driver(m.from_user.id))
+def driver_map(msg):
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton(text="🗺️ Открыть карту", web_app=types.WebAppInfo(url=DRIVER_MAP_URL)))
+    bot.send_message(msg.chat.id, "🗺️ Карта заказов:", reply_markup=kb)
+DRIVER_MAP_URL = "https://web-production-f5a52.up.railway.app/static/driver.html"
+
+@bot.message_handler(func=lambda m: m.text in ["🗺️ Карта", "🗺️ Kaart", "🗺️ Map"] and is_approved_driver(m.from_user.id))
+def driver_map(msg):
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton(text="🗺️ Открыть карту водителя", web_app=types.WebAppInfo(url=DRIVER_MAP_URL)))
+    bot.send_message(msg.chat.id, "🗺️ Карта заказов:", reply_markup=kb)
     return kb
 
 def main_menu_admin():
