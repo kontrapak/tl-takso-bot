@@ -23,8 +23,10 @@ def api_orders():
             result.append({
                 'id': oid,
                 'price': order.get('price', 0),
-                'from_address': order.get('from_address', '—'),
-                'to_address': order.get('to_address', '—')
+                'from_address': order.get('from', '—'),
+                'to_address': order.get('to', '—')
+            })
+    return json.dumps(result, ensure_ascii=False)
             })
     return json.dumps(result, ensure_ascii=False)
 
