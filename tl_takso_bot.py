@@ -164,6 +164,7 @@ def main_menu_driver(uid):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(t("online", uid), t("offline", uid))
     kb.row(t("earnings", uid), t("support", uid))
+    
     return kb
 
 def main_menu_admin():
