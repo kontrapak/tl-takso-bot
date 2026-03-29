@@ -12,9 +12,35 @@ def home():
     return send_from_directory('static', 'index.html')
 
 @app.route('/static/<path:filename>')
-@app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory('static', filename)
+
+@app.route('/api/orders', methods=['GET'])
+def api_orders():
+    result = []
+    for oid, order in orders.items():
+        if order.get('status') == 'pending':
+            result.append({
+                'id': oid,
+                'price': order.get('price', 0),
+                'from_address': order.get('from_address', '—'),
+                'to_address': order.get('to_address', '—')
+            })
+    return json.dumps(result, ensure_ascii=False)
+
+@app.route('/api/orders/<int:order_id>/accept', methods=['PUT'])
+def api_accept_order(order_id):
+    if order_id in orders and orders[order_id]['status'] == 'pending':
+        orders[order_id]['status'] = 'accepted'
+        return json.dumps({'ok': True})
+    return json.dumps({'ok': False}), 400
+
+@app.route('/api/orders/<int:order_id>/reject', methods=['PUT'])
+def api_reject_order(order_id):
+    if order_id in orders and orders[order_id]['status'] == 'pending':
+        orders[order_id]['status'] = 'rejected'
+        return json.dumps({'ok': True})
+    return json.dumps({'ok': False}), 400
 import os
 import json
 
