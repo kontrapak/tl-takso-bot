@@ -56,12 +56,10 @@ bot = telebot.TeleBot(BOT_TOKEN)
 ADMIN_ID = 1873195803  # <--- ВСТАВЬ СВОИ ЦИФРЫ (из @userinfobot)
 
 # Ссылка на Mini App (ЗАМЕНИ НА СВОЮ!)
-MINI_APP_URL = "https://web-production-f5a52.up.railway.app"
+MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
 import os
 import json
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-bot = telebot.TeleBot(BOT_TOKEN)
 
 ADMIN_ID =  1873195803 # <--- ВСТАВЬ СВОИ ЦИФРЫ (из @userinfobot)
 
