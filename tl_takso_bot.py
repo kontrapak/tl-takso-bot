@@ -391,34 +391,49 @@ def handle_webapp_data(msg):
         bot.send_message(uid, "❌ Ошибка обработки заказа")
 
 def notify_drivers(oid):
-    order = orders[oid]
+    """Отправляет заказ всем онлайн водителям"""
+    order = orders.get(oid)
+    if not order:
+        print(f"❌ Заказ {oid} не найден")
+        return
     
-    route_map = None
-    if order.get("from_lat") and order.get("to_lat"):
-        route_map = get_route_static_map(order["from_lat"], order["from_lon"], order["to_lat"], order["to_lon"])
+    print(f"🔔 ОТПРАВКА ЗАКАЗА #{oid} ВОДИТЕЛЯМ")
+    print(f"📊 Всего водителей: {len(drivers)}")
     
-    text = (f"🔔 *Новый заказ #{oid}*\n\n👤 {order['client_name']}\n📍 {order['from']}\n🏁 {order['to']}\n⏰ {order['time']}\n💳 {order['payment']}\n💰 Ваш заработок: *{order['driver_gets']}€*\n🕐 {order['created']}")
+    # Показываем всех водителей в логах
+    for did, d in drivers.items():
+        print(f"   Водитель {did}: online={d.get('online')}, approved={d.get('approved')}, balance={d.get('balance')}")
+    
+    text = (f"🔔 *Новый заказ #{oid}*\n\n"
+            f"👤 {order['client_name']}\n"
+            f"📍 {order['from']}\n"
+            f"🏁 {order['to']}\n"
+            f"💰 Ваш заработок: *{order['driver_gets']}€*")
     
     sent = 0
     for driver_id, d in drivers.items():
-        if not (d.get("online") and d.get("approved")):
+        # Проверяем каждое условие
+        if not d.get("approved"):
+            print(f"❌ Водитель {driver_id} НЕ ОДОБРЕН")
+            continue
+        if not d.get("online"):
+            print(f"❌ Водитель {driver_id} НЕ ОНЛАЙН")
             continue
         if d.get("balance", 0) <= 0:
-            bot.send_message(driver_id, t("no_balance", driver_id))
+            print(f"❌ Водитель {driver_id} БАЛАНС {d.get('balance')}")
             continue
-        if has_active_order(driver_id):
-            continue
+        
         try:
-            if route_map:
-                bot.send_photo(driver_id, route_map, caption=text, parse_mode="Markdown", reply_markup=driver_order_kb(oid))
-            else:
-                bot.send_message(driver_id, text, parse_mode="Markdown", reply_markup=driver_order_kb(oid))
+            bot.send_message(driver_id, text, parse_mode="Markdown", reply_markup=driver_order_kb(oid))
+            print(f"✅ ОТПРАВЛЕНО водителю {driver_id}")
             sent += 1
         except Exception as e:
-            print(f"Ошибка отправки водителю {driver_id}: {e}")
+            print(f"❌ Ошибка: {e}")
+    
+    print(f"📊 Отправлено {sent} водителям")
+    
     if sent == 0:
         bot.send_message(order["client_id"], t("no_drivers", order["client_id"]))
-
 # ── ПРИНЯТЬ / ОТКАЗАТЬ ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("accept_") or c.data.startswith("decline_"))
 def cb_driver_response(call):
