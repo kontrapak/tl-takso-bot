@@ -349,12 +349,6 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-setTimeout(() => {
-  if (isOnline && !currentOrder) {
-    showIncomingOrder({ id: 1, price: 10, from_address: 'Viru väljak 4, Tallinn', to_address: 'Ülemiste City, Tallinn' });
-  }
-}, 5000);
-
 if (window.Telegram?.WebApp) { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); }
 startPolling();
 </script>
