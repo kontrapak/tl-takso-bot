@@ -169,11 +169,15 @@ body {
   </div>
   <button class="order-btn" id="orderBtn" onclick="orderTaxi()">
     🚖 ВЫЗВАТЬ ТАКСИ
-  </button>
-</div>
+<button class="order-btn" id="orderBtn" onclick="orderTaxi()">
+    🚖 ВЫЗВАТЬ ТАКСИ
+</button>
+<button class="order-btn" id="cancelBtn" onclick="cancelOrder()" style="display:none;background:#1A1A1A;color:#FF3B30;border:1px solid #FF3B30;margin-top:10px">
+    ❌ ОТМЕНИТЬ
+</button>
 
 <div class="toast" id="toast"></div>
- Часть 4 (последняя):
+ 
 <script>
 mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
 const TALLINN = [24.7536, 59.4370];
