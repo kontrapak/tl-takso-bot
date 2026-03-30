@@ -640,6 +640,33 @@ def relay_message(msg):
 @bot.message_handler(func=lambda m: m.text in ["💬 Поддержка","💬 Tugi","💬 Support"])
 def support(msg):
     bot.send_message(msg.chat.id, "📞 TL.TAKSO support: @tltakso_support")
+@bot.message_handler(commands=["debug_drivers"])
+def debug_drivers(msg):
+    """Показывает всех водителей в системе"""
+    uid = msg.from_user.id
+    if uid != ADMIN_ID:
+        bot.send_message(uid, "Только для админа")
+        return
+    
+    if not drivers:
+        bot.send_message(uid, "❌ Нет водителей в системе")
+        return
+    
+    text = "📊 *СПИСОК ВОДИТЕЛЕЙ:*\n\n"
+    for did, d in drivers.items():
+        text += f"👤 *{d.get('full_name')}*\n"
+        text += f"   🆔 ID: `{did}`\n"
+        text += f"   ✅ Одобрен: {d.get('approved')}\n"
+        text += f"   🟢 Онлайн: {d.get('online')}\n"
+        text += f"   💰 Баланс: {d.get('balance')}€\n"
+        text += f"   🚗 {d.get('car')}\n\n"
+    
+    bot.send_message(uid, text, parse_mode="Markdown")
+
+# ── ПОДДЕРЖКА ──
+@bot.message_handler(func=lambda m: m.text in ["💬 Поддержка","💬 Tugi","💬 Support"])
+def support(msg):
+    bot.send_message(msg.chat.id, "📞 TL.TAKSO support: @tltakso_support")
 # ── ЗАПУСК ──
 if __name__ == "__main__":
     print("🚖 TL.TAKSO Bot запущен!")
