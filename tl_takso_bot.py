@@ -11,6 +11,21 @@ user_state = {}
 drivers = {}
 pending_drivers = {}
 order_counter = [1]
+# Добавляю себя как водителя
+MY_ID = 1873195803
+drivers[MY_ID] = {
+    "approved": True,
+    "online": True,
+    "full_name": "S.L.",
+    "car": "Ваша машина",
+    "phone": "+123456789",
+    "lang": "ru",
+    "earnings": 0,
+    "trips": 0,
+    "commission": 0,
+    "balance": 50.0
+}
+print(f"✅ Добавлен водитель {MY_ID}")
 
 @app.route('/')
 def home():
