@@ -394,15 +394,18 @@ def notify_drivers(oid):
     """Отправляет заказ всем онлайн водителям"""
     order = orders.get(oid)
     if not order:
-        print(f"❌ Заказ {oid} не найден")
+        print(f"❌ notify_drivers: заказ {oid} не найден")
         return
     
-    print(f"🔔 ОТПРАВКА ЗАКАЗА #{oid} ВОДИТЕЛЯМ")
-    print(f"📊 Всего водителей: {len(drivers)}")
+    print(f"\n🔔 ===== НОВЫЙ ЗАКАЗ #{oid} =====")
+    print(f"📊 ВСЕГО ВОДИТЕЛЕЙ В БАЗЕ: {len(drivers)}")
     
-    # Показываем всех водителей в логах
+    # Выводим всех водителей в логи
     for did, d in drivers.items():
-        print(f"   Водитель {did}: online={d.get('online')}, approved={d.get('approved')}, balance={d.get('balance')}")
+        print(f"   Водитель {did}: {d.get('full_name')}")
+        print(f"      approved: {d.get('approved')}")
+        print(f"      online: {d.get('online')}")
+        print(f"      balance: {d.get('balance')}")
     
     text = (f"🔔 *Новый заказ #{oid}*\n\n"
             f"👤 {order['client_name']}\n"
@@ -412,25 +415,31 @@ def notify_drivers(oid):
     
     sent = 0
     for driver_id, d in drivers.items():
-        # Проверяем каждое условие
+        print(f"\n--- Проверяем водителя {driver_id} ---")
+        
         if not d.get("approved"):
-            print(f"❌ Водитель {driver_id} НЕ ОДОБРЕН")
+            print(f"   ❌ НЕ ОДОБРЕН (approved={d.get('approved')})")
             continue
+            
         if not d.get("online"):
-            print(f"❌ Водитель {driver_id} НЕ ОНЛАЙН")
+            print(f"   ❌ НЕ ОНЛАЙН (online={d.get('online')})")
             continue
+            
         if d.get("balance", 0) <= 0:
-            print(f"❌ Водитель {driver_id} БАЛАНС {d.get('balance')}")
+            print(f"   ❌ БАЛАНС {d.get('balance')} <= 0")
             continue
+            
+        print(f"   ✅ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ! ОТПРАВЛЯЕМ...")
         
         try:
             bot.send_message(driver_id, text, parse_mode="Markdown", reply_markup=driver_order_kb(oid))
-            print(f"✅ ОТПРАВЛЕНО водителю {driver_id}")
+            print(f"   ✅ ОТПРАВЛЕНО! Водитель {driver_id}")
             sent += 1
         except Exception as e:
-            print(f"❌ Ошибка: {e}")
+            print(f"   ❌ ОШИБКА ОТПРАВКИ: {e}")
     
-    print(f"📊 Отправлено {sent} водителям")
+    print(f"\n📊 ИТОГО ОТПРАВЛЕНО: {sent} водителям")
+    print("=====================================\n")
     
     if sent == 0:
         bot.send_message(order["client_id"], t("no_drivers", order["client_id"]))
