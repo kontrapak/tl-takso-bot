@@ -247,8 +247,12 @@ function locateUser() {
 function orderTaxi() {
   if (!selected) return toast('Выберите точку на карте');
   const btn = document.getElementById('orderBtn');
-  btn.classList.add('loading'); btn.textContent = '⏳ ПОИСК ВОДИТЕЛЯ...';
-document.getElementById('cancelBtn').style.display = 'block';
+  btn.classList.add('loading'); 
+btn.textContent = '❌ ОТМЕНИТЬ ЗАКАЗ';
+btn.onclick = cancelOrder;
+btn.style.background = '#1A1A1A';
+btn.style.color = '#FF3B30';
+btn.style.border = '1px solid #FF3B30';
   if (window.Telegram?.WebApp) {
     window.Telegram.WebApp.sendData(JSON.stringify({
       action: 'order',
@@ -274,7 +278,7 @@ function cancelOrder() {
   const btn = document.getElementById('orderBtn');
   btn.classList.remove('loading');
   btn.innerHTML = '🚖 ВЫЗВАТЬ ТАКСИ';
-  document.getElementById('cancelBtn').style.display = 'none';
+  
   toast('❌ Заказ отменён');
 }
 function toast(msg) {
