@@ -248,6 +248,7 @@ function orderTaxi() {
   if (!selected) return toast('Выберите точку на карте');
   const btn = document.getElementById('orderBtn');
   btn.classList.add('loading'); btn.textContent = '⏳ ПОИСК ВОДИТЕЛЯ...';
+document.getElementById('cancelBtn').style.display = 'block';
   if (window.Telegram?.WebApp) {
     window.Telegram.WebApp.sendData(JSON.stringify({
       action: 'order',
@@ -266,6 +267,15 @@ function orderTaxi() {
   } else {
     setTimeout(() => { btn.classList.remove('loading'); btn.innerHTML='🚖 ВЫЗВАТЬ ТАКСИ'; toast('✅ Заказ отправлен! '+selected.price+'€'); }, 2000);
   }
+function cancelOrder() {
+  if (window.Telegram?.WebApp) {
+    window.Telegram.WebApp.sendData(JSON.stringify({action: 'cancel'}));
+  }
+  const btn = document.getElementById('orderBtn');
+  btn.classList.remove('loading');
+  btn.innerHTML = '🚖 ВЫЗВАТЬ ТАКСИ';
+  document.getElementById('cancelBtn').style.display = 'none';
+  toast('❌ Заказ отменён');
 }
 function toast(msg) {
   const t = document.getElementById('toast');
