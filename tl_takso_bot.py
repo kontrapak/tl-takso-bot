@@ -640,6 +640,8 @@ def relay_message(msg):
 @bot.message_handler(func=lambda m: m.text in ["💬 Поддержка","💬 Tugi","💬 Support"])
 def support(msg):
     bot.send_message(msg.chat.id, "📞 TL.TAKSO support: @tltakso_support")
+
+# ── ОТЛАДКА ──
 @bot.message_handler(commands=["debug_drivers"])
 def debug_drivers(msg):
     """Показывает всех водителей в системе"""
@@ -663,10 +665,6 @@ def debug_drivers(msg):
     
     bot.send_message(uid, text, parse_mode="Markdown")
 
-# ── ПОДДЕРЖКА ──
-@bot.message_handler(func=lambda m: m.text in ["💬 Поддержка","💬 Tugi","💬 Support"])
-def support(msg):
-    bot.send_message(msg.chat.id, "📞 TL.TAKSO support: @tltakso_support")
 # ── ЗАПУСК ──
 if __name__ == "__main__":
     print("🚖 TL.TAKSO Bot запущен!")
@@ -676,4 +674,3 @@ if __name__ == "__main__":
     Thread(target=run_bot).start()
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
- 
