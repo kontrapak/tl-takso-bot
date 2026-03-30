@@ -348,6 +348,7 @@ def order_start(msg):
 @bot.message_handler(content_types=['web_app_data'])
 def handle_webapp_data(msg):
     uid = msg.from_user.id
+    print(f"WebApp data received from {uid}: {msg.web_app_data.data}")
     if uid not in user_state:
         user_state[uid] = {}
     
