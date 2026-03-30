@@ -247,6 +247,14 @@ def cmd_client(msg):
     uid = msg.from_user.id
     user_state[uid] = {"role": "client", "lang": get_lang(uid)}
     bot.send_message(uid, "🚖 Режим клиента", reply_markup=main_menu_client(uid))
+
+@bot.message_handler(commands=["driver"])
+def cmd_driver(msg):
+    uid = msg.from_user.id
+    if uid not in drivers:
+        drivers[uid] = {"approved": True, "online": False, "full_name": "Admin", "car": "Admin car", "phone": "—", "lang": "ru", "earnings": 0, "trips": 0, "commission": 0, "balance": 100.0}
+    user_state[uid] = {"role": "driver", "lang": "ru"}
+    bot.send_message(uid, "🚖 Режим водителя", reply_markup=main_menu_driver(uid))
 # ── ВЫБОР ЯЗЫКА ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("lang_"))
 def cb_lang(call):
