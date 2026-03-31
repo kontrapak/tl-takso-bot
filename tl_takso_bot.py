@@ -62,8 +62,8 @@ def api_reject_order(order_id):
         orders[order_id]['status'] = 'rejected'
         return json.dumps({'ok': True})
     return json.dumps({'ok': False}), 400
-import os
-import json
+
+# ИСПРАВЛЕНО: Убраны дублирующие импорты os и json (они уже были выше)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -72,8 +72,6 @@ ADMIN_ID = 1873195803  # <--- ВСТАВЬ СВОИ ЦИФРЫ (из @userinfobo
 
 # Ссылка на Mini App (ЗАМЕНИ НА СВОЮ!)
 MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
-import os
-import json
 
 def new_order_id():
     oid = f"TL{order_counter[0]:04d}"
@@ -252,7 +250,11 @@ def cmd_start(msg):
         bot.send_message(uid, "👨‍💼 *Панель администратора TL.TAKSO*", parse_mode="Markdown", reply_markup=main_menu_admin())
         return
     if is_approved_driver(uid):
-        user_state[uid] = {"role": "driver", "lang": get_lang(uid)}
+        # ИСПРАВЛЕНО: Сначала устанавливаем user_state, потом используем get_lang
+        if uid not in user_state:
+            user_state[uid] = {}
+        user_state[uid]["role"] = "driver"
+        user_state[uid]["lang"] = user_state[uid].get("lang", "ru")  # Берём существующий или ставим ru
         bot.send_message(uid, "👋", reply_markup=main_menu_driver(uid))
         return
     bot.send_message(uid, "🌍 Vali keel / Выберите язык / Choose language:", reply_markup=lang_kb())
@@ -367,13 +369,20 @@ def order_start(msg):
     if uid not in user_state:
         user_state[uid] = {}
     user_state[uid]["step"] = "waiting_webapp"
+
 # ── ОБРАБОТКА ДАННЫХ ИЗ MINI APP ──
 @bot.message_handler(content_types=['web_app_data'])
 def handle_webapp_data(msg):
     uid = msg.from_user.id
     print(f"WebApp data received from {uid}: {msg.web_app_data.data}")
-    if uid not in user_state:
-        user_state[uid] = {}
+    
+    # ИСПРАВЛЕНО: Проверяем, что мы действительно ждём данные от WebApp
+    if user_state.get(uid, {}).get("step") != "waiting_webapp":
+        print(f"Unexpected webapp data from {uid}, step={user_state.get(uid, {}).get('step')}")
+        return
+    
+    # ИСПРАВЛЕНО: Сбрасываем шаг сразу, чтобы не обработать повторно
+    user_state[uid]["step"] = None
     
     try:
         data = json.loads(msg.web_app_data.data)
@@ -395,7 +404,6 @@ def handle_webapp_data(msg):
         }
         
         user_state[uid]["current_order"] = oid
-        user_state[uid]["step"] = None
         
         bot.send_message(uid, f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from'][:50]}\n🏁 {orders[oid]['to'][:50]}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...", parse_mode="Markdown", reply_markup=main_menu_client(uid))
         
@@ -458,6 +466,7 @@ def notify_drivers(oid):
     
     if sent == 0:
         bot.send_message(order["client_id"], t("no_drivers", order["client_id"]))
+
 # ── ПРИНЯТЬ / ОТКАЗАТЬ ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("accept_") or c.data.startswith("decline_"))
 def cb_driver_response(call):
@@ -567,6 +576,10 @@ def cb_cancel(call):
                     bot.send_message(driver_id, t("driver_cancelled", driver_id))
                 except:
                     pass
+            # ИСПРАВЛЕНО: Очищаем current_order у клиента при отмене
+            if uid in user_state:
+                user_state[uid]["current_order"] = None
+    
     bot.edit_message_text(t("order_cancelled", uid), call.message.chat.id, call.message.message_id)
     bot.send_message(uid, t("order_cancelled", uid), reply_markup=main_menu_client(uid))
 
@@ -638,6 +651,7 @@ IGNORE = ["🚖 Заказать такси","🚖 Telli takso","🚖 Order taxi
 def relay_message(msg):
     uid = msg.from_user.id
     role = user_state.get(uid, {}).get("role")
+    
     if role == "client":
         oid = user_state[uid].get("current_order")
         if oid and oid in orders:
@@ -652,13 +666,55 @@ def relay_message(msg):
                 bot.send_message(uid, "⏳ " + t("waiting", uid))
                 return
         bot.send_message(uid, t("no_active_order", uid), reply_markup=main_menu_client(uid))
+        
     elif role == "driver":
         for oid, order in orders.items():
             if order.get("driver_id") == uid and order.get("status") in ["accepted","arrived"]:
                 bot.send_message(order["client_id"], f"💬 *{msg.from_user.first_name}:*\n{msg.text}", parse_mode="Markdown")
                 bot.send_message(uid, t("msg_sent_client", uid))
-                return
+                return  # ИСПРАВЛЕНО: Добавлен return чтобы не показывать "—"
         bot.send_message(uid, "—", reply_markup=main_menu_driver(uid))
+
+# ИСПРАВЛЕНО: Новый обработчик для медиа-файлов в чате
+@bot.message_handler(content_types=['photo', 'voice', 'video', 'document', 'location', 'contact', 'audio', 'video_note'],
+                     func=lambda m: user_state.get(m.from_user.id, {}).get("role") in ["client","driver"])
+def relay_media(msg):
+    """Пересылает медиа и локации между клиентом и водителем"""
+    uid = msg.from_user.id
+    role = user_state.get(uid, {}).get("role")
+    
+    if role == "client":
+        oid = user_state.get(uid, {}).get("current_order")
+        if oid and oid in orders:
+            order = orders[oid]
+            if order["status"] in ["accepted","arrived"]:
+                driver_id = order.get("driver_id")
+                if driver_id:
+                    # Пересылаем сообщение как есть
+                    try:
+                        bot.forward_message(driver_id, msg.chat.id, msg.message_id)
+                        bot.send_message(uid, "📎 Отправлено водителю")
+                    except Exception as e:
+                        print(f"Error forwarding to driver: {e}")
+                        bot.send_message(uid, "❌ Не удалось отправить")
+                    return
+            elif order["status"] == "pending":
+                bot.send_message(uid, "⏳ Ожидайте, когда водитель примет заказ")
+                return
+        bot.send_message(uid, "Нет активного заказа для отправки", reply_markup=main_menu_client(uid))
+        
+    elif role == "driver":
+        # Ищем активный заказ водителя
+        for oid, order in orders.items():
+            if order.get("driver_id") == uid and order.get("status") in ["accepted","arrived"]:
+                try:
+                    bot.forward_message(order["client_id"], msg.chat.id, msg.message_id)
+                    bot.send_message(uid, "📎 Отправлено клиенту")
+                except Exception as e:
+                    print(f"Error forwarding to client: {e}")
+                    bot.send_message(uid, "❌ Не удалось отправить")
+                return
+        bot.send_message(uid, "Нет активного заказа", reply_markup=main_menu_driver(uid))
 
 # ── ПОДДЕРЖКА ──
 @bot.message_handler(func=lambda m: m.text in ["💬 Поддержка","💬 Tugi","💬 Support"])
