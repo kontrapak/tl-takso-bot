@@ -69,7 +69,21 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
 ADMIN_ID = 1873195803  # <--- ВСТАВЬ СВОИ ЦИФРЫ (из @userinfobot)
-
+# ПРИНУДИТЕЛЬНО ДОБАВЛЯЮ СЕБЯ КАК ВОДИТЕЛЯ
+if 1873195803 not in drivers:
+    drivers[1873195803] = {
+        "approved": True,
+        "online": True,
+        "full_name": "S.L.",
+        "car": "Toyota Camry",
+        "phone": "+123456789",
+        "lang": "ru",
+        "earnings": 0,
+        "trips": 0,
+        "commission": 0,
+        "balance": 50.0
+    }
+    print("✅ Водитель 1873195803 ДОБАВЛЕН ПРИНУДИТЕЛЬНО")
 # Ссылка на Mini App (ЗАМЕНИ НА СВОЮ!)
 MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
 
