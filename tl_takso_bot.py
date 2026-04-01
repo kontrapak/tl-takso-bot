@@ -259,42 +259,52 @@ def get_route_static_map(from_lat, from_lon, to_lat, to_lon):
 @bot.message_handler(commands=["start"])
 def cmd_start(msg):
     uid = msg.from_user.id
+
+    # Создаём базовое состояние, если его нет
+    if uid not in user_state:
+        user_state[uid] = {"role": None, "lang": "ru"}
+
+    # Проверка админа
     if is_admin(uid):
-        user_state[uid] = {"role": "admin", "lang": "ru"}
+        user_state[uid]["role"] = "admin"
+        user_state[uid]["lang"] = "ru"
         bot.send_message(uid, "👨‍💼 *Панель администратора TL.TAKSO*", parse_mode="Markdown", reply_markup=main_menu_admin())
         return
+
+    # Проверка водителя
     if is_approved_driver(uid):
-        # ИСПРАВЛЕНО: Сначала устанавливаем user_state, потом используем get_lang
-        if uid not in user_state:
-            user_state[uid] = {}
         user_state[uid]["role"] = "driver"
-        user_state[uid]["lang"] = user_state[uid].get("lang", "ru")  # Берём существующий или ставим ru
+        user_state[uid]["lang"] = user_state[uid].get("lang", "ru")
         bot.send_message(uid, "👋", reply_markup=main_menu_driver(uid))
         return
+
+    # Если пользователь новый или не водитель/админ
     bot.send_message(uid, "🌍 Vali keel / Выберите язык / Choose language:", reply_markup=lang_kb())
 
-@bot.message_handler(commands=["client"])
-def cmd_client(msg):
-    uid = msg.from_user.id
-    user_state[uid] = {"role": "client", "lang": get_lang(uid)}
-    bot.send_message(uid, "🚖 Режим клиента", reply_markup=main_menu_client(uid))
 
-@bot.message_handler(commands=["driver"])
-def cmd_driver(msg):
-    uid = msg.from_user.id
-    if uid not in drivers:
-        drivers[uid] = {"approved": True, "online": False, "full_name": "Admin", "car": "Admin car", "phone": "—", "lang": "ru", "earnings": 0, "trips": 0, "commission": 0, "balance": 100.0}
-    user_state[uid] = {"role": "driver", "lang": "ru"}
-    bot.send_message(uid, "🚖 Режим водителя", reply_markup=main_menu_driver(uid))
-# ── ВЫБОР ЯЗЫКА ──
+# ── Выбор языка ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("lang_"))
 def cb_lang(call):
     uid = call.from_user.id
     lang = call.data.split("_")[1]
+
+    # Создаём состояние, если его нет
     if uid not in user_state:
-        user_state[uid] = {}
-    user_state[uid]["lang"] = lang
-    bot.edit_message_text(t("welcome", uid), call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=role_kb(uid))
+        user_state[uid] = {"role": None, "lang": lang}
+    else:
+        user_state[uid]["lang"] = lang
+
+    # Сообщение приветствия с выбранным языком
+    welcome_text = t("welcome", uid)  # Убедиться, что t() поддерживает выбранный язык
+
+    # Кнопки ролей (выбор админ/водитель/клиент)
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=welcome_text,
+        parse_mode="Markdown",
+        reply_markup=role_kb(uid)  # Должна корректно работать с role=None
+    )
 
 # ── ВЫБОР РОЛИ ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("role_"))
