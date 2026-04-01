@@ -422,12 +422,7 @@ def handle_webapp_data(msg):
         bot.send_message(uid, f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from'][:50]}\n🏁 {orders[oid]['to'][:50]}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...", parse_mode="Markdown", reply_markup=main_menu_client(uid))
         
         notify_drivers(oid)
-        
-    except Exception as e:
-        print(f"WebApp error: {e}")
-        bot.send_message(uid, "❌ Ошибка обработки заказа")
-
-def notify_drivers(oid):
+        def notify_drivers(oid):
     """Отправляет заказ всем онлайн водителям"""
     order = orders.get(oid)
     if not order:
@@ -435,11 +430,6 @@ def notify_drivers(oid):
         return
     
     print(f"\n🔔 ===== НОВЫЙ ЗАКАЗ #{oid} =====")
-    print(f"📊 ВСЕГО ВОДИТЕЛЕЙ В БАЗЕ: {len(drivers)}")
-
-# ДОБАВЬ ЭТО:
-for did, d in drivers.items():
-    print(f"👤 Водитель {did}: online={d.get('online')}, approved={d.get('approved')}")
     print(f"📊 ВСЕГО ВОДИТЕЛЕЙ В БАЗЕ: {len(drivers)}")
     
     # Выводим всех водителей в логи
@@ -462,30 +452,30 @@ for did, d in drivers.items():
         if not d.get("approved"):
             print(f"   ❌ НЕ ОДОБРЕН (approved={d.get('approved')})")
             continue
-            
+        
         if not d.get("online"):
             print(f"   ❌ НЕ ОНЛАЙН (online={d.get('online')})")
             continue
-            
+        
         if d.get("balance", 0) <= 0:
-            print(f"   ❌ БАЛАНС {d.get('balance')} <= 0")
+            print(f"   ❌ НЕТ БАЛАНСА (balance={d.get('balance')})")
             continue
-            
-        print(f"   ✅ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ! ОТПРАВЛЯЕМ...")
+        
+        if has_active_order(driver_id):
+            print(f"   ❌ ЕСТЬ АКТИВНЫЙ ЗАКАЗ")
+            continue
         
         try:
             bot.send_message(driver_id, text, parse_mode="Markdown", reply_markup=driver_order_kb(oid))
-            print(f"   ✅ ОТПРАВЛЕНО! Водитель {driver_id}")
             sent += 1
+            print(f"   ✅ ЗАКАЗ ОТПРАВЛЕН водителю {driver_id}")
         except Exception as e:
-            print(f"   ❌ ОШИБКА ОТПРАВКИ: {e}")
-    
-    print(f"\n📊 ИТОГО ОТПРАВЛЕНО: {sent} водителям")
-    print("=====================================\n")
+            print(f"   ❌ Ошибка отправки водителю {driver_id}: {e}")
     
     if sent == 0:
-        bot.send_message(order["client_id"], t("no_drivers", order["client_id"]))
-
+        print(f"❌ НЕТ ДОСТУПНЫХ ВОДИТЕЛЕЙ для заказа {oid}")
+        bot.send_message(order["client_id"], "😔 Сейчас нет свободных водителей. Попробуйте через несколько минут.")
+    
 # ── ПРИНЯТЬ / ОТКАЗАТЬ ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("accept_") or c.data.startswith("decline_"))
 def cb_driver_response(call):
