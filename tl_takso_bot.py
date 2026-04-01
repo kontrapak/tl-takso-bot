@@ -436,6 +436,11 @@ def notify_drivers(oid):
     
     print(f"\n🔔 ===== НОВЫЙ ЗАКАЗ #{oid} =====")
     print(f"📊 ВСЕГО ВОДИТЕЛЕЙ В БАЗЕ: {len(drivers)}")
+
+# ДОБАВЬ ЭТО:
+for did, d in drivers.items():
+    print(f"👤 Водитель {did}: online={d.get('online')}, approved={d.get('approved')}")
+    print(f"📊 ВСЕГО ВОДИТЕЛЕЙ В БАЗЕ: {len(drivers)}")
     
     # Выводим всех водителей в логи
     for did, d in drivers.items():
