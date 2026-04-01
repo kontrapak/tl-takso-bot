@@ -1,293 +1,77 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>TL.TAKSO</title>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-:root {
-  --yellow: #FFD600;
-  --black: #0A0A0A;
-  --dark: #111111;
-  --border: #2A2A2A;
-  --muted: #888888;
-}
-body {
-  background: var(--black);
-  color: #fff;
-  font-family: 'Inter', sans-serif;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px 10px;
-  border-bottom: 1px solid var(--border);
-}
-.logo {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 26px;
-  letter-spacing: 3px;
-  color: var(--yellow);
-}
-.logo span { color: #fff; }
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255,214,0,0.1);
-  border: 1px solid rgba(255,214,0,0.3);
-  border-radius: 20px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--yellow);
-}
-.status-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--yellow);
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0%,100% { opacity:1; transform:scale(1); }
-  50% { opacity:0.5; transform:scale(0.8); }
-}
-#map { flex: 1; width: 100%; position: relative; }
-.legend {
-  position: absolute;
-  top: 12px; left: 12px; z-index: 5;
-  background: rgba(10,10,10,0.85);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 14px;
-  display: flex; flex-direction: column; gap: 6px;
-}
-.legend-title { font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
-.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.legend-price { color: var(--yellow); font-weight: 700; margin-left: auto; padding-left: 10px; }
-.locate-btn {
-  position: absolute; top: 12px; right: 12px; z-index: 5;
-  width: 42px; height: 42px;
-  background: rgba(10,10,10,0.9);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: var(--yellow); font-size: 20px;
-}
-.locate-btn:active { transform: scale(0.93); background: var(--yellow); color: var(--black); }
-.bottom-panel {
-  background: var(--dark);
-  border-top: 1px solid var(--border);
-  padding: 16px 18px 24px;
-}
-.zone-info { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.zone-label { font-size: 13px; color: var(--muted); }
-.zone-name { font-size: 16px; font-weight: 700; margin-top: 2px; }
-.zone-price { font-family: 'Bebas Neue', sans-serif; font-size: 42px; color: var(--yellow); line-height: 1; }
-.zone-price span { font-size: 20px; color: var(--muted); }
-.order-btn {
-  width: 100%; height: 56px;
-  background: var(--yellow); color: var(--black);
-  border: none; border-radius: 14px;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 22px; letter-spacing: 3px;
-  cursor: pointer; transition: transform 0.15s;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-}
-.order-btn:active { transform: scale(0.97); }
-.order-btn.loading { background: #333; color: var(--yellow); pointer-events: none; }
-.mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-group { display: none !important; }
-.toast {
-  position: fixed; top: 80px; left: 50%;
-  transform: translateX(-50%) translateY(-20px);
-  background: var(--yellow); color: var(--black);
-  padding: 10px 20px; border-radius: 30px;
-  font-weight: 700; font-size: 14px;
-  z-index: 100; opacity: 0; transition: all 0.3s;
-  pointer-events: none; white-space: nowrap;
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.user-marker { width: 16px; height: 16px; background: var(--yellow); border: 3px solid white; border-radius: 50%; }
-</style>
+    <title>TL.TAKSO - Заказ такси</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body{background:#0a0a0a;color:#fff;font-family:monospace;padding:20px}
+        button{background:#FFD600;color:#000;padding:12px 24px;border:none;border-radius:8px;cursor:pointer;font-size:16px}
+        input{padding:10px;margin:5px;background:#333;border:none;color:#fff;border-radius:8px;width:200px}
+        .zone{display:inline-block;margin:5px;padding:10px;background:#FFD60020;border:1px solid #FFD600;border-radius:8px;cursor:pointer}
+        .zone.active{background:#FFD600;color:#000}
+        .result{margin-top:20px;padding:10px;background:#333;border-radius:8px}
+    </style>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-
-  <body>
-<div class="header">
-  <div class="logo">TL<span>.</span>TAKSO</div>
-  <div class="status-badge">
-    <div class="status-dot"></div>
-    ОНЛАЙН
-  </div>
-</div>
-
-<div id="map">
-  <div class="legend">
-    <div class="legend-title">Тарифы</div>
-    <div class="legend-item">
-      <div class="legend-dot" style="background:#FFD600"></div>
-      Мустамяэ
-      <div class="legend-price">8€</div>
+<body>
+    <h1>🚖 TL.TAKSO - Заказ такси</h1>
+    
+    <h3>Выберите тариф:</h3>
+    <div id="zones">
+        <div class="zone" data-price="8" onclick="selectZone(this)">Мустамяэ 8€</div>
+        <div class="zone" data-price="10" onclick="selectZone(this)">Город 10€</div>
+        <div class="zone" data-price="15" onclick="selectZone(this)">Далеко 15€</div>
+        <div class="zone" data-price="20" onclick="selectZone(this)">Аэропорт 20€</div>
     </div>
-    <div class="legend-item">
-      <div class="legend-dot" style="background:#FF9500"></div>
-      По городу
-      <div class="legend-price">10€</div>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot" style="background:#FF3B30"></div>
-      Далеко
-      <div class="legend-price">15€</div>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot" style="background:#AF52DE"></div>
-      Аэропорт
-      <div class="legend-price">20€</div>
-    </div>
-  </div>
-  <div class="locate-btn" onclick="locateUser()">⊕</div>
-</div>
-
-<div class="bottom-panel">
-  <div class="zone-info">
+    
+    <h3>Адреса:</h3>
     <div>
-      <div class="zone-label">Выбранная зона</div>
-      <div class="zone-name" id="zoneName">Нажмите на карту</div>
+        <input id="from" placeholder="Откуда...">
+        <input id="to" placeholder="Куда...">
     </div>
-    <div class="zone-price" id="zonePrice">—</div>
-  </div>
-  <button class="order-btn" id="orderBtn" onclick="orderTaxi()">
-    🚖 ВЫЗВАТЬ ТАКСИ
-<button class="order-btn" id="orderBtn" onclick="orderTaxi()">
-    🚖 ВЫЗВАТЬ ТАКСИ
-</button>
-<button class="order-btn" id="cancelBtn" onclick="cancelOrder()" style="display:none;background:#1A1A1A;color:#FF3B30;border:1px solid #FF3B30;margin-top:10px">
-    ❌ ОТМЕНИТЬ
-</button>
+    
+    <button onclick="createOrder()" style="margin-top:20px">🚖 ЗАКАЗАТЬ ТАКСИ</button>
+    
+    <div class="result" id="result"></div>
 
-<div class="toast" id="toast"></div>
- 
-<script>
-mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
-const TALLINN = [24.7536, 59.4370];
-const zones = [
-  { id: 'z1', name: 'Мустамяэ', price: '8', color: '#FFD600', center: [24.6980, 59.4120], radius: 1800 },
-  { id: 'z2', name: 'По городу', price: '10', color: '#FF9500', center: TALLINN, radius: 5500 },
-  { id: 'z3', name: 'Далеко', price: '15', color: '#FF3B30', center: TALLINN, radius: 12000 },
-  { id: 'z4', name: 'Аэропорт', price: '20', color: '#AF52DE', center: TALLINN, radius: 22000 }
-];
-const map = new mapboxgl.Map({
-  container: 'map',
-  style: 'mapbox://styles/mapbox/dark-v11',
-  center: TALLINN, zoom: 11.5,
-  attributionControl: false
-});
-function circle(center, r) {
-  const c = [];
-  for (let i = 0; i <= 64; i++) {
-    const a = (i/64)*2*Math.PI;
-    c.push([center[0] + (r/111320/Math.cos(center[1]*Math.PI/180))*Math.sin(a), center[1] + (r/111320)*Math.cos(a)]);
-  }
-  return {type:'Feature', geometry:{type:'Polygon', coordinates:[c]}};
-}
-let selected = null;
-map.on('load', () => {
-  [...zones].reverse().forEach(z => {
-    map.addSource(z.id, {type:'geojson', data: circle(z.center, z.radius)});
-    map.addLayer({id: z.id+'-f', type:'fill', source: z.id, paint:{'fill-color':z.color,'fill-opacity':0.15}});
-    map.addLayer({id: z.id+'-b', type:'line', source: z.id, paint:{'line-color':z.color,'line-width':1.5,'line-opacity':0.6,'line-dasharray':[4,3]}});
-  });
-  map.on('click', e => detect(e.lngLat.lng, e.lngLat.lat));
-});
-function dist(a,b,c,d) {
-  const R=6371000, dL=(b-a)*Math.PI/180, dO=(d-c)*Math.PI/180;
-  const s=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(b*Math.PI/180)*Math.sin(dO/2)**2;
-  return R*2*Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
-}
-function detect(lng, lat) {
-  for (const z of zones) {
-    if (dist(lat, z.center[1], lng, z.center[0]) <= z.radius) {
-      selected = z;
-      document.getElementById('zoneName').textContent = z.name;
-      document.getElementById('zonePrice').innerHTML = z.price + '<span>€</span>';
-      document.getElementById('zonePrice').style.color = z.color;
-      if (window._m) window._m.remove();
-      const el = document.createElement('div');
-      el.style.cssText = `width:12px;height:12px;background:${z.color};border:2px solid white;border-radius:50%`;
-      window._m = new mapboxgl.Marker(el).setLngLat([lng,lat]).addTo(map);
-      return;
-    }
-  }
-  selected = zones[3];
-  document.getElementById('zoneName').textContent = 'Пригород';
-  document.getElementById('zonePrice').innerHTML = '20<span>€</span>';
-  document.getElementById('zonePrice').style.color = '#AF52DE';
-}
-function locateUser() {
-  if (!navigator.geolocation) return toast('Геолокация недоступна');
-  navigator.geolocation.getCurrentPosition(p => {
-    map.flyTo({center:[p.coords.longitude,p.coords.latitude], zoom:13, duration:1200});
-    detect(p.coords.longitude, p.coords.latitude);
-    if (window._u) window._u.remove();
-    const el = document.createElement('div'); el.className='user-marker';
-    window._u = new mapboxgl.Marker(el).setLngLat([p.coords.longitude,p.coords.latitude]).addTo(map);
-  }, () => toast('Включите геолокацию'));
-}
-function orderTaxi() {
-  if (!selected) return toast('Выберите точку на карте');
-  const btn = document.getElementById('orderBtn');
-  btn.classList.add('loading'); 
-btn.textContent = '❌ ОТМЕНИТЬ ЗАКАЗ';
-btn.onclick = cancelOrder;
-btn.style.background = '#1A1A1A';
-btn.style.color = '#FF3B30';
-btn.style.border = '1px solid #FF3B30';
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.sendData(JSON.stringify({
-      action: 'order',
-      zone: selected.name,
-      price: selected.price,
-      from_address: 'Мой адрес',
-      to_address: 'Адрес назначения',
-      from_lat: 59.4370,
-      from_lon: 24.7536,
-      to_lat: 59.4370,
-      to_lon: 24.7536,
-      driver_gets: selected.price,
-      time: 'Сейчас',
-      payment: 'cash'
-    }));
-  } else {
-    setTimeout(() => { btn.classList.remove('loading'); btn.innerHTML='🚖 ВЫЗВАТЬ ТАКСИ'; toast('✅ Заказ отправлен! '+selected.price+'€'); }, 2000);
-  }
-function cancelOrder() {
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.sendData(JSON.stringify({action: 'cancel'}));
-  }
-  const btn = document.getElementById('orderBtn');
-  btn.classList.remove('loading');
-  btn.innerHTML = '🚖 ВЫЗВАТЬ ТАКСИ';
-  
-  toast('❌ Заказ отменён');
-}
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2500);
-}
-if (window.Telegram?.WebApp) { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); }
-</script>
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        let selectedPrice = null;
+        
+        function selectZone(el) {
+            document.querySelectorAll('.zone').forEach(z => z.classList.remove('active'));
+            el.classList.add('active');
+            selectedPrice = el.dataset.price;
+        }
+        
+        function createOrder() {
+            if (!selectedPrice) {
+                alert('Выберите тариф');
+                return;
+            }
+            
+            const from = document.getElementById('from').value;
+            const to = document.getElementById('to').value;
+            
+            if (!from || !to) {
+                alert('Введите адрес отправления и назначения');
+                return;
+            }
+            
+            const orderData = {
+                from: from,
+                to: to,
+                price: selectedPrice,
+                payment: "cash",
+                time: "now"
+            };
+            
+            tg.sendData(JSON.stringify(orderData));
+            tg.close();
+        }
+    </script>
 </body>
 </html>
-
