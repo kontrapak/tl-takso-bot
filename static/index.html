@@ -1,75 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TL.TAKSO - Заказ такси</title>
+    <title>TL.TAKSO</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body{background:#0a0a0a;color:#fff;font-family:monospace;padding:20px}
-        button{background:#FFD600;color:#000;padding:12px 24px;border:none;border-radius:8px;cursor:pointer;font-size:16px}
-        input{padding:10px;margin:5px;background:#333;border:none;color:#fff;border-radius:8px;width:200px}
-        .zone{display:inline-block;margin:5px;padding:10px;background:#FFD60020;border:1px solid #FFD600;border-radius:8px;cursor:pointer}
-        .zone.active{background:#FFD600;color:#000}
-        .result{margin-top:20px;padding:10px;background:#333;border-radius:8px}
-    </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <h1>🚖 TL.TAKSO - Заказ такси</h1>
+    <h1>🚖 Заказ такси</h1>
+    <input id="from" placeholder="Откуда" style="padding:10px;margin:5px;width:90%">
+    <input id="to" placeholder="Куда" style="padding:10px;margin:5px;width:90%">
+    <button onclick="sendOrder()" style="padding:12px;margin:10px;background:#FFD600;border:none;border-radius:8px">Заказать</button>
     
-    <h3>Выберите тариф:</h3>
-    <div id="zones">
-        <div class="zone" data-price="8" onclick="selectZone(this)">Мустамяэ 8€</div>
-        <div class="zone" data-price="10" onclick="selectZone(this)">Город 10€</div>
-        <div class="zone" data-price="15" onclick="selectZone(this)">Далеко 15€</div>
-        <div class="zone" data-price="20" onclick="selectZone(this)">Аэропорт 20€</div>
-    </div>
-    
-    <h3>Адреса:</h3>
-    <div>
-        <input id="from" placeholder="Откуда...">
-        <input id="to" placeholder="Куда...">
-    </div>
-    
-    <button onclick="createOrder()" style="margin-top:20px">🚖 ЗАКАЗАТЬ ТАКСИ</button>
-    
-    <div class="result" id="result"></div>
-
     <script>
-        let tg = window.Telegram.WebApp;
+        let tg = Telegram.WebApp;
         tg.ready();
-        tg.expand();
         
-        let selectedPrice = null;
-        
-        function selectZone(el) {
-            document.querySelectorAll('.zone').forEach(z => z.classList.remove('active'));
-            el.classList.add('active');
-            selectedPrice = el.dataset.price;
-        }
-        
-        function createOrder() {
-            if (!selectedPrice) {
-                alert('Выберите тариф');
-                return;
-            }
-            
-            const from = document.getElementById('from').value;
-            const to = document.getElementById('to').value;
-            
-            if (!from || !to) {
-                alert('Введите адрес отправления и назначения');
-                return;
-            }
-            
-            const orderData = {
-                from: from,
-                to: to,
-                price: selectedPrice,
-                payment: "cash",
-                time: "now"
+        function sendOrder() {
+            let data = {
+                from: document.getElementById('from').value,
+                to: document.getElementById('to').value,
+                price: "10"
             };
-            
-            tg.sendData(JSON.stringify(orderData));
+            tg.sendData(JSON.stringify(data));
             tg.close();
         }
     </script>
