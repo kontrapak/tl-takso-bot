@@ -3,23 +3,29 @@ from telebot import types
 import datetime
 import os
 import json
-from flask import Flask, send_from_directory
+import time
+import threading
+from flask import Flask, send_from_directory, request
 
 app = Flask(__name__)
+
+# ── ХРАНИЛИЩЕ ДАННЫХ (простое, но надёжное) ──
+# В продакшене лучше использовать Redis или БД
 orders = {}
 user_state = {}
 drivers = {}
 pending_drivers = {}
 order_counter = [1]
 
-BOT_TOKEN = "8639929224:AAGyvPLktFYv_lX-_65GpbZ-GJdGt8sXuFE"
-print("⚠️ Использую токен из кода")
-bot = telebot.TeleBot(BOT_TOKEN)
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8639929224:AAGyvPLktFYv_lX-_65GpbZ-GJdGt8sXuFE")
+print("⚠️ Использую токен из кода" if "BOT_TOKEN" not in os.environ else "✅ Токен из переменной окружения")
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 print("✅ Токен загружен")
 
 ADMIN_ID = 1873195803
 MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
 DRIVER_MAP_URL = "https://web-production-f5a52.up.railway.app/static/driver.html"
+
 # Добавляю себя как водителя
 drivers[ADMIN_ID] = {
     "approved": True,
@@ -244,7 +250,7 @@ def get_route_static_map(from_lat, from_lon, to_lat, to_lon):
     markers = f"pin-s+ff0000({from_lon},{from_lat}),pin-s+0000ff({to_lon},{to_lat})"
     return f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/{markers}/auto/600x300@2x?access_token={MAPBOX_TOKEN}"
 
-# ── NOTIFY DRIVERS (на верхнем уровне!) ──
+# ── NOTIFY DRIVERS ──
 
 def notify_drivers(oid):
     """Отправляет заказ всем онлайн водителям"""
@@ -764,16 +770,35 @@ def debug_drivers(msg):
         text += f"   🚗 {d.get('car')}\n\n"
     bot.send_message(uid, text, parse_mode="Markdown")
 
+
+# ═══════════════════════════════════════════════════════════════
+# ═══════════════════ НАДЁЖНЫЙ ЗАПУСК ═══════════════════════════
+# ═══════════════════════════════════════════════════════════════
+
+def run_bot_with_restart():
+    """Запускает бота с автоматическим перезапуском при ошибках"""
+    while True:
+        try:
+            print("🚀 Запуск polling...")
+            bot.remove_webhook()
+            time.sleep(1)  # Пауза перед стартом
+            bot.infinity_polling(timeout=30, long_polling_timeout=10, none_stop=True)
+        except Exception as e:
+            print(f"❌ Критическая ошибка polling: {e}")
+            print("🔄 Перезапуск через 5 секунд...")
+            time.sleep(5)
+
+
 if __name__ == "__main__":
     print("🚖 TL.TAKSO Bot запущен!")
-    bot.remove_webhook()
-    from threading import Thread
-    def run_bot():
-        try:
-            bot.infinity_polling(timeout=10, long_polling_timeout=5)
-        except Exception as e:
-            print(f"❌ Polling error: {e}")
-    Thread(target=run_bot, daemon=True).start()
-    print("✅ Бот запущен")
+    
+    # Запускаем бота в отдельном потоке (НЕ daemon!)
+    bot_thread = threading.Thread(target=run_bot_with_restart)
+    bot_thread.daemon = False  # Важно: поток не должен умирать при ошибках
+    bot_thread.start()
+    
+    print("✅ Бот запущен в фоновом режиме")
+    
+    # Запускаем Flask
     port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, threaded=True)
