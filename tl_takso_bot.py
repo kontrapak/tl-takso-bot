@@ -1,4 +1,4 @@
-9import telebot
+import telebot
 from telebot import types
 import datetime
 import os
