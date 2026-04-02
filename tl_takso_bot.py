@@ -765,11 +765,13 @@ def debug_drivers(msg):
 
 # ── ЗАПУСК ──
 
+# ── ЗАПУСК ──
 if __name__ == "__main__":
     print("🚖 TL.TAKSO Bot запущен!")
     from threading import Thread
     def run_bot():
         bot.infinity_polling(timeout=10, long_polling_timeout=5)
     Thread(target=run_bot).start()
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+    # port = int(os.environ.get("PORT", 8080))
+    # app.run(host='0.0.0.0', port=port)
+    print("✅ Flask отключен для теста")
