@@ -767,16 +767,11 @@ def debug_drivers(msg):
         text += f"   🚗 {d.get('car')}\n\n"
     bot.send_message(uid, text, parse_mode="Markdown")
 
-# ── ЗАПУСК ──
-# ── ЗАПУСК ──
 if __name__ == "__main__":
     print("🚖 TL.TAKSO Bot запущен!")
-    bot.remove_webhook()  # <--- ДОБАВИТЬ ЭТУ СТРОКУ
+    bot.remove_webhook()
     from threading import Thread
     def run_bot():
         bot.infinity_polling(timeout=10, long_polling_timeout=5)
     Thread(target=run_bot).start()
-    # port = int(os.environ.get("PORT", 8080))
-    # app.run(host='0.0.0.0', port=port)
-    print("✅ Flask отключен для теста")
-
+    print("✅ Бот запущен")
