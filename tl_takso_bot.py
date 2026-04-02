@@ -12,15 +12,14 @@ drivers = {}
 pending_drivers = {}
 order_counter = [1]
 
-  BOT_TOKEN = "8639929224:AAGyvPLktFYv_lX-_65GpbZ-GJdGt8sXuFE"  # временно
-print("⚠️ Использую токен из кода")  # <-- убрать пробелы
+BOT_TOKEN = "8639929224:AAGyvPLktFYv_lX-_65GpbZ-GJdGt8sXuFE"
+print("⚠️ Использую токен из кода")
 bot = telebot.TeleBot(BOT_TOKEN)
-print(f"✅ Токен загружен")  
+print("✅ Токен загружен")
 
 ADMIN_ID = 1873195803
 MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
 DRIVER_MAP_URL = "https://web-production-f5a52.up.railway.app/static/driver.html"
-
 # Добавляю себя как водителя
 drivers[ADMIN_ID] = {
     "approved": True,
