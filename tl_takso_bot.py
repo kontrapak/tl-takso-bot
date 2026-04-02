@@ -769,6 +769,11 @@ if __name__ == "__main__":
     bot.remove_webhook()
     from threading import Thread
     def run_bot():
-        bot.infinity_polling(timeout=10, long_polling_timeout=5)
-    Thread(target=run_bot).start()
+        try:
+            bot.infinity_polling(timeout=10, long_polling_timeout=5)
+        except Exception as e:
+            print(f"❌ Polling error: {e}")
+    Thread(target=run_bot, daemon=True).start()
     print("✅ Бот запущен")
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
