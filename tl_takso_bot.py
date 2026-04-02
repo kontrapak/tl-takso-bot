@@ -12,8 +12,6 @@ drivers = {}
 pending_drivers = {}
 order_counter = [1]
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-if not BOT_TOKEN:
     BOT_TOKEN = "8639929224:AAGyvPLktFYv_lX-_65GpbZ-GJdGt8sXuFE"  # временно
     print("⚠️ Использую токен из кода")
 bot = telebot.TeleBot(BOT_TOKEN)
