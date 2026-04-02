@@ -12,10 +12,10 @@ drivers = {}
 pending_drivers = {}
 order_counter = [1]
 
-    BOT_TOKEN = "8639929224:AAGyvPLktFYv_lX-_65GpbZ-GJdGt8sXuFE"  # временно
-    print("⚠️ Использую токен из кода")
+  BOT_TOKEN = "8639929224:AAGyvPLktFYv_lX-_65GpbZ-GJdGt8sXuFE"  # временно
+print("⚠️ Использую токен из кода")  # <-- убрать пробелы
 bot = telebot.TeleBot(BOT_TOKEN)
-print(f"✅ Токен загружен")
+print(f"✅ Токен загружен")  
 
 ADMIN_ID = 1873195803
 MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
