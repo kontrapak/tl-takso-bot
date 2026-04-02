@@ -1,4 +1,4 @@
-import telebot
+9import telebot
 from telebot import types
 import datetime
 import os
@@ -764,10 +764,10 @@ def debug_drivers(msg):
     bot.send_message(uid, text, parse_mode="Markdown")
 
 # ── ЗАПУСК ──
-
 # ── ЗАПУСК ──
 if __name__ == "__main__":
     print("🚖 TL.TAKSO Bot запущен!")
+    bot.remove_webhook()  # <--- ДОБАВИТЬ ЭТУ СТРОКУ
     from threading import Thread
     def run_bot():
         bot.infinity_polling(timeout=10, long_polling_timeout=5)
@@ -775,3 +775,4 @@ if __name__ == "__main__":
     # port = int(os.environ.get("PORT", 8080))
     # app.run(host='0.0.0.0', port=port)
     print("✅ Flask отключен для теста")
+
