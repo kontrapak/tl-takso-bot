@@ -1,255 +1,495 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>TL.TAKSO</title>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-:root {
-  --yellow: #FFD600;
-  --black: #0A0A0A;
-  --dark: #111111;
-  --border: #2A2A2A;
-  --muted: #888888;
-}
-body {
-  background: var(--black);
-  color: #fff;
-  font-family: 'Inter', sans-serif;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px 10px;
-  border-bottom: 1px solid var(--border);
-}
-.logo {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 26px;
-  letter-spacing: 3px;
-  color: var(--yellow);
-}
-.logo span { color: #fff; }
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255,214,0,0.1);
-  border: 1px solid rgba(255,214,0,0.3);
-  border-radius: 20px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--yellow);
-}
-.status-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--yellow);
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0%,100% { opacity:1; transform:scale(1); }
-  50% { opacity:0.5; transform:scale(0.8); }
-}
-#map { flex: 1; width: 100%; position: relative; }
-.legend {
-  position: absolute;
-  top: 12px; left: 12px; z-index: 5;
-  background: rgba(10,10,10,0.85);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 14px;
-  display: flex; flex-direction: column; gap: 6px;
-}
-.legend-title { font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
-.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.legend-price { color: var(--yellow); font-weight: 700; margin-left: auto; padding-left: 10px; }
-.locate-btn {
-  position: absolute; top: 12px; right: 12px; z-index: 5;
-  width: 42px; height: 42px;
-  background: rgba(10,10,10,0.9);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: var(--yellow); font-size: 20px;
-}
-.bottom-panel {
-  background: var(--dark);
-  border-top: 1px solid var(--border);
-  padding: 16px 18px 24px;
-}
-.zone-info { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.zone-label { font-size: 13px; color: var(--muted); }
-.zone-name { font-size: 16px; font-weight: 700; margin-top: 2px; }
-.zone-price { font-family: 'Bebas Neue', sans-serif; font-size: 42px; color: var(--yellow); line-height: 1; }
-.zone-price span { font-size: 20px; color: var(--muted); }
-.order-btn {
-  width: 100%; height: 56px;
-  background: var(--yellow); color: var(--black);
-  border: none; border-radius: 14px;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 22px; letter-spacing: 3px;
-  cursor: pointer; transition: transform 0.15s;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-}
-.order-btn:active { transform: scale(0.97); }
-.order-btn.loading { background: #333; color: var(--yellow); pointer-events: none; }
-.mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-group { display: none !important; }
-.toast {
-  position: fixed; top: 80px; left: 50%;
-  transform: translateX(-50%) translateY(-20px);
-  background: var(--yellow); color: var(--black);
-  padding: 10px 20px; border-radius: 30px;
-  font-weight: 700; font-size: 14px;
-  z-index: 100; opacity: 0; transition: all 0.3s;
-  pointer-events: none; white-space: nowrap;
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.user-marker { width: 16px; height: 16px; background: var(--yellow); border: 3px solid white; border-radius: 50%; }
-</style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>TL.TAKSO</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"/>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: -apple-system, sans-serif; background:#000; color:#fff; height:100vh; overflow:hidden; }
+    #map { position:absolute; inset:0; }
+
+    /* Панель снизу */
+    #panel {
+      position:absolute; bottom:0; left:0; right:0;
+      background:#111; border-radius:20px 20px 0 0;
+      padding:16px; z-index:10;
+      box-shadow: 0 -4px 20px rgba(255,200,0,0.15);
+      transition: transform 0.3s ease;
+    }
+    #panel.hidden { transform: translateY(100%); }
+
+    .drag-handle {
+      width:40px; height:4px; background:#333; border-radius:2px;
+      margin:0 auto 14px; cursor:pointer;
+    }
+
+    .step { display:none; }
+    .step.active { display:block; }
+
+    h2 { font-size:16px; color:#FFD700; margin-bottom:12px; }
+
+    .address-box {
+      background:#1a1a1a; border:1px solid #333; border-radius:12px;
+      padding:12px 14px; margin-bottom:10px; cursor:pointer;
+      display:flex; align-items:center; gap:10px;
+    }
+    .address-box span { font-size:14px; color:#aaa; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .address-box.filled span { color:#fff; }
+    .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .dot.from { background:#4CAF50; }
+    .dot.to   { background:#FFD700; }
+
+    .tariff-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;
+    }
+    .tariff-btn {
+      background:#1a1a1a; border:1px solid #333; border-radius:12px;
+      padding:12px 8px; text-align:center; cursor:pointer; transition:all 0.2s;
+    }
+    .tariff-btn.selected { border-color:#FFD700; background:#1f1a00; }
+    .tariff-btn .price { font-size:20px; font-weight:700; color:#FFD700; }
+    .tariff-btn .label { font-size:11px; color:#888; margin-top:2px; }
+
+    .pay-row {
+      display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;
+    }
+    .pay-btn {
+      background:#1a1a1a; border:1px solid #333; border-radius:12px;
+      padding:12px; text-align:center; cursor:pointer; transition:all 0.2s;
+      font-size:14px;
+    }
+    .pay-btn.selected { border-color:#FFD700; background:#1f1a00; }
+
+    .order-btn {
+      width:100%; padding:15px; background:#FFD700; color:#000;
+      border:none; border-radius:14px; font-size:16px; font-weight:700;
+      cursor:pointer; letter-spacing:0.3px;
+    }
+    .order-btn:disabled { background:#444; color:#888; cursor:default; }
+
+    /* Поиск адреса */
+    #search-overlay {
+      display:none; position:fixed; inset:0; background:#000; z-index:100;
+      flex-direction:column; padding:16px;
+    }
+    #search-overlay.open { display:flex; }
+    #search-input {
+      background:#1a1a1a; border:1px solid #FFD700; border-radius:12px;
+      padding:12px 14px; color:#fff; font-size:16px; width:100%;
+      outline:none; margin-bottom:12px;
+    }
+    #search-results { flex:1; overflow-y:auto; }
+    .search-item {
+      padding:14px 12px; border-bottom:1px solid #1a1a1a; cursor:pointer;
+      font-size:14px; color:#ccc;
+    }
+    .search-item:hover { background:#1a1a1a; }
+    .search-item strong { color:#fff; display:block; }
+
+    #back-btn {
+      background:none; border:none; color:#FFD700; font-size:16px;
+      padding:0 0 12px; cursor:pointer;
+    }
+
+    /* Маркер центра карты */
+    #center-marker {
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%, -100%);
+      z-index:5; pointer-events:none;
+      font-size:32px; line-height:1;
+    }
+
+    /* Кнопка "Моя геолокация" */
+    #locate-btn {
+      position:absolute; right:16px; bottom:220px; z-index:10;
+      width:44px; height:44px; background:#111; border:1px solid #333;
+      border-radius:12px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:22px;
+    }
+
+    /* Кнопка "Подтвердить точку" */
+    #confirm-point-btn {
+      display:none;
+      position:absolute; bottom:170px; left:50%; transform:translateX(-50%);
+      z-index:10; background:#FFD700; color:#000; border:none;
+      border-radius:12px; padding:12px 24px; font-size:15px; font-weight:700;
+      cursor:pointer; white-space:nowrap;
+    }
+
+    /* Тост */
+    #toast {
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+      background:#222; color:#fff; padding:10px 20px; border-radius:20px;
+      font-size:13px; z-index:200; opacity:0; transition:opacity 0.3s;
+      pointer-events:none;
+    }
+    #toast.show { opacity:1; }
+  </style>
 </head>
 <body>
-<div class="header">
-  <div class="logo">TL<span>.</span>TAKSO</div>
-  <div class="status-badge">
-    <div class="status-dot"></div>
-    ОНЛАЙН
+
+<div id="map"></div>
+<div id="center-marker">📍</div>
+<div id="locate-btn" onclick="goToMyLocation()">📡</div>
+<button id="confirm-point-btn" onclick="confirmMapPoint()"></button>
+<div id="toast"></div>
+
+<!-- Поиск -->
+<div id="search-overlay">
+  <button id="back-btn" onclick="closeSearch()">← Назад</button>
+  <input id="search-input" type="text" placeholder="Введите адрес..." autocomplete="off"/>
+  <div id="search-results"></div>
+</div>
+
+<!-- Нижняя панель -->
+<div id="panel">
+  <div class="drag-handle"></div>
+
+  <!-- Шаг 1: Адреса -->
+  <div id="step-addresses" class="step active">
+    <h2>🚖 Откуда и куда?</h2>
+    <div class="address-box" id="from-box" onclick="openSearch('from')">
+      <div class="dot from"></div>
+      <span id="from-text">Выберите точку отправления</span>
+    </div>
+    <div class="address-box" id="to-box" onclick="openSearch('to')">
+      <div class="dot to"></div>
+      <span id="to-text">Выберите пункт назначения</span>
+    </div>
+    <button class="order-btn" id="next-to-tariff" onclick="goToTariff()" disabled>Далее →</button>
+  </div>
+
+  <!-- Шаг 2: Тариф + оплата -->
+  <div id="step-tariff" class="step">
+    <h2>💰 Тариф и оплата</h2>
+    <div class="tariff-grid">
+      <div class="tariff-btn" onclick="selectTariff(8,'Mustamäe')">
+        <div class="price">8€</div>
+        <div class="label">Mustamäe</div>
+      </div>
+      <div class="tariff-btn" onclick="selectTariff(10,'Город')">
+        <div class="price">10€</div>
+        <div class="label">Город</div>
+      </div>
+      <div class="tariff-btn" onclick="selectTariff(15,'Далеко')">
+        <div class="price">15€</div>
+        <div class="label">Далеко</div>
+      </div>
+      <div class="tariff-btn" onclick="selectTariff(20,'Аэропорт')">
+        <div class="price">20€</div>
+        <div class="label">Аэропорт</div>
+      </div>
+    </div>
+    <div class="pay-row">
+      <div class="pay-btn selected" id="pay-cash" onclick="selectPayment('cash')">💵 Наличные</div>
+      <div class="pay-btn" id="pay-card" onclick="selectPayment('card')">💳 Карта</div>
+    </div>
+    <button class="order-btn" id="confirm-order-btn" onclick="sendOrder()" disabled>Заказать такси</button>
   </div>
 </div>
 
-<div id="map">
-  <div class="legend">
-    <div class="legend-title">Тарифы</div>
-    <div class="legend-item">
-      <div class="legend-dot" style="background:#FFD600"></div>
-      Мустамяэ
-      <div class="legend-price">8€</div>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot" style="background:#FF9500"></div>
-      По городу
-      <div class="legend-price">10€</div>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot" style="background:#FF3B30"></div>
-      Далеко
-      <div class="legend-price">15€</div>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot" style="background:#AF52DE"></div>
-      Аэропорт
-      <div class="legend-price">20€</div>
-    </div>
-  </div>
-  <div class="locate-btn" onclick="locateUser()">⊕</div>
-</div>
-
-<div class="bottom-panel">
-  <div class="zone-info">
-    <div>
-      <div class="zone-label">Выбранная зона</div>
-      <div class="zone-name" id="zoneName">Нажмите на карту</div>
-    </div>
-    <div class="zone-price" id="zonePrice">—</div>
-  </div>
-  <button class="order-btn" id="orderBtn" onclick="orderTaxi()">
-    🚖 ВЫЗВАТЬ ТАКСИ
-  </button>
-</div>
-
-<div class="toast" id="toast"></div>
 <script>
-mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
-const TALLINN = [24.7536, 59.4370];
-const zones = [
-  { id: 'z1', name: 'Мустамяэ', price: '8', color: '#FFD600', center: [24.6980, 59.4120], radius: 1800 },
-  { id: 'z2', name: 'По городу', price: '10', color: '#FF9500', center: TALLINN, radius: 5500 },
-  { id: 'z3', name: 'Далеко', price: '15', color: '#FF3B30', center: TALLINN, radius: 12000 },
-  { id: 'z4', name: 'Аэропорт', price: '20', color: '#AF52DE', center: TALLINN, radius: 22000 }
-];
+// ── TELEGRAM WEBAPP INIT ──────────────────────────────────────
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();                        // Раскрыть на весь экран
+tg.enableClosingConfirmation();     // Предупреждение при закрытии
+
+const MAPBOX_TOKEN = "pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA";
+
+// ── СОСТОЯНИЕ ────────────────────────────────────────────────
+let state = {
+  from: null,   // { lat, lon, address }
+  to:   null,
+  price: 0,
+  priceLabel: '',
+  payment: 'cash',
+  pickingFor: null,   // 'from' | 'to'
+  myLat: null,
+  myLon: null,
+  watchId: null
+};
+
+// ── КАРТА ────────────────────────────────────────────────────
+mapboxgl.accessToken = MAPBOX_TOKEN;
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/dark-v11',
-  center: TALLINN, zoom: 11.5,
-  attributionControl: false
+  center: [24.7536, 59.4370],
+  zoom: 12
 });
-function circle(center, r) {
-  const c = [];
-  for (let i = 0; i <= 64; i++) {
-    const a = (i/64)*2*Math.PI;
-    c.push([center[0] + (r/111320/Math.cos(center[1]*Math.PI/180))*Math.sin(a), center[1] + (r/111320)*Math.cos(a)]);
+
+// ── ГЕОЛОКАЦИЯ (watchPosition — не гаснет при тухлом экране) ─
+function startWatchingLocation() {
+  if (!navigator.geolocation) return;
+
+  // Убиваем старый watch если был
+  if (state.watchId !== null) {
+    navigator.geolocation.clearWatch(state.watchId);
   }
-  return {type:'Feature', geometry:{type:'Polygon', coordinates:[c]}};
-}
-let selected = null;
-map.on('load', () => {
-  [...zones].reverse().forEach(z => {
-    map.addSource(z.id, {type:'geojson', data: circle(z.center, z.radius)});
-    map.addLayer({id: z.id+'-f', type:'fill', source: z.id, paint:{'fill-color':z.color,'fill-opacity':0.15}});
-    map.addLayer({id: z.id+'-b', type:'line', source: z.id, paint:{'line-color':z.color,'line-width':1.5,'line-opacity':0.6,'line-dasharray':[4,3]}});
-  });
-  map.on('click', e => detect(e.lngLat.lng, e.lngLat.lat));
-});
-function dist(a,b,c,d) {
-  const R=6371000, dL=(b-a)*Math.PI/180, dO=(d-c)*Math.PI/180;
-  return R*2*Math.atan2(Math.sqrt(Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(b*Math.PI/180)*Math.sin(dO/2)**2), Math.sqrt(1-Math.sin(dL/2)**2-Math.cos(a*Math.PI/180)*Math.cos(b*Math.PI/180)*Math.sin(dO/2)**2));
-}
-function detect(lng, lat) {
-  for (const z of zones) {
-    if (dist(lat, z.center[1], lng, z.center[0]) <= z.radius) {
-      selected = z;
-      document.getElementById('zoneName').textContent = z.name;
-      document.getElementById('zonePrice').innerHTML = z.price + '<span>€</span>';
-      document.getElementById('zonePrice').style.color = z.color;
-      if (window._m) window._m.remove();
-      const el = document.createElement('div');
-      el.style.cssText = `width:12px;height:12px;background:${z.color};border:2px solid white;border-radius:50%`;
-      window._m = new mapboxgl.Marker(el).setLngLat([lng,lat]).addTo(map);
-      return;
+
+  state.watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      state.myLat = pos.coords.latitude;
+      state.myLon = pos.coords.longitude;
+
+      // Обновляем или создаём маркер "я здесь"
+      if (!window._meMarker) {
+        const el = document.createElement('div');
+        el.style.cssText = 'width:14px;height:14px;background:#4CAF50;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(76,175,80,0.8)';
+        window._meMarker = new mapboxgl.Marker({ element: el })
+          .setLngLat([state.myLon, state.myLat])
+          .addTo(map);
+      } else {
+        window._meMarker.setLngLat([state.myLon, state.myLat]);
+      }
+    },
+    (err) => {
+      console.warn('Геолокация:', err.message);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 5000     // Обновлять не старше 5 сек
     }
-  }
-  selected = zones[3];
-  document.getElementById('zoneName').textContent = 'Пригород';
-  document.getElementById('zonePrice').innerHTML = '20<span>€</span>';
-  document.getElementById('zonePrice').style.color = '#AF52DE';
+  );
 }
-function locateUser() {
-  if (!navigator.geolocation) return toast('Геолокация недоступна');
-  navigator.geolocation.getCurrentPosition(p => {
-    map.flyTo({center:[p.coords.longitude,p.coords.latitude], zoom:13, duration:1200});
-    detect(p.coords.longitude, p.coords.latitude);
-    if (window._u) window._u.remove();
-    const el = document.createElement('div'); el.className='user-marker';
-    window._u = new mapboxgl.Marker(el).setLngLat([p.coords.longitude,p.coords.latitude]).addTo(map);
-  }, () => toast('Включите геолокацию'));
-}
-function orderTaxi() {
-  if (!selected) return toast('Выберите точку на карте');
-  const btn = document.getElementById('orderBtn');
-  btn.classList.add('loading'); btn.textContent = '⏳ ПОИСК ВОДИТЕЛЯ...';
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.sendData(JSON.stringify({action:'order', zone:selected.name, price:selected.price+'€'}));
+
+// Запускаем сразу и при возврате фокуса (телефон разблокировали)
+startWatchingLocation();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) startWatchingLocation();
+});
+
+function goToMyLocation() {
+  if (state.myLat && state.myLon) {
+    map.flyTo({ center: [state.myLon, state.myLat], zoom: 15, duration: 800 });
   } else {
-    setTimeout(() => { btn.classList.remove('loading'); btn.innerHTML='🚖 ВЫЗВАТЬ ТАКСИ'; toast('✅ Заказ отправлен! '+selected.price+'€'); }, 2000);
+    showToast('Геолокация ещё не получена...');
   }
 }
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2500);
+
+// ── РЕЖИМ ВЫБОРА ТОЧКИ НА КАРТЕ ─────────────────────────────
+function startPickingOnMap(type) {
+  state.pickingFor = type;
+  document.getElementById('panel').classList.add('hidden');
+  document.getElementById('center-marker').style.display = 'block';
+
+  const btn = document.getElementById('confirm-point-btn');
+  btn.textContent = type === 'from' ? '✅ Отсюда' : '✅ Сюда';
+  btn.style.display = 'block';
 }
-if (window.Telegram?.WebApp) { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); }
+
+async function confirmMapPoint() {
+  const center = map.getCenter();
+  const lat = center.lat, lon = center.lng;
+  const address = await reverseGeocode(lat, lon);
+
+  if (state.pickingFor === 'from') {
+    state.from = { lat, lon, address };
+    setFromUI(address);
+  } else {
+    state.to = { lat, lon, address };
+    setToUI(address);
+  }
+
+  document.getElementById('panel').classList.remove('hidden');
+  document.getElementById('center-marker').style.display = 'none';
+  document.getElementById('confirm-point-btn').style.display = 'none';
+  state.pickingFor = null;
+  checkAddressesReady();
+}
+
+// ── ПОИСК АДРЕСА ─────────────────────────────────────────────
+let searchType = null;
+
+function openSearch(type) {
+  searchType = type;
+  const overlay = document.getElementById('search-overlay');
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('search-input').focus(), 100);
+  document.getElementById('search-results').innerHTML = '';
+
+  // Кнопка выбора на карте
+  const mapItem = document.createElement('div');
+  mapItem.className = 'search-item';
+  mapItem.innerHTML = '<strong>📍 Выбрать на карте</strong>Нажмите на нужную точку';
+  mapItem.onclick = () => {
+    closeSearch();
+    startPickingOnMap(type);
+  };
+  document.getElementById('search-results').appendChild(mapItem);
+}
+
+function closeSearch() {
+  document.getElementById('search-overlay').classList.remove('open');
+  document.getElementById('search-input').value = '';
+  searchType = null;
+}
+
+let searchTimer = null;
+document.getElementById('search-input').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  const q = this.value.trim();
+  if (q.length < 2) return;
+  searchTimer = setTimeout(() => searchAddress(q), 400);
+});
+
+async function searchAddress(query) {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
+    + `?access_token=${MAPBOX_TOKEN}&country=ee&language=ru&limit=5&proximity=24.7536,59.4370`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    const resultsEl = document.getElementById('search-results');
+
+    // Оставляем кнопку "выбрать на карте" первой
+    const mapBtn = resultsEl.querySelector('.search-item');
+    resultsEl.innerHTML = '';
+    if (mapBtn) resultsEl.appendChild(mapBtn);
+
+    (d.features || []).forEach(f => {
+      const item = document.createElement('div');
+      item.className = 'search-item';
+      const name = f.text || '';
+      const full = f.place_name || '';
+      item.innerHTML = `<strong>${name}</strong>${full}`;
+      item.onclick = () => {
+        const [lon, lat] = f.geometry.coordinates;
+        if (searchType === 'from') {
+          state.from = { lat, lon, address: full };
+          setFromUI(full);
+        } else {
+          state.to = { lat, lon, address: full };
+          setToUI(full);
+        }
+        map.flyTo({ center: [lon, lat], zoom: 14, duration: 600 });
+        closeSearch();
+        checkAddressesReady();
+      };
+      resultsEl.appendChild(item);
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function reverseGeocode(lat, lon) {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json`
+    + `?access_token=${MAPBOX_TOKEN}&language=ru&limit=1`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    return d.features?.[0]?.place_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  } catch(e) {
+    return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  }
+}
+
+// ── UI HELPERS ───────────────────────────────────────────────
+function setFromUI(address) {
+  const el = document.getElementById('from-text');
+  el.textContent = address;
+  document.getElementById('from-box').classList.add('filled');
+
+  if (window._fromMarker) window._fromMarker.remove();
+  window._fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
+    .setLngLat([state.from.lon, state.from.lat])
+    .addTo(map);
+}
+
+function setToUI(address) {
+  const el = document.getElementById('to-text');
+  el.textContent = address;
+  document.getElementById('to-box').classList.add('filled');
+
+  if (window._toMarker) window._toMarker.remove();
+  window._toMarker = new mapboxgl.Marker({ color: '#FFD700' })
+    .setLngLat([state.to.lon, state.to.lat])
+    .addTo(map);
+}
+
+function checkAddressesReady() {
+  document.getElementById('next-to-tariff').disabled = !(state.from && state.to);
+}
+
+// ── НАВИГАЦИЯ МЕЖДУ ШАГАМИ ────────────────────────────────────
+function goToTariff() {
+  if (!state.from || !state.to) return;
+  document.getElementById('step-addresses').classList.remove('active');
+  document.getElementById('step-tariff').classList.add('active');
+
+  // Показать маршрут на карте
+  if (state.from && state.to) {
+    const bounds = new mapboxgl.LngLatBounds();
+    bounds.extend([state.from.lon, state.from.lat]);
+    bounds.extend([state.to.lon, state.to.lat]);
+    map.fitBounds(bounds, { padding: 60, duration: 800 });
+  }
+}
+
+// ── ТАРИФ ────────────────────────────────────────────────────
+function selectTariff(price, label) {
+  state.price = price;
+  state.priceLabel = label;
+  document.querySelectorAll('.tariff-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  updateOrderBtn();
+}
+
+// ── ОПЛАТА ───────────────────────────────────────────────────
+function selectPayment(type) {
+  state.payment = type;
+  document.getElementById('pay-cash').classList.toggle('selected', type === 'cash');
+  document.getElementById('pay-card').classList.toggle('selected', type === 'card');
+}
+
+function updateOrderBtn() {
+  const btn = document.getElementById('confirm-order-btn');
+  if (state.price) {
+    btn.disabled = false;
+    btn.textContent = `Заказать такси · ${state.price}€`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = 'Заказать такси';
+  }
+}
+
+// ── ОТПРАВКА ЗАКАЗА В БОТ ────────────────────────────────────
+function sendOrder() {
+  if (!state.from || !state.to || !state.price) {
+    showToast('Заполните все поля');
+    return;
+  }
+
+  const commission = 1;
+  const driverGets = state.price - commission;
+
+  const payload = {
+    from_address: state.from.address,
+    to_address:   state.to.address,
+    from_lat:  state.from.lat,
+    from_lon:  state.from.lon,
+    to_lat:    state.to.lat,
+    to_lon:    state.to.lon,
+    price:     state.price,
+    driver_gets: driverGets,
+    payment:   state.payment,
+    time:      'Сейчас'
+  };
+
+  tg.sendData(JSON.stringify(payload));
+}
+
+// ── ТОСТ ─────────────────────────────────────────────────────
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
 </script>
+</body>
+</html>
