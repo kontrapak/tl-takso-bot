@@ -3,14 +3,12 @@ from telebot import types
 import datetime
 import os
 import json
-import time
 import threading
-from flask import Flask, send_from_directory, request
+from flask import Flask, send_from_directory, request, abort
 
 app = Flask(__name__)
 
-# ── ХРАНИЛИЩЕ ДАННЫХ (простое, но надёжное) ──
-# В продакшене лучше использовать Redis или БД
+# ── ХРАНИЛИЩЕ ──
 orders = {}
 user_state = {}
 drivers = {}
@@ -26,18 +24,10 @@ ADMIN_ID = 1873195803
 MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
 DRIVER_MAP_URL = "https://web-production-f5a52.up.railway.app/static/driver.html"
 
-# Добавляю себя как водителя
 drivers[ADMIN_ID] = {
-    "approved": True,
-    "online": True,
-    "full_name": "S.L.",
-    "car": "Toyota Camry",
-    "phone": "+123456789",
-    "lang": "ru",
-    "earnings": 0,
-    "trips": 0,
-    "commission": 0,
-    "balance": 50.0
+    "approved": True, "online": True, "full_name": "S.L.",
+    "car": "Toyota Camry", "phone": "+123456789", "lang": "ru",
+    "earnings": 0, "trips": 0, "commission": 0, "balance": 50.0
 }
 print(f"✅ Добавлен водитель {ADMIN_ID}")
 
@@ -77,6 +67,21 @@ def api_reject_order(order_id):
         orders[order_id]['status'] = 'rejected'
         return json.dumps({'ok': True})
     return json.dumps({'ok': False}), 400
+
+# ═══════════════════════════════════════════════════════════════
+# ═══════════════════ WEBHOOK ДЛЯ TELEGRAM ═══════════════════════
+# ═══════════════════════════════════════════════════════════════
+
+@app.route(f'/{BOT_TOKEN}', methods=['POST'])
+def telegram_webhook():
+    """Получает обновления от Telegram"""
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return '', 200
+    else:
+        abort(403)
 
 # ── ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ──
 
@@ -772,33 +777,26 @@ def debug_drivers(msg):
 
 
 # ═══════════════════════════════════════════════════════════════
-# ═══════════════════ НАДЁЖНЫЙ ЗАПУСК ═══════════════════════════
+# ═══════════════════ ЗАПУСК С WEBHOOK ═══════════════════════════
 # ═══════════════════════════════════════════════════════════════
 
-def run_bot_with_restart():
-    """Запускает бота с автоматическим перезапуском при ошибках"""
-    while True:
-        try:
-            print("🚀 Запуск polling...")
-            bot.remove_webhook()
-            time.sleep(1)  # Пауза перед стартом
-            bot.infinity_polling(timeout=30, long_polling_timeout=10, none_stop=True)
-        except Exception as e:
-            print(f"❌ Критическая ошибка polling: {e}")
-            print("🔄 Перезапуск через 5 секунд...")
-            time.sleep(5)
-
-
 if __name__ == "__main__":
-    print("🚖 TL.TAKSO Bot запущен!")
+    print("🚖 TL.TAKSO Bot запускается...")
     
-    # Запускаем бота в отдельном потоке (НЕ daemon!)
-    bot_thread = threading.Thread(target=run_bot_with_restart)
-    bot_thread.daemon = False  # Важно: поток не должен умирать при ошибках
-    bot_thread.start()
+    # Получаем URL Railway
+    railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN") or os.environ.get("RAILWAY_STATIC_URL")
     
-    print("✅ Бот запущен в фоновом режиме")
+    if railway_domain:
+        # Удаляем старый webhook и устанавливаем новый
+        bot.remove_webhook()
+        webhook_url = f"https://{railway_domain}/{BOT_TOKEN}"
+        bot.set_webhook(url=webhook_url)
+        print(f"✅ Webhook установлен: {webhook_url}")
+    else:
+        print("⚠️ RAILWAY_PUBLIC_DOMAIN не найден, webhook не установлен")
+        print("⚠️ Убедитесь, что переменная окружения настроена в Railway")
     
     # Запускаем Flask
     port = int(os.environ.get("PORT", 8080))
+    print(f"🚀 Запуск Flask на порту {port}")
     app.run(host='0.0.0.0', port=port, threaded=True)
