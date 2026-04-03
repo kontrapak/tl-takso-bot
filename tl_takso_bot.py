@@ -321,6 +321,51 @@ def cmd_start(msg):
         user_state[uid] = {"role": None, "lang": "ru"}
     bot.send_message(uid, "🌍 Vali keel / Выберите язык:", reply_markup=lang_kb())
 
+# ═══════════════════════════════════════════════════════════════
+# ═══════════════════ КОМАНДЫ ДЛЯ СМЕНЫ РОЛИ ════════════════════
+# ═══════════════════════════════════════════════════════════════
+
+@bot.message_handler(commands=["client"])
+def force_client(msg):
+    uid = msg.from_user.id
+    user_state[uid] = {"role": "client", "lang": get_lang(uid)}
+    if uid in drivers:
+        drivers[uid]["online"] = False
+    save_data()
+    bot.send_message(uid, "👋 *Теперь вы клиент*\n\nМожете заказывать такси", 
+                     parse_mode="Markdown", reply_markup=main_menu_client(uid))
+
+@bot.message_handler(commands=["driver"])
+def force_driver(msg):
+    uid = msg.from_user.id
+    if uid not in drivers:
+        drivers[uid] = {
+            "approved": True, "online": True, "full_name": msg.from_user.first_name,
+            "car": "Tesla Model 3", "phone": "+123456789", "lang": get_lang(uid),
+            "earnings": 0, "trips": 0, "commission": 0, "balance": 50.0
+        }
+        save_data()
+    user_state[uid] = {"role": "driver", "lang": get_lang(uid)}
+    drivers[uid]["online"] = True
+    drivers[uid]["approved"] = True
+    save_data()
+    bot.send_message(uid, "🧑‍✈️ *Теперь вы водитель*\n\nНажмите 🟢 Я онлайн чтобы получать заказы", 
+                     parse_mode="Markdown", reply_markup=main_menu_driver(uid))
+
+@bot.message_handler(commands=["admin"])
+def force_admin(msg):
+    uid = msg.from_user.id
+    user_state[uid] = {"role": "admin", "lang": "ru"}
+    save_data()
+    bot.send_message(uid, "👨‍💼 *Панель администратора*", 
+                     parse_mode="Markdown", reply_markup=main_menu_admin())
+
+# ═══════════════════════════════════════════════════════════════
+# ═══════════════════ ДАЛЬШЕ ТВОЙ СУЩЕСТВУЮЩИЙ КОД ═══════════════
+# ═══════════════════════════════════════════════════════════════
+
+
+
 @bot.callback_query_handler(func=lambda c: c.data.startswith("lang_"))
 def cb_lang(call):
     uid = call.from_user.id
