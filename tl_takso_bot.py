@@ -3,10 +3,62 @@ from telebot import types
 import datetime
 import os
 import json
+import time
 import threading
 from flask import Flask, send_from_directory, request, abort
 
 app = Flask(__name__)
+
+# ═══════════════════════════════════════════════════════════════
+# ═══════════════════ СОХРАНЕНИЕ ДАННЫХ ═════════════════════════
+# ═══════════════════════════════════════════════════════════════
+
+DATA_FILE = "/mnt/data/tltakso_data.json"  # Railway persistent disk
+
+def save_data():
+    """Сохраняет все данные в файл"""
+    data = {
+        "orders": orders,
+        "user_state": {str(k): v for k, v in user_state.items()},
+        "drivers": {str(k): v for k, v in drivers.items()},
+        "pending_drivers": {str(k): v for k, v in pending_drivers.items()},
+        "order_counter": order_counter[0],
+        "saved_at": datetime.datetime.now().isoformat()
+    }
+    try:
+        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print(f"💾 Данные сохранены: {len(orders)} заказов, {len(drivers)} водителей")
+    except Exception as e:
+        print(f"❌ Ошибка сохранения: {e}")
+
+def load_data():
+    """Загружает данные из файла"""
+    global orders, user_state, drivers, pending_drivers, order_counter
+    try:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            orders = data.get("orders", {})
+            user_state = {int(k): v for k, v in data.get("user_state", {}).items()}
+            drivers = {int(k): v for k, v in data.get("drivers", {}).items()}
+            pending_drivers = {int(k): v for k, v in data.get("pending_drivers", {}).items()}
+            order_counter[0] = data.get("order_counter", 1)
+            
+            print(f"📂 Данные загружены: {len(orders)} заказов, {len(drivers)} водителей")
+            print(f"📂 Последнее сохранение: {data.get('saved_at', 'неизвестно')}")
+        else:
+            print("📂 Файл данных не найден, начинаем с чистого листа")
+    except Exception as e:
+        print(f"❌ Ошибка загрузки данных: {e}")
+
+# Автосохранение каждые 60 секунд
+def auto_save():
+    while True:
+        time.sleep(60)
+        save_data()
 
 # ── ХРАНИЛИЩЕ ──
 orders = {}
@@ -14,6 +66,9 @@ user_state = {}
 drivers = {}
 pending_drivers = {}
 order_counter = [1]
+
+# Загружаем данные при старте
+load_data()
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8639929224:AAGyvPLktFYv_lX-_65GpbZ-GJdGt8sXuFE")
 print("⚠️ Использую токен из кода" if "BOT_TOKEN" not in os.environ else "✅ Токен из переменной окружения")
@@ -24,12 +79,14 @@ ADMIN_ID = 1873195803
 MINI_APP_URL = "https://web-production-f5a52.up.railway.app/static/miniapp.html"
 DRIVER_MAP_URL = "https://web-production-f5a52.up.railway.app/static/driver.html"
 
-drivers[ADMIN_ID] = {
-    "approved": True, "online": True, "full_name": "S.L.",
-    "car": "Toyota Camry", "phone": "+123456789", "lang": "ru",
-    "earnings": 0, "trips": 0, "commission": 0, "balance": 50.0
-}
-print(f"✅ Добавлен водитель {ADMIN_ID}")
+# Восстанавливаем админа если нужно
+if ADMIN_ID not in drivers:
+    drivers[ADMIN_ID] = {
+        "approved": True, "online": True, "full_name": "S.L.",
+        "car": "Toyota Camry", "phone": "+123456789", "lang": "ru",
+        "earnings": 0, "trips": 0, "commission": 0, "balance": 50.0
+    }
+    print(f"✅ Восстановлен водитель-админ {ADMIN_ID}")
 
 # ── FLASK ROUTES ──
 
@@ -58,6 +115,7 @@ def api_orders():
 def api_accept_order(order_id):
     if order_id in orders and orders[order_id]['status'] == 'pending':
         orders[order_id]['status'] = 'accepted'
+        save_data()
         return json.dumps({'ok': True})
     return json.dumps({'ok': False}), 400
 
@@ -65,6 +123,7 @@ def api_accept_order(order_id):
 def api_reject_order(order_id):
     if order_id in orders and orders[order_id]['status'] == 'pending':
         orders[order_id]['status'] = 'rejected'
+        save_data()
         return json.dumps({'ok': True})
     return json.dumps({'ok': False}), 400
 
@@ -76,12 +135,26 @@ def api_reject_order(order_id):
 def telegram_webhook():
     """Получает обновления от Telegram"""
     if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        update = types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return '', 200
+        try:
+            json_string = request.get_data().decode('utf-8')
+            update = types.Update.de_json(json_string)
+            bot.process_new_updates([update])
+            return '', 200
+        except Exception as e:
+            print(f"❌ Ошибка обработки webhook: {e}")
+            return '', 500
     else:
         abort(403)
+
+@app.route('/health')
+def health_check():
+    """Health check для Railway"""
+    return {
+        'status': 'ok', 
+        'orders': len(orders), 
+        'drivers': len(drivers),
+        'online_drivers': len([d for d in drivers.values() if d.get('online')])
+    }, 200
 
 # ── ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ──
 
@@ -382,6 +455,7 @@ def reg_phone(msg):
         "phone": state.get("phone"), "username": msg.from_user.username or "—",
         "lang": get_lang(uid), "registered": now_str()
     }
+    save_data()
     bot.send_message(uid, t("pending", uid))
     try:
         bot.send_message(ADMIN_ID,
@@ -410,11 +484,13 @@ def cb_approve(call):
             "earnings": 0, "trips": 0, "commission": 0, "balance": 10.0
         }
         del pending_drivers[driver_id]
+        save_data()
         bot.edit_message_text(f"✅ Водитель *{pending['full_name']}* одобрен!", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         user_state[driver_id] = {"role": "driver", "lang": pending.get("lang", "ru")}
         bot.send_message(driver_id, t("approved", driver_id), parse_mode="Markdown", reply_markup=main_menu_driver(driver_id))
     elif action == "reject":
         del pending_drivers[driver_id]
+        save_data()
         bot.edit_message_text(f"❌ Водитель *{pending['full_name']}* отклонён.", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         bot.send_message(driver_id, t("rejected", driver_id))
 
@@ -466,6 +542,7 @@ def handle_webapp_data(msg):
         }
 
         user_state[uid]["current_order"] = oid
+        save_data()
 
         bot.send_message(uid,
             f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from'][:50]}\n🏁 {orders[oid]['to'][:50]}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...",
@@ -508,6 +585,7 @@ def cb_driver_response(call):
             drivers[driver_id]["balance"] = round(drivers[driver_id].get("balance", 0) - 1, 2)
             if drivers[driver_id]["balance"] <= 3:
                 bot.send_message(driver_id, t("low_balance", driver_id, bal=drivers[driver_id]["balance"]), parse_mode="Markdown")
+        save_data()
         bot.edit_message_text(
             f"✅ *Заказ #{oid}*\n\n👤 {order['client_name']}\n📍 {order['from']}\n🏁 {order['to']}\n💳 {order['payment']}\n💰 {order['driver_gets']}€\n\n📍 Нажмите когда прибудете!",
             call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=driver_active_kb(oid))
@@ -528,6 +606,7 @@ def cb_arrived(call):
         bot.answer_callback_query(call.id, "✅ Уже отправлено")
         return
     order["status"] = "arrived"
+    save_data()
     bot.answer_callback_query(call.id, "✅ Клиент уведомлён!")
     bot.send_message(order["client_id"], t("arrived", order["client_id"], name=order["driver_name"]), parse_mode="Markdown")
 
@@ -543,6 +622,7 @@ def cb_done(call):
         bot.answer_callback_query(call.id, "✅ Уже завершено")
         return
     order["status"] = "done"
+    save_data()
     bot.edit_message_text(f"✅ *Поездка #{oid} завершена!*\n\n💰 {order['driver_gets']}€\nСпасибо! 🚖",
         call.message.chat.id, call.message.message_id, parse_mode="Markdown")
     bot.send_message(order["client_id"], t("trip_done", order["client_id"]), parse_mode="Markdown", reply_markup=main_menu_client(order["client_id"]))
@@ -555,6 +635,7 @@ def driver_online(msg):
     if not is_approved_driver(uid):
         return
     drivers[uid]["online"] = True
+    save_data()
     bot.send_message(uid, t("online", uid), reply_markup=main_menu_driver(uid))
 
 @bot.message_handler(func=lambda m: m.text in ["⚫ Я офлайн", "⚫ Olen offline", "⚫ I'm offline"])
@@ -563,6 +644,7 @@ def driver_offline(msg):
     if not is_approved_driver(uid):
         return
     drivers[uid]["online"] = False
+    save_data()
     bot.send_message(uid, t("offline", uid), reply_markup=main_menu_driver(uid))
 
 # ── ЗАРАБОТОК ──
@@ -604,6 +686,7 @@ def cb_cancel(call):
                     pass
             if uid in user_state:
                 user_state[uid]["current_order"] = None
+            save_data()
     bot.edit_message_text(t("order_cancelled", uid), call.message.chat.id, call.message.message_id)
     bot.send_message(uid, t("order_cancelled", uid), reply_markup=main_menu_client(uid))
 
@@ -665,6 +748,7 @@ def cb_block(call):
         name = drivers[driver_id]['full_name']
         drivers[driver_id]['approved'] = False
         drivers[driver_id]['online'] = False
+        save_data()
         bot.edit_message_text(f"🚫 *{name}* заблокирован.", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         try:
             bot.send_message(driver_id, "⛔ Ваш аккаунт заблокирован. Обратитесь к администратору.")
@@ -775,28 +859,74 @@ def debug_drivers(msg):
         text += f"   🚗 {d.get('car')}\n\n"
     bot.send_message(uid, text, parse_mode="Markdown")
 
+@bot.message_handler(commands=["save"])
+def cmd_save(msg):
+    """Ручное сохранение данных"""
+    if msg.from_user.id != ADMIN_ID:
+        return
+    save_data()
+    bot.send_message(msg.chat.id, "✅ Данные сохранены!")
 
 # ═══════════════════════════════════════════════════════════════
 # ═══════════════════ ЗАПУСК С WEBHOOK ═══════════════════════════
 # ═══════════════════════════════════════════════════════════════
 
-if __name__ == "__main__":
-    print("🚖 TL.TAKSO Bot запускается...")
-    
-    # Получаем URL Railway
+def setup_webhook():
+    """Настройка webhook с повторными попытками"""
     railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN") or os.environ.get("RAILWAY_STATIC_URL")
     
-    if railway_domain:
-        # Удаляем старый webhook и устанавливаем новый
+    if not railway_domain:
+        print("❌ RAILWAY_PUBLIC_DOMAIN не найден!")
+        print("💡 Проверьте: Railway → Settings → Public Domain")
+        return False
+    
+    webhook_url = f"https://{railway_domain}/{BOT_TOKEN}"
+    
+    # Удаляем старый webhook
+    print("🧹 Удаляем старый webhook...")
+    try:
         bot.remove_webhook()
-        webhook_url = f"https://{railway_domain}/{BOT_TOKEN}"
-        bot.set_webhook(url=webhook_url)
-        print(f"✅ Webhook установлен: {webhook_url}")
-    else:
-        print("⚠️ RAILWAY_PUBLIC_DOMAIN не найден, webhook не установлен")
-        print("⚠️ Убедитесь, что переменная окружения настроена в Railway")
+        time.sleep(1)
+    except Exception as e:
+        print(f"⚠️ Ошибка удаления webhook: {e}")
+    
+    # Устанавливаем новый webhook
+    print(f"🔗 Устанавливаем webhook: {webhook_url}")
+    for attempt in range(3):
+        try:
+            result = bot.set_webhook(url=webhook_url)
+            if result:
+                print(f"✅ Webhook успешно установлен!")
+                # Проверяем
+                info = bot.get_webhook_info()
+                print(f"📋 Webhook info: {info.url}")
+                return True
+        except Exception as e:
+            print(f"❌ Попытка {attempt+1}/3: {e}")
+            time.sleep(2)
+    
+    return False
+
+if __name__ == "__main__":
+    print("🚖 TL.TAKSO Bot запускается...")
+    print(f"💾 Файл данных: {DATA_FILE}")
+    
+    # Запускаем автосохранение в фоне
+    save_thread = threading.Thread(target=auto_save, daemon=True)
+    save_thread.start()
+    print("💾 Автосохранение запущено (каждые 60 сек)")
+    
+    # Настраиваем webhook
+    if not setup_webhook():
+        print("⚠️ Webhook не установлен, но сервер запустится")
     
     # Запускаем Flask
     port = int(os.environ.get("PORT", 8080))
     print(f"🚀 Запуск Flask на порту {port}")
-    app.run(host='0.0.0.0', port=port, threaded=True)
+    
+    app.run(
+        host='0.0.0.0', 
+        port=port, 
+        threaded=True,
+        debug=False
+    )
