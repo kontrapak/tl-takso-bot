@@ -369,78 +369,12 @@ def notify_drivers(oid):
     if sent == 0:
         print(f"❌ НЕТ ДОСТУПНЫХ ВОДИТЕЛЕЙ для заказа {oid}")
         bot.send_message(order["client_id"], "😔 Сейчас нет свободных водителей. Попробуйте через несколько минут.")
-# ═══════════════════════════════════════════════════════════════
-# ═══════════════════ КОМАНДЫ ДЛЯ ПЕРЕКЛЮЧЕНИЯ РОЛЕЙ ════════════
-# ═══════════════════════════════════════════════════════════════
 
-@bot.message_handler(commands=["admin"])
-def cmd_admin(msg):
-    """Быстрый вход в админ-панель"""
-    uid = msg.from_user.id
-    if not is_admin(uid):
-        bot.send_message(uid, "⛔ Только для администратора")
-        return
-    
-    user_state[uid] = {"role": "admin", "lang": "ru"}
-    save_data()
-    bot.send_message(uid, "👨‍💼 *Панель администратора TL.TAKSO*", 
-                     parse_mode="Markdown", reply_markup=main_menu_admin())
-    print(f"👨‍💼 Админ {uid} вошёл в панель через /admin")
-
-@bot.message_handler(commands=["driver"])
-def cmd_driver(msg):
-    """Быстрый вход как водитель"""
-    uid = msg.from_user.id
-    
-    if is_admin(uid):
-        # Админ может войти как водитель для теста
-        user_state[uid] = {"role": "driver", "lang": "ru"}
-        if uid not in drivers:
-            drivers[uid] = {
-                "approved": True, "online": False, "full_name": "Admin Driver",
-                "car": "Test Car", "phone": "+000", "lang": "ru",
-                "earnings": 0, "trips": 0, "commission": 0, "balance": 100.0
-            }
-        save_data()
-        bot.send_message(uid, "👨‍💼 Админ вошёл как водитель\n\n👋", 
-                         reply_markup=main_menu_driver(uid))
-        print(f"👨‍💼 Админ {uid} вошёл как водитель через /driver")
-        return
-    
-    if not is_approved_driver(uid):
-        # Не одобрен — начинаем регистрацию
-        user_state[uid] = {"role": "driver_reg", "lang": "ru", "step": "name"}
-        save_data()
-        bot.send_message(uid, t("reg_driver", uid), parse_mode="Markdown")
-        print(f"📝 Водитель {uid} начал регистрацию через /driver")
-        return
-    
-    # Одобренный водитель
-    user_state[uid] = {"role": "driver", "lang": get_lang(uid)}
-    save_data()
-    bot.send_message(uid, "👋", reply_markup=main_menu_driver(uid))
-    print(f"🚖 Водитель {uid} вошёл через /driver")
-
-@bot.message_handler(commands=["client"])
-def cmd_client(msg):
-    """Быстрый вход как клиент"""
-    uid = msg.from_user.id
-    
-    # Устанавливаем роль клиента
-    if uid not in user_state:
-        user_state[uid] = {"role": "client", "lang": "ru"}
-    else:
-        user_state[uid]["role"] = "client"
-    
-    save_data()
-    bot.send_message(uid, t("welcome_client", uid), reply_markup=main_menu_client(uid))
-    print(f"🚖 Клиент {uid} вошёл через /client")
+ # ── NOTIFY DRIVERS ──
+def notify_drivers(oid):
+    ... (ваш код)
 
 # ═══════════════════════════════════════════════════════════════
-# ═══════════════════ ОБНОВЛЁННЫЙ /start ════════════════════════
-# ═══════════════════════════════════════════════════════════════
-
-@bot.# ═══════════════════════════════════════════════════════════════
 # ═══════════════════ КОМАНДЫ ДЛЯ ПЕРЕКЛЮЧЕНИЯ РОЛЕЙ ════════════
 # ═══════════════════════════════════════════════════════════════
 
@@ -545,12 +479,15 @@ def cmd_start(msg):
     bot.send_message(uid, "🌍 Vali keel / Выберите язык / Choose language:", 
                      reply_markup=lang_kb())
 
-
-
 # ── ВЫБОР ЯЗЫКА ──
-
 @bot.callback_query_handler(func=lambda c: c.data.startswith("lang_"))
 def cb_lang(call):
+    ... (остальной код без изменений)
+
+
+
+
+    
     uid = call.from_user.id
     lang = call.data.split("_")[1]
     if uid not in user_state:
