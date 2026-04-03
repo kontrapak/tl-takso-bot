@@ -412,7 +412,7 @@ def cb_approve(call):
 # ═══════════════════════════════════════════════════════════════
 # ═══════════════════ ЗАКАЗ ТАКСИ (ОСНОВНОЙ БЛОК) ═══════════════
 # ═══════════════════════════════════════════════════════════════
-"] = @bot.message_handler(func=lambda m: m.text == t("order_taxi", m.from_user.id))
+@bot.message_handler(func=lambda m: m.text == t("order_taxi", m.from_user.id))
 def order_start(msg):
     uid = msg.from_user.id
     existing = user_state.get(uid, {}).get("current_order")
