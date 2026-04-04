@@ -624,17 +624,17 @@ def cb_payment(call):
     # Уведомляем водителей
     
 notified = 0
-for driver_id, d in drivers.items():
-    if d.get("approved") and d.get("online") and d.get("balance", 0) > 0 and not has_active_order(driver_id):
-        try:
-            bot.send_message(driver_id, f"🔔 *Новый заказ #{oid}*\n\n👤 {order['client_name']}\n📍 {order['from'][:40]}\n🏁 {order['to'][:40]}\n💰 *{order['driver_gets']}€*",
-                             parse_mode="Markdown", reply_markup=driver_order_kb(oid))
-            notified += 1
-        except Exception as e:
-            print(f"❌ Не удалось уведомить водителя {driver_id}: {e}")
-
-if notified == 0:
-    bot.send_message(order['client_id'], "⚠️ Сейчас нет свободных водителей. Пожалуйста, подождите или попробуйте позже.")
+    for driver_id, d in drivers.items():
+        if d.get("approved") and d.get("online") and d.get("balance", 0) > 0 and not has_active_order(driver_id):
+            try:
+                bot.send_message(driver_id, f"🔔 *Новый заказ #{oid}*\n\n👤 {call.from_user.first_name}\n📍 {orders[oid]['from'][:40]}\n🏁 {orders[oid]['to'][:40]}\n💰 *{orders[oid]['driver_gets']}€*",
+                                 parse_mode="Markdown", reply_markup=driver_order_kb(oid))
+                notified += 1
+            except Exception as e:
+                print(f"❌ Не удалось уведомить водителя {driver_id}: {e}")
+    
+    if notified == 0:
+        bot.send_message(uid, "⚠️ Сейчас нет свободных водителей. Пожалуйста, подождите или попробуйте позже.")
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("accept_") or c.data.startswith("decline_"))
 def cb_driver_response(call):
