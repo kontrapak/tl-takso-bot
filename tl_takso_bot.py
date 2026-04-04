@@ -1,4 +1,4 @@
-import telebot
+даimport telebot
 from telebot import types
 import datetime
 import os
@@ -622,7 +622,7 @@ def cb_payment(call):
                      parse_mode="Markdown", reply_markup=main_menu_client(uid))
     
     # Уведомляем водителей
-    # 
+    
 notified = 0
 for driver_id, d in drivers.items():
     if d.get("approved") and d.get("online") and d.get("balance", 0) > 0 and not has_active_order(driver_id):
