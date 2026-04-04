@@ -12,7 +12,6 @@
     body { font-family: -apple-system, sans-serif; background:#000; color:#fff; height:100vh; overflow:hidden; }
     #map { position:absolute; inset:0; }
 
-    /* Панель снизу */
     #panel {
       position:absolute; bottom:0; left:0; right:0;
       background:#111; border-radius:20px 20px 0 0;
@@ -71,7 +70,6 @@
     }
     .order-btn:disabled { background:#444; color:#888; cursor:default; }
 
-    /* Поиск адреса */
     #search-overlay {
       display:none; position:fixed; inset:0; background:#000; z-index:100;
       flex-direction:column; padding:16px;
@@ -87,7 +85,6 @@
       padding:14px 12px; border-bottom:1px solid #1a1a1a; cursor:pointer;
       font-size:14px; color:#ccc;
     }
-    .search-item:hover { background:#1a1a1a; }
     .search-item strong { color:#fff; display:block; }
 
     #back-btn {
@@ -95,15 +92,14 @@
       padding:0 0 12px; cursor:pointer;
     }
 
-    /* Маркер центра карты */
     #center-marker {
       position:absolute; top:50%; left:50%;
       transform:translate(-50%, -100%);
       z-index:5; pointer-events:none;
       font-size:32px; line-height:1;
+      display:none;
     }
 
-    /* Кнопка "Моя геолокация" */
     #locate-btn {
       position:absolute; right:16px; bottom:220px; z-index:10;
       width:44px; height:44px; background:#111; border:1px solid #333;
@@ -111,7 +107,6 @@
       cursor:pointer; font-size:22px;
     }
 
-    /* Кнопка "Подтвердить точку" */
     #confirm-point-btn {
       display:none;
       position:absolute; bottom:170px; left:50%; transform:translateX(-50%);
@@ -120,7 +115,6 @@
       cursor:pointer; white-space:nowrap;
     }
 
-    /* Тост */
     #toast {
       position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
       background:#222; color:#fff; padding:10px 20px; border-radius:20px;
@@ -138,18 +132,15 @@
 <button id="confirm-point-btn" onclick="confirmMapPoint()"></button>
 <div id="toast"></div>
 
-<!-- Поиск -->
 <div id="search-overlay">
   <button id="back-btn" onclick="closeSearch()">← Назад</button>
   <input id="search-input" type="text" placeholder="Введите адрес..." autocomplete="off"/>
   <div id="search-results"></div>
 </div>
 
-<!-- Нижняя панель -->
 <div id="panel">
   <div class="drag-handle"></div>
 
-  <!-- Шаг 1: Адреса -->
   <div id="step-addresses" class="step active">
     <h2>🚖 Откуда и куда?</h2>
     <div class="address-box" id="from-box" onclick="openSearch('from')">
@@ -163,23 +154,22 @@
     <button class="order-btn" id="next-to-tariff" onclick="goToTariff()" disabled>Далее →</button>
   </div>
 
-  <!-- Шаг 2: Тариф + оплата -->
   <div id="step-tariff" class="step">
     <h2>💰 Тариф и оплата</h2>
     <div class="tariff-grid">
-      <div class="tariff-btn" onclick="selectTariff(8,'Mustamäe')">
+      <div class="tariff-btn" onclick="selectTariff(8,'Mustamäe',event)">
         <div class="price">8€</div>
         <div class="label">Mustamäe</div>
       </div>
-      <div class="tariff-btn" onclick="selectTariff(10,'Город')">
+      <div class="tariff-btn" onclick="selectTariff(10,'Город',event)">
         <div class="price">10€</div>
         <div class="label">Город</div>
       </div>
-      <div class="tariff-btn" onclick="selectTariff(15,'Далеко')">
+      <div class="tariff-btn" onclick="selectTariff(15,'Далеко',event)">
         <div class="price">15€</div>
         <div class="label">Далеко</div>
       </div>
-      <div class="tariff-btn" onclick="selectTariff(20,'Аэропорт')">
+      <div class="tariff-btn" onclick="selectTariff(20,'Аэропорт',event)">
         <div class="price">20€</div>
         <div class="label">Аэропорт</div>
       </div>
@@ -193,28 +183,25 @@
 </div>
 
 <script>
-// ── TELEGRAM WEBAPP INIT ──────────────────────────────────────
 const tg = window.Telegram.WebApp;
 tg.ready();
-tg.expand();                        // Раскрыть на весь экран
-tg.enableClosingConfirmation();     // Предупреждение при закрытии
+tg.expand();
+tg.enableClosingConfirmation();
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA";
 
-// ── СОСТОЯНИЕ ────────────────────────────────────────────────
 let state = {
-  from: null,   // { lat, lon, address }
-  to:   null,
+  from: null,
+  to: null,
   price: 0,
   priceLabel: '',
   payment: 'cash',
-  pickingFor: null,   // 'from' | 'to'
+  pickingFor: null,
   myLat: null,
-  myLon: null,
-  watchId: null
+  myLon: null
 };
 
-// ── КАРТА ────────────────────────────────────────────────────
+// ── КАРТА ──
 mapboxgl.accessToken = MAPBOX_TOKEN;
 const map = new mapboxgl.Map({
   container: 'map',
@@ -223,62 +210,89 @@ const map = new mapboxgl.Map({
   zoom: 12
 });
 
-// ── ГЕОЛОКАЦИЯ (watchPosition — не гаснет при тухлом экране) ─
-function startWatchingLocation() {
-  if (!navigator.geolocation) return;
+// ── ГЕОЛОКАЦИЯ через Telegram LocationManager ──
+// Telegram.WebApp.LocationManager доступен начиная с Bot API 8.0
+// Если недоступен — fallback на браузерный watchPosition
 
-  // Убиваем старый watch если был
-  if (state.watchId !== null) {
-    navigator.geolocation.clearWatch(state.watchId);
-  }
-
-  state.watchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      state.myLat = pos.coords.latitude;
-      state.myLon = pos.coords.longitude;
-
-      // Обновляем или создаём маркер "я здесь"
-      if (!window._meMarker) {
-        const el = document.createElement('div');
-        el.style.cssText = 'width:14px;height:14px;background:#4CAF50;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(76,175,80,0.8)';
-        window._meMarker = new mapboxgl.Marker({ element: el })
-          .setLngLat([state.myLon, state.myLat])
-          .addTo(map);
+function initLocation() {
+  if (tg.LocationManager && tg.LocationManager.isInited !== undefined) {
+    // Используем Telegram LocationManager
+    tg.LocationManager.init(() => {
+      if (tg.LocationManager.isLocationAvailable) {
+        startTelegramLocation();
       } else {
-        window._meMarker.setLngLat([state.myLon, state.myLat]);
+        startBrowserLocation();
       }
-    },
-    (err) => {
-      console.warn('Геолокация:', err.message);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 5000     // Обновлять не старше 5 сек
+    });
+  } else {
+    // Fallback: браузерный watchPosition
+    startBrowserLocation();
+  }
+}
+
+function startTelegramLocation() {
+  tg.LocationManager.getLocation((loc) => {
+    if (loc) {
+      updateMyPosition(loc.latitude, loc.longitude);
     }
+  });
+}
+
+let browserWatchId = null;
+
+function startBrowserLocation() {
+  if (!navigator.geolocation) return;
+  if (browserWatchId !== null) {
+    navigator.geolocation.clearWatch(browserWatchId);
+  }
+  browserWatchId = navigator.geolocation.watchPosition(
+    (pos) => updateMyPosition(pos.coords.latitude, pos.coords.longitude),
+    (err) => console.warn('Геолокация:', err.message),
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
   );
 }
 
-// Запускаем сразу и при возврате фокуса (телефон разблокировали)
-startWatchingLocation();
+function updateMyPosition(lat, lon) {
+  state.myLat = lat;
+  state.myLon = lon;
+  if (!window._meMarker) {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:14px;height:14px;background:#4CAF50;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(76,175,80,0.8)';
+    window._meMarker = new mapboxgl.Marker({ element: el })
+      .setLngLat([lon, lat])
+      .addTo(map);
+  } else {
+    window._meMarker.setLngLat([lon, lat]);
+  }
+}
+
+// Перезапуск при возврате в приложение
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) startWatchingLocation();
+  if (!document.hidden) {
+    if (tg.LocationManager && tg.LocationManager.isInited) {
+      startTelegramLocation();
+    } else {
+      startBrowserLocation();
+    }
+  }
 });
+
+initLocation();
 
 function goToMyLocation() {
   if (state.myLat && state.myLon) {
     map.flyTo({ center: [state.myLon, state.myLat], zoom: 15, duration: 800 });
   } else {
     showToast('Геолокация ещё не получена...');
+    initLocation();
   }
 }
 
-// ── РЕЖИМ ВЫБОРА ТОЧКИ НА КАРТЕ ─────────────────────────────
+// ── ВЫБОР ТОЧКИ НА КАРТЕ ──
 function startPickingOnMap(type) {
   state.pickingFor = type;
   document.getElementById('panel').classList.add('hidden');
   document.getElementById('center-marker').style.display = 'block';
-
   const btn = document.getElementById('confirm-point-btn');
   btn.textContent = type === 'from' ? '✅ Отсюда' : '✅ Сюда';
   btn.style.display = 'block';
@@ -288,7 +302,6 @@ async function confirmMapPoint() {
   const center = map.getCenter();
   const lat = center.lat, lon = center.lng;
   const address = await reverseGeocode(lat, lon);
-
   if (state.pickingFor === 'from') {
     state.from = { lat, lon, address };
     setFromUI(address);
@@ -296,7 +309,6 @@ async function confirmMapPoint() {
     state.to = { lat, lon, address };
     setToUI(address);
   }
-
   document.getElementById('panel').classList.remove('hidden');
   document.getElementById('center-marker').style.display = 'none';
   document.getElementById('confirm-point-btn').style.display = 'none';
@@ -304,24 +316,18 @@ async function confirmMapPoint() {
   checkAddressesReady();
 }
 
-// ── ПОИСК АДРЕСА ─────────────────────────────────────────────
+// ── ПОИСК АДРЕСА ──
 let searchType = null;
 
 function openSearch(type) {
   searchType = type;
-  const overlay = document.getElementById('search-overlay');
-  overlay.classList.add('open');
+  document.getElementById('search-overlay').classList.add('open');
   setTimeout(() => document.getElementById('search-input').focus(), 100);
   document.getElementById('search-results').innerHTML = '';
-
-  // Кнопка выбора на карте
   const mapItem = document.createElement('div');
   mapItem.className = 'search-item';
   mapItem.innerHTML = '<strong>📍 Выбрать на карте</strong>Нажмите на нужную точку';
-  mapItem.onclick = () => {
-    closeSearch();
-    startPickingOnMap(type);
-  };
+  mapItem.onclick = () => { closeSearch(); startPickingOnMap(type); };
   document.getElementById('search-results').appendChild(mapItem);
 }
 
@@ -346,12 +352,9 @@ async function searchAddress(query) {
     const r = await fetch(url);
     const d = await r.json();
     const resultsEl = document.getElementById('search-results');
-
-    // Оставляем кнопку "выбрать на карте" первой
     const mapBtn = resultsEl.querySelector('.search-item');
     resultsEl.innerHTML = '';
     if (mapBtn) resultsEl.appendChild(mapBtn);
-
     (d.features || []).forEach(f => {
       const item = document.createElement('div');
       item.className = 'search-item';
@@ -360,13 +363,8 @@ async function searchAddress(query) {
       item.innerHTML = `<strong>${name}</strong>${full}`;
       item.onclick = () => {
         const [lon, lat] = f.geometry.coordinates;
-        if (searchType === 'from') {
-          state.from = { lat, lon, address: full };
-          setFromUI(full);
-        } else {
-          state.to = { lat, lon, address: full };
-          setToUI(full);
-        }
+        if (searchType === 'from') { state.from = { lat, lon, address: full }; setFromUI(full); }
+        else { state.to = { lat, lon, address: full }; setToUI(full); }
         map.flyTo({ center: [lon, lat], zoom: 14, duration: 600 });
         closeSearch();
         checkAddressesReady();
@@ -377,10 +375,8 @@ async function searchAddress(query) {
 }
 
 async function reverseGeocode(lat, lon) {
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json`
-    + `?access_token=${MAPBOX_TOKEN}&language=ru&limit=1`;
   try {
-    const r = await fetch(url);
+    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ru&limit=1`);
     const d = await r.json();
     return d.features?.[0]?.place_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
   } catch(e) {
@@ -388,58 +384,43 @@ async function reverseGeocode(lat, lon) {
   }
 }
 
-// ── UI HELPERS ───────────────────────────────────────────────
+// ── UI ──
 function setFromUI(address) {
-  const el = document.getElementById('from-text');
-  el.textContent = address;
+  document.getElementById('from-text').textContent = address;
   document.getElementById('from-box').classList.add('filled');
-
   if (window._fromMarker) window._fromMarker.remove();
-  window._fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
-    .setLngLat([state.from.lon, state.from.lat])
-    .addTo(map);
+  window._fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([state.from.lon, state.from.lat]).addTo(map);
 }
 
 function setToUI(address) {
-  const el = document.getElementById('to-text');
-  el.textContent = address;
+  document.getElementById('to-text').textContent = address;
   document.getElementById('to-box').classList.add('filled');
-
   if (window._toMarker) window._toMarker.remove();
-  window._toMarker = new mapboxgl.Marker({ color: '#FFD700' })
-    .setLngLat([state.to.lon, state.to.lat])
-    .addTo(map);
+  window._toMarker = new mapboxgl.Marker({ color: '#FFD700' }).setLngLat([state.to.lon, state.to.lat]).addTo(map);
 }
 
 function checkAddressesReady() {
   document.getElementById('next-to-tariff').disabled = !(state.from && state.to);
 }
 
-// ── НАВИГАЦИЯ МЕЖДУ ШАГАМИ ────────────────────────────────────
 function goToTariff() {
   if (!state.from || !state.to) return;
   document.getElementById('step-addresses').classList.remove('active');
   document.getElementById('step-tariff').classList.add('active');
-
-  // Показать маршрут на карте
-  if (state.from && state.to) {
-    const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend([state.from.lon, state.from.lat]);
-    bounds.extend([state.to.lon, state.to.lat]);
-    map.fitBounds(bounds, { padding: 60, duration: 800 });
-  }
+  const bounds = new mapboxgl.LngLatBounds();
+  bounds.extend([state.from.lon, state.from.lat]);
+  bounds.extend([state.to.lon, state.to.lat]);
+  map.fitBounds(bounds, { padding: 60, duration: 800 });
 }
 
-// ── ТАРИФ ────────────────────────────────────────────────────
-function selectTariff(price, label) {
+function selectTariff(price, label, e) {
   state.price = price;
   state.priceLabel = label;
   document.querySelectorAll('.tariff-btn').forEach(b => b.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
+  e.currentTarget.classList.add('selected');
   updateOrderBtn();
 }
 
-// ── ОПЛАТА ───────────────────────────────────────────────────
 function selectPayment(type) {
   state.payment = type;
   document.getElementById('pay-cash').classList.toggle('selected', type === 'cash');
@@ -448,42 +429,27 @@ function selectPayment(type) {
 
 function updateOrderBtn() {
   const btn = document.getElementById('confirm-order-btn');
-  if (state.price) {
-    btn.disabled = false;
-    btn.textContent = `Заказать такси · ${state.price}€`;
-  } else {
-    btn.disabled = true;
-    btn.textContent = 'Заказать такси';
-  }
+  btn.disabled = !state.price;
+  btn.textContent = state.price ? `Заказать такси · ${state.price}€` : 'Заказать такси';
 }
 
-// ── ОТПРАВКА ЗАКАЗА В БОТ ────────────────────────────────────
 function sendOrder() {
-  if (!state.from || !state.to || !state.price) {
-    showToast('Заполните все поля');
-    return;
-  }
-
-  const commission = 1;
-  const driverGets = state.price - commission;
-
+  if (!state.from || !state.to || !state.price) { showToast('Заполните все поля'); return; }
   const payload = {
     from_address: state.from.address,
-    to_address:   state.to.address,
-    from_lat:  state.from.lat,
-    from_lon:  state.from.lon,
-    to_lat:    state.to.lat,
-    to_lon:    state.to.lon,
-    price:     state.price,
-    driver_gets: driverGets,
-    payment:   state.payment,
-    time:      'Сейчас'
+    to_address: state.to.address,
+    from_lat: state.from.lat,
+    from_lon: state.from.lon,
+    to_lat: state.to.lat,
+    to_lon: state.to.lon,
+    price: state.price,
+    driver_gets: state.price - 1,
+    payment: state.payment,
+    time: 'Сейчас'
   };
-
   tg.sendData(JSON.stringify(payload));
 }
 
-// ── ТОСТ ─────────────────────────────────────────────────────
 function showToast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
