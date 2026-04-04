@@ -485,20 +485,24 @@ def cb_approve(call):
 # ═══════════════════ ЗАКАЗ ТАКСИ ═══════════════════════════════
 # ═══════════════════════════════════════════════════════════════
 
-@bot.message_handler(func=lambda m: m.text in [t("order_taxi", m.from_user.id), "🚖 Telli takso", "🚖 Order taxi"])
+Вижу — вместо Mini App открывается выбор метода адреса. Нужно заменить эту функцию на открытие Mini App.
+
+Найди в GitHub декоратор над `order_start` и замени всю функцию целиком на:
+
+```python
+@bot.message_handler(func=lambda m: m.text in ["🚖 Заказать такси", "🚖 Telli takso", "🚖 Order taxi"])
 def order_start(msg):
     uid = msg.from_user.id
     existing = user_state.get(uid, {}).get("current_order")
     if existing and existing in orders and orders[existing]["status"] in ["pending", "accepted", "arrived"]:
         bot.send_message(uid, "⏳ У вас уже есть активный заказ!", reply_markup=main_menu_client(uid))
         return
-    
     if uid not in user_state:
         user_state[uid] = {}
-    user_state[uid]["step"] = "choose_address_method"
-    user_state[uid]["order_data"] = {}
-    bot.send_message(uid, "📍 *Как указать адрес отправления?*", 
-                     parse_mode="Markdown", reply_markup=location_or_text_kb(uid))
+    user_state[uid]["step"] = "waiting_webapp"
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton(text="🗺️ Выбрать на карте", web_app=types.WebAppInfo(url=MINI_APP_URL)))
+    bot.send_message(uid, "📍 Нажмите кнопку чтобы выбрать маршрут на карте:", reply_markup=kb)
 
 @bot.message_handler(func=lambda m: user_state.get(m.from_user.id, {}).get("step") == "choose_address_method")
 def handle_address_method(msg):
