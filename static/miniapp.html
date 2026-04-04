@@ -1,418 +1,495 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>TL.TAKSO — Заказ такси</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #000000;
-            color: #FFD700;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 2px solid #FFD700;
-            margin-bottom: 25px;
-        }
-        
-        .header h1 {
-            font-size: 28px;
-            letter-spacing: 2px;
-        }
-        
-        .header p {
-            color: #FFD700AA;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-        
-        .card {
-            background: #1a1a1a;
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid #FFD70033;
-        }
-        
-        .card-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #FFD700;
-        }
-        
-        .location-btn {
-            width: 100%;
-            background: #FFD700;
-            color: #000000;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 12px;
-            transition: all 0.2s;
-        }
-        
-        .location-btn:hover {
-            background: #FFED4A;
-            transform: scale(1.02);
-        }
-        
-        .address-input {
-            width: 100%;
-            background: #2a2a2a;
-            border: 1px solid #FFD70066;
-            color: #FFD700;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 14px;
-            margin-bottom: 12px;
-        }
-        
-        .address-input:focus {
-            outline: none;
-            border-color: #FFD700;
-        }
-        
-        .price-buttons {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin: 15px 0;
-        }
-        
-        .price-btn {
-            background: #2a2a2a;
-            border: 1px solid #FFD70066;
-            color: #FFD700;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .price-btn.selected {
-            background: #FFD700;
-            color: #000000;
-            border-color: #FFD700;
-        }
-        
-        .payment-buttons {
-            display: flex;
-            gap: 12px;
-            margin: 15px 0;
-        }
-        
-        .payment-btn {
-            flex: 1;
-            background: #2a2a2a;
-            border: 1px solid #FFD70066;
-            color: #FFD700;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        
-        .payment-btn.selected {
-            background: #FFD700;
-            color: #000000;
-        }
-        
-        .time-buttons {
-            display: flex;
-            gap: 12px;
-            margin: 15px 0;
-        }
-        
-        .time-btn {
-            flex: 1;
-            background: #2a2a2a;
-            border: 1px solid #FFD70066;
-            color: #FFD700;
-            padding: 10px;
-            border-radius: 12px;
-            cursor: pointer;
-        }
-        
-        .time-btn.selected {
-            background: #FFD700;
-            color: #000000;
-        }
-        
-        .submit-btn {
-            width: 100%;
-            background: #FFD700;
-            color: #000000;
-            border: none;
-            padding: 16px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-        
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #FFD70022;
-        }
-        
-        .info-label {
-            color: #FFD700AA;
-        }
-        
-        .info-value {
-            font-weight: bold;
-            color: #FFD700;
-        }
-        
-        .success {
-            background: #1a3a1a;
-            border-color: #00ff00;
-            text-align: center;
-            padding: 30px;
-            border-radius: 16px;
-        }
-        
-        .success-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-        
-        .hidden {
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>TL.TAKSO</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"/>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: -apple-system, sans-serif; background:#000; color:#fff; height:100vh; overflow:hidden; }
+    #map { position:absolute; inset:0; }
+
+    /* Панель снизу */
+    #panel {
+      position:absolute; bottom:0; left:0; right:0;
+      background:#111; border-radius:20px 20px 0 0;
+      padding:16px; z-index:10;
+      box-shadow: 0 -4px 20px rgba(255,200,0,0.15);
+      transition: transform 0.3s ease;
+    }
+    #panel.hidden { transform: translateY(100%); }
+
+    .drag-handle {
+      width:40px; height:4px; background:#333; border-radius:2px;
+      margin:0 auto 14px; cursor:pointer;
+    }
+
+    .step { display:none; }
+    .step.active { display:block; }
+
+    h2 { font-size:16px; color:#FFD700; margin-bottom:12px; }
+
+    .address-box {
+      background:#1a1a1a; border:1px solid #333; border-radius:12px;
+      padding:12px 14px; margin-bottom:10px; cursor:pointer;
+      display:flex; align-items:center; gap:10px;
+    }
+    .address-box span { font-size:14px; color:#aaa; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .address-box.filled span { color:#fff; }
+    .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .dot.from { background:#4CAF50; }
+    .dot.to   { background:#FFD700; }
+
+    .tariff-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;
+    }
+    .tariff-btn {
+      background:#1a1a1a; border:1px solid #333; border-radius:12px;
+      padding:12px 8px; text-align:center; cursor:pointer; transition:all 0.2s;
+    }
+    .tariff-btn.selected { border-color:#FFD700; background:#1f1a00; }
+    .tariff-btn .price { font-size:20px; font-weight:700; color:#FFD700; }
+    .tariff-btn .label { font-size:11px; color:#888; margin-top:2px; }
+
+    .pay-row {
+      display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;
+    }
+    .pay-btn {
+      background:#1a1a1a; border:1px solid #333; border-radius:12px;
+      padding:12px; text-align:center; cursor:pointer; transition:all 0.2s;
+      font-size:14px;
+    }
+    .pay-btn.selected { border-color:#FFD700; background:#1f1a00; }
+
+    .order-btn {
+      width:100%; padding:15px; background:#FFD700; color:#000;
+      border:none; border-radius:14px; font-size:16px; font-weight:700;
+      cursor:pointer; letter-spacing:0.3px;
+    }
+    .order-btn:disabled { background:#444; color:#888; cursor:default; }
+
+    /* Поиск адреса */
+    #search-overlay {
+      display:none; position:fixed; inset:0; background:#000; z-index:100;
+      flex-direction:column; padding:16px;
+    }
+    #search-overlay.open { display:flex; }
+    #search-input {
+      background:#1a1a1a; border:1px solid #FFD700; border-radius:12px;
+      padding:12px 14px; color:#fff; font-size:16px; width:100%;
+      outline:none; margin-bottom:12px;
+    }
+    #search-results { flex:1; overflow-y:auto; }
+    .search-item {
+      padding:14px 12px; border-bottom:1px solid #1a1a1a; cursor:pointer;
+      font-size:14px; color:#ccc;
+    }
+    .search-item:hover { background:#1a1a1a; }
+    .search-item strong { color:#fff; display:block; }
+
+    #back-btn {
+      background:none; border:none; color:#FFD700; font-size:16px;
+      padding:0 0 12px; cursor:pointer;
+    }
+
+    /* Маркер центра карты */
+    #center-marker {
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%, -100%);
+      z-index:5; pointer-events:none;
+      font-size:32px; line-height:1;
+    }
+
+    /* Кнопка "Моя геолокация" */
+    #locate-btn {
+      position:absolute; right:16px; bottom:220px; z-index:10;
+      width:44px; height:44px; background:#111; border:1px solid #333;
+      border-radius:12px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:22px;
+    }
+
+    /* Кнопка "Подтвердить точку" */
+    #confirm-point-btn {
+      display:none;
+      position:absolute; bottom:170px; left:50%; transform:translateX(-50%);
+      z-index:10; background:#FFD700; color:#000; border:none;
+      border-radius:12px; padding:12px 24px; font-size:15px; font-weight:700;
+      cursor:pointer; white-space:nowrap;
+    }
+
+    /* Тост */
+    #toast {
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+      background:#222; color:#fff; padding:10px 20px; border-radius:20px;
+      font-size:13px; z-index:200; opacity:0; transition:opacity 0.3s;
+      pointer-events:none;
+    }
+    #toast.show { opacity:1; }
+  </style>
 </head>
 <body>
-    <div class="container" id="app">
-        <!-- Шаг 1: Откуда -->
-        <div id="step1">
-            <div class="header">
-                <h1>🚖 TL.TAKSO</h1>
-                <p>Жёлто-чёрное такси Таллинна</p>
-            </div>
-            <div class="card">
-                <div class="card-title">📍 Откуда едем?</div>
-                <button class="location-btn" onclick="getCurrentLocation('from')">
-                    📍 Моё местоположение
-                </button>
-                <input type="text" id="fromAddress" class="address-input" placeholder="Или введите адрес вручную...">
-                <button class="submit-btn" onclick="nextStep('from')">Далее →</button>
-            </div>
-        </div>
-        
-        <!-- Шаг 2: Куда -->
-        <div id="step2" class="hidden">
-            <div class="header">
-                <h1>🚖 TL.TAKSO</h1>
-                <p>Куда направляемся?</p>
-            </div>
-            <div class="card">
-                <div class="card-title">🏁 Куда едем?</div>
-                <button class="location-btn" onclick="getCurrentLocation('to')">
-                    📍 Выбрать на карте
-                </button>
-                <input type="text" id="toAddress" class="address-input" placeholder="Или введите адрес вручную...">
-                <button class="submit-btn" onclick="nextStep('to')">Далее →</button>
-            </div>
-        </div>
-        
-        <!-- Шаг 3: Время, тариф, оплата -->
-        <div id="step3" class="hidden">
-            <div class="header">
-                <h1>🚖 TL.TAKSO</h1>
-                <p>Детали поездки</p>
-            </div>
-            <div class="card">
-                <div class="card-title">⏰ Когда нужна машина?</div>
-                <div class="time-buttons">
-                    <button class="time-btn" onclick="selectTime('now')">⚡ Сейчас</button>
-                    <button class="time-btn" onclick="selectTime('15')">⏱ +15 мин</button>
-                    <button class="time-btn" onclick="selectTime('30')">⏱ +30 мин</button>
-                </div>
-                
-                <div class="card-title" style="margin-top: 20px;">💰 Выберите тариф</div>
-                <div class="price-buttons">
-                    <button class="price-btn" onclick="selectPrice(8)">8€ — Mustamäe</button>
-                    <button class="price-btn" onclick="selectPrice(10)">10€ — Город</button>
-                    <button class="price-btn" onclick="selectPrice(15)">15€ — Далеко</button>
-                    <button class="price-btn" onclick="selectPrice(20)">20€ — Аэропорт</button>
-                </div>
-                
-                <div class="card-title" style="margin-top: 20px;">💳 Способ оплаты</div>
-                <div class="payment-buttons">
-                    <button class="payment-btn" onclick="selectPayment('card')">💳 Карта</button>
-                    <button class="payment-btn" onclick="selectPayment('cash')">💵 Наличные</button>
-                </div>
-                
-                <div class="info-row" style="margin-top: 20px;">
-                    <span class="info-label">Итого:</span>
-                    <span class="info-value" id="totalPrice">0€</span>
-                </div>
-                
-                <button class="submit-btn" onclick="createOrder()">✅ Заказать такси</button>
-            </div>
-        </div>
-        
-        <!-- Шаг 4: Успех -->
-        <div id="step4" class="hidden">
-            <div class="success">
-                <div class="success-icon">✅</div>
-                <h2>Заказ создан!</h2>
-                <p>Водитель скоро прибудет</p>
-                <button class="submit-btn" onclick="closeApp()" style="margin-top: 20px;">Закрыть</button>
-            </div>
-        </div>
+
+<div id="map"></div>
+<div id="center-marker">📍</div>
+<div id="locate-btn" onclick="goToMyLocation()">📡</div>
+<button id="confirm-point-btn" onclick="confirmMapPoint()"></button>
+<div id="toast"></div>
+
+<!-- Поиск -->
+<div id="search-overlay">
+  <button id="back-btn" onclick="closeSearch()">← Назад</button>
+  <input id="search-input" type="text" placeholder="Введите адрес..." autocomplete="off"/>
+  <div id="search-results"></div>
+</div>
+
+<!-- Нижняя панель -->
+<div id="panel">
+  <div class="drag-handle"></div>
+
+  <!-- Шаг 1: Адреса -->
+  <div id="step-addresses" class="step active">
+    <h2>🚖 Откуда и куда?</h2>
+    <div class="address-box" id="from-box" onclick="openSearch('from')">
+      <div class="dot from"></div>
+      <span id="from-text">Выберите точку отправления</span>
     </div>
-    
-    <script>
-        let orderData = {
-            from_lat: null,
-            from_lon: null,
-            from_address: null,
-            to_lat: null,
-            to_lon: null,
-            to_address: null,
-            time: 'now',
-            price: 0,
-            payment: 'card'
-        };
-        
-        function getCurrentLocation(type) {
-            if ('geolocation' in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
-                        
-                        if (type === 'from') {
-                            orderData.from_lat = lat;
-                            orderData.from_lon = lon;
-                            orderData.from_address = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-                            document.getElementById('fromAddress').value = orderData.from_address;
-                        } else {
-                            orderData.to_lat = lat;
-                            orderData.to_lon = lon;
-                            orderData.to_address = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-                            document.getElementById('toAddress').value = orderData.to_address;
-                        }
-                    },
-                    (error) => {
-                        alert('Не удалось получить геолокацию. Введите адрес вручную.');
-                    }
-                );
-            } else {
-                alert('Геолокация не поддерживается');
-            }
+    <div class="address-box" id="to-box" onclick="openSearch('to')">
+      <div class="dot to"></div>
+      <span id="to-text">Выберите пункт назначения</span>
+    </div>
+    <button class="order-btn" id="next-to-tariff" onclick="goToTariff()" disabled>Далее →</button>
+  </div>
+
+  <!-- Шаг 2: Тариф + оплата -->
+  <div id="step-tariff" class="step">
+    <h2>💰 Тариф и оплата</h2>
+    <div class="tariff-grid">
+      <div class="tariff-btn" onclick="selectTariff(8,'Mustamäe')">
+        <div class="price">8€</div>
+        <div class="label">Mustamäe</div>
+      </div>
+      <div class="tariff-btn" onclick="selectTariff(10,'Город')">
+        <div class="price">10€</div>
+        <div class="label">Город</div>
+      </div>
+      <div class="tariff-btn" onclick="selectTariff(15,'Далеко')">
+        <div class="price">15€</div>
+        <div class="label">Далеко</div>
+      </div>
+      <div class="tariff-btn" onclick="selectTariff(20,'Аэропорт')">
+        <div class="price">20€</div>
+        <div class="label">Аэропорт</div>
+      </div>
+    </div>
+    <div class="pay-row">
+      <div class="pay-btn selected" id="pay-cash" onclick="selectPayment('cash')">💵 Наличные</div>
+      <div class="pay-btn" id="pay-card" onclick="selectPayment('card')">💳 Карта</div>
+    </div>
+    <button class="order-btn" id="confirm-order-btn" onclick="sendOrder()" disabled>Заказать такси</button>
+  </div>
+</div>
+
+<script>
+// ── TELEGRAM WEBAPP INIT ──────────────────────────────────────
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();                        // Раскрыть на весь экран
+tg.enableClosingConfirmation();     // Предупреждение при закрытии
+
+const MAPBOX_TOKEN = "pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA";
+
+// ── СОСТОЯНИЕ ────────────────────────────────────────────────
+let state = {
+  from: null,   // { lat, lon, address }
+  to:   null,
+  price: 0,
+  priceLabel: '',
+  payment: 'cash',
+  pickingFor: null,   // 'from' | 'to'
+  myLat: null,
+  myLon: null,
+  watchId: null
+};
+
+// ── КАРТА ────────────────────────────────────────────────────
+mapboxgl.accessToken = MAPBOX_TOKEN;
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/dark-v11',
+  center: [24.7536, 59.4370],
+  zoom: 12
+});
+
+// ── ГЕОЛОКАЦИЯ (watchPosition — не гаснет при тухлом экране) ─
+function startWatchingLocation() {
+  if (!navigator.geolocation) return;
+
+  // Убиваем старый watch если был
+  if (state.watchId !== null) {
+    navigator.geolocation.clearWatch(state.watchId);
+  }
+
+  state.watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      state.myLat = pos.coords.latitude;
+      state.myLon = pos.coords.longitude;
+
+      // Обновляем или создаём маркер "я здесь"
+      if (!window._meMarker) {
+        const el = document.createElement('div');
+        el.style.cssText = 'width:14px;height:14px;background:#4CAF50;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(76,175,80,0.8)';
+        window._meMarker = new mapboxgl.Marker({ element: el })
+          .setLngLat([state.myLon, state.myLat])
+          .addTo(map);
+      } else {
+        window._meMarker.setLngLat([state.myLon, state.myLat]);
+      }
+    },
+    (err) => {
+      console.warn('Геолокация:', err.message);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 5000     // Обновлять не старше 5 сек
+    }
+  );
+}
+
+// Запускаем сразу и при возврате фокуса (телефон разблокировали)
+startWatchingLocation();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) startWatchingLocation();
+});
+
+function goToMyLocation() {
+  if (state.myLat && state.myLon) {
+    map.flyTo({ center: [state.myLon, state.myLat], zoom: 15, duration: 800 });
+  } else {
+    showToast('Геолокация ещё не получена...');
+  }
+}
+
+// ── РЕЖИМ ВЫБОРА ТОЧКИ НА КАРТЕ ─────────────────────────────
+function startPickingOnMap(type) {
+  state.pickingFor = type;
+  document.getElementById('panel').classList.add('hidden');
+  document.getElementById('center-marker').style.display = 'block';
+
+  const btn = document.getElementById('confirm-point-btn');
+  btn.textContent = type === 'from' ? '✅ Отсюда' : '✅ Сюда';
+  btn.style.display = 'block';
+}
+
+async function confirmMapPoint() {
+  const center = map.getCenter();
+  const lat = center.lat, lon = center.lng;
+  const address = await reverseGeocode(lat, lon);
+
+  if (state.pickingFor === 'from') {
+    state.from = { lat, lon, address };
+    setFromUI(address);
+  } else {
+    state.to = { lat, lon, address };
+    setToUI(address);
+  }
+
+  document.getElementById('panel').classList.remove('hidden');
+  document.getElementById('center-marker').style.display = 'none';
+  document.getElementById('confirm-point-btn').style.display = 'none';
+  state.pickingFor = null;
+  checkAddressesReady();
+}
+
+// ── ПОИСК АДРЕСА ─────────────────────────────────────────────
+let searchType = null;
+
+function openSearch(type) {
+  searchType = type;
+  const overlay = document.getElementById('search-overlay');
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('search-input').focus(), 100);
+  document.getElementById('search-results').innerHTML = '';
+
+  // Кнопка выбора на карте
+  const mapItem = document.createElement('div');
+  mapItem.className = 'search-item';
+  mapItem.innerHTML = '<strong>📍 Выбрать на карте</strong>Нажмите на нужную точку';
+  mapItem.onclick = () => {
+    closeSearch();
+    startPickingOnMap(type);
+  };
+  document.getElementById('search-results').appendChild(mapItem);
+}
+
+function closeSearch() {
+  document.getElementById('search-overlay').classList.remove('open');
+  document.getElementById('search-input').value = '';
+  searchType = null;
+}
+
+let searchTimer = null;
+document.getElementById('search-input').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  const q = this.value.trim();
+  if (q.length < 2) return;
+  searchTimer = setTimeout(() => searchAddress(q), 400);
+});
+
+async function searchAddress(query) {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
+    + `?access_token=${MAPBOX_TOKEN}&country=ee&language=ru&limit=5&proximity=24.7536,59.4370`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    const resultsEl = document.getElementById('search-results');
+
+    // Оставляем кнопку "выбрать на карте" первой
+    const mapBtn = resultsEl.querySelector('.search-item');
+    resultsEl.innerHTML = '';
+    if (mapBtn) resultsEl.appendChild(mapBtn);
+
+    (d.features || []).forEach(f => {
+      const item = document.createElement('div');
+      item.className = 'search-item';
+      const name = f.text || '';
+      const full = f.place_name || '';
+      item.innerHTML = `<strong>${name}</strong>${full}`;
+      item.onclick = () => {
+        const [lon, lat] = f.geometry.coordinates;
+        if (searchType === 'from') {
+          state.from = { lat, lon, address: full };
+          setFromUI(full);
+        } else {
+          state.to = { lat, lon, address: full };
+          setToUI(full);
         }
-        
-        function nextStep(step) {
-            if (step === 'from') {
-                const address = document.getElementById('fromAddress').value;
-                if (!address) {
-                    alert('Введите адрес отправления');
-                    return;
-                }
-                orderData.from_address = address;
-                document.getElementById('step1').classList.add('hidden');
-                document.getElementById('step2').classList.remove('hidden');
-            } else if (step === 'to') {
-                const address = document.getElementById('toAddress').value;
-                if (!address) {
-                    alert('Введите адрес назначения');
-                    return;
-                }
-                orderData.to_address = address;
-                document.getElementById('step2').classList.add('hidden');
-                document.getElementById('step3').classList.remove('hidden');
-            }
-        }
-        
-        function selectTime(time) {
-            orderData.time = time;
-            document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('selected'));
-            event.target.classList.add('selected');
-        }
-        
-        function selectPrice(price) {
-            orderData.price = price;
-            document.querySelectorAll('.price-btn').forEach(btn => btn.classList.remove('selected'));
-            event.target.classList.add('selected');
-            document.getElementById('totalPrice').innerText = price + '€';
-        }
-        
-        function selectPayment(payment) {
-            orderData.payment = payment;
-            document.querySelectorAll('.payment-btn').forEach(btn => btn.classList.remove('selected'));
-            event.target.classList.add('selected');
-        }
-        
-        function createOrder() {
-            if (!orderData.price) {
-                alert('Выберите тариф');
-                return;
-            }
-            
-            const driverGets = orderData.payment === 'cash' ? orderData.price - 1 : orderData.price;
-            
-            const data = {
-                from_address: orderData.from_address,
-                to_address: orderData.to_address,
-                from_lat: orderData.from_lat || 0,
-                from_lon: orderData.from_lon || 0,
-                to_lat: orderData.to_lat || 0,
-                to_lon: orderData.to_lon || 0,
-                time: orderData.time === 'now' ? 'Сейчас' : orderData.time === '15' ? 'Через 15 мин' : 'Через 30 мин',
-                payment: orderData.payment,
-                price: orderData.price,
-                driver_gets: driverGets
-            };
-            
-            // Отправляем данные в Telegram
-            Telegram.WebApp.sendData(JSON.stringify(data));
-            
-            document.getElementById('step3').classList.add('hidden');
-            document.getElementById('step4').classList.remove('hidden');
-            
-            setTimeout(() => {
-                Telegram.WebApp.close();
-            }, 2000);
-        }
-        
-        function closeApp() {
-            Telegram.WebApp.close();
-        }
-        
-        // Инициализация Telegram WebApp
-        Telegram.WebApp.ready();
-        Telegram.WebApp.expand();
-        Telegram.WebApp.setHeaderColor('#000000');
-        Telegram.WebApp.setBackgroundColor('#000000');
-    </script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        map.flyTo({ center: [lon, lat], zoom: 14, duration: 600 });
+        closeSearch();
+        checkAddressesReady();
+      };
+      resultsEl.appendChild(item);
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function reverseGeocode(lat, lon) {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json`
+    + `?access_token=${MAPBOX_TOKEN}&language=ru&limit=1`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    return d.features?.[0]?.place_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  } catch(e) {
+    return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  }
+}
+
+// ── UI HELPERS ───────────────────────────────────────────────
+function setFromUI(address) {
+  const el = document.getElementById('from-text');
+  el.textContent = address;
+  document.getElementById('from-box').classList.add('filled');
+
+  if (window._fromMarker) window._fromMarker.remove();
+  window._fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
+    .setLngLat([state.from.lon, state.from.lat])
+    .addTo(map);
+}
+
+function setToUI(address) {
+  const el = document.getElementById('to-text');
+  el.textContent = address;
+  document.getElementById('to-box').classList.add('filled');
+
+  if (window._toMarker) window._toMarker.remove();
+  window._toMarker = new mapboxgl.Marker({ color: '#FFD700' })
+    .setLngLat([state.to.lon, state.to.lat])
+    .addTo(map);
+}
+
+function checkAddressesReady() {
+  document.getElementById('next-to-tariff').disabled = !(state.from && state.to);
+}
+
+// ── НАВИГАЦИЯ МЕЖДУ ШАГАМИ ────────────────────────────────────
+function goToTariff() {
+  if (!state.from || !state.to) return;
+  document.getElementById('step-addresses').classList.remove('active');
+  document.getElementById('step-tariff').classList.add('active');
+
+  // Показать маршрут на карте
+  if (state.from && state.to) {
+    const bounds = new mapboxgl.LngLatBounds();
+    bounds.extend([state.from.lon, state.from.lat]);
+    bounds.extend([state.to.lon, state.to.lat]);
+    map.fitBounds(bounds, { padding: 60, duration: 800 });
+  }
+}
+
+// ── ТАРИФ ────────────────────────────────────────────────────
+function selectTariff(price, label) {
+  state.price = price;
+  state.priceLabel = label;
+  document.querySelectorAll('.tariff-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  updateOrderBtn();
+}
+
+// ── ОПЛАТА ───────────────────────────────────────────────────
+function selectPayment(type) {
+  state.payment = type;
+  document.getElementById('pay-cash').classList.toggle('selected', type === 'cash');
+  document.getElementById('pay-card').classList.toggle('selected', type === 'card');
+}
+
+function updateOrderBtn() {
+  const btn = document.getElementById('confirm-order-btn');
+  if (state.price) {
+    btn.disabled = false;
+    btn.textContent = `Заказать такси · ${state.price}€`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = 'Заказать такси';
+  }
+}
+
+// ── ОТПРАВКА ЗАКАЗА В БОТ ────────────────────────────────────
+function sendOrder() {
+  if (!state.from || !state.to || !state.price) {
+    showToast('Заполните все поля');
+    return;
+  }
+
+  const commission = 1;
+  const driverGets = state.price - commission;
+
+  const payload = {
+    from_address: state.from.address,
+    to_address:   state.to.address,
+    from_lat:  state.from.lat,
+    from_lon:  state.from.lon,
+    to_lat:    state.to.lat,
+    to_lon:    state.to.lon,
+    price:     state.price,
+    driver_gets: driverGets,
+    payment:   state.payment,
+    time:      'Сейчас'
+  };
+
+  tg.sendData(JSON.stringify(payload));
+}
+
+// ── ТОСТ ─────────────────────────────────────────────────────
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
 </body>
 </html>
