@@ -8,7 +8,6 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -223,9 +222,15 @@ body {
 <div class="toast" id="toast"></div>
 
 <script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
 mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
 const TALLINN = [24.7536, 59.4370];
 let isOnline = true, currentOrder = null, trips = 0, earned = 0, balance = 50;
+let userMarker = null;
+let browserWatchId = null;
 
 const map = new mapboxgl.Map({
   container: 'map',
@@ -234,22 +239,65 @@ const map = new mapboxgl.Map({
   attributionControl: false
 });
 
-let userMarker = null;
-function showLocation() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(pos => {
-    const { longitude, latitude } = pos.coords;
-    if (!userMarker) {
-      const el = document.createElement('div');
-      el.style.cssText = 'width:16px;height:16px;background:#FFD600;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(255,214,0,0.3)';
-      userMarker = new mapboxgl.Marker(el).setLngLat([longitude, latitude]).addTo(map);
-      map.flyTo({ center: [longitude, latitude], zoom: 13 });
-    } else {
-      userMarker.setLngLat([longitude, latitude]);
-    }
+// ── ГЕОЛОКАЦИЯ через Telegram LocationManager (не спрашивает каждый раз) ──
+
+function initLocation() {
+  if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
+    tg.LocationManager.init(() => {
+      if (tg.LocationManager.isLocationAvailable) {
+        getTelegramLocation();
+      } else {
+        startBrowserLocation();
+      }
+    });
+  } else {
+    startBrowserLocation();
+  }
+}
+
+function getTelegramLocation() {
+  tg.LocationManager.getLocation((loc) => {
+    if (loc) updatePosition(loc.latitude, loc.longitude);
   });
 }
-showLocation();
+
+function startBrowserLocation() {
+  if (!navigator.geolocation) return;
+  if (browserWatchId !== null) {
+    navigator.geolocation.clearWatch(browserWatchId);
+  }
+  browserWatchId = navigator.geolocation.watchPosition(
+    (pos) => updatePosition(pos.coords.latitude, pos.coords.longitude),
+    (err) => console.warn('Геолокация:', err.message),
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+  );
+}
+
+function updatePosition(lat, lon) {
+  if (!userMarker) {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:16px;height:16px;background:#FFD600;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(255,214,0,0.3)';
+    userMarker = new mapboxgl.Marker(el).setLngLat([lon, lat]).addTo(map);
+    map.flyTo({ center: [lon, lat], zoom: 13 });
+  } else {
+    userMarker.setLngLat([lon, lat]);
+  }
+}
+
+// Перезапуск при возврате в приложение
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    if (tg.LocationManager && tg.LocationManager.isInited) {
+      getTelegramLocation();
+    } else {
+      startBrowserLocation();
+    }
+  }
+});
+
+initLocation();
+
+// ── UI ──
 
 function updateUI() {
   document.getElementById('balanceVal').textContent = balance + '€';
@@ -282,9 +330,7 @@ function toggleStatus() {
     document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">⛔</div><div class="no-orders-text">Вы офлайн</div>';
     showToast('🔴 Вы офлайн');
   }
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.sendData(JSON.stringify({ action: isOnline ? 'go_online' : 'go_offline' }));
-  }
+  tg.sendData(JSON.stringify({ action: isOnline ? 'go_online' : 'go_offline' }));
 }
 
 function showIncomingOrder(order) {
@@ -307,21 +353,19 @@ function hideOrder() {
 
 function acceptOrder() {
   if (!currentOrder) return;
-  trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1);
+  trips++;
+  earned += currentOrder.price || 0;
+  balance = Math.max(0, balance - 1);
   updateUI();
   showToast('✅ Заказ принят!');
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.sendData(JSON.stringify({ action: 'accept_order', order_id: currentOrder.id }));
-  }
+  tg.sendData(JSON.stringify({ action: 'accept_order', order_id: currentOrder.id }));
   hideOrder();
 }
 
 function rejectOrder() {
   if (!currentOrder) return;
   showToast('❌ Заказ отклонён');
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.sendData(JSON.stringify({ action: 'reject_order', order_id: currentOrder.id }));
-  }
+  tg.sendData(JSON.stringify({ action: 'reject_order', order_id: currentOrder.id }));
   hideOrder();
 }
 
@@ -345,11 +389,11 @@ function startPolling() {
 
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
+  t.textContent = msg;
+  t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-if (window.Telegram?.WebApp) { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); }
 startPolling();
 </script>
 </body>
