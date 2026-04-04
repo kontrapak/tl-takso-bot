@@ -485,17 +485,13 @@ def cb_approve(call):
 # ═══════════════════ ЗАКАЗ ТАКСИ ═══════════════════════════════
 # ═══════════════════════════════════════════════════════════════
 
-Вижу — вместо Mini App открывается выбор метода адреса. Нужно заменить эту функцию на открытие Mini App.
 
-Найди в GitHub декоратор над `order_start` и замени всю функцию целиком на:
-
-```python
 @bot.message_handler(func=lambda m: m.text in ["🚖 Заказать такси", "🚖 Telli takso", "🚖 Order taxi"])
 def order_start(msg):
     uid = msg.from_user.id
     existing = user_state.get(uid, {}).get("current_order")
     if existing and existing in orders and orders[existing]["status"] in ["pending", "accepted", "arrived"]:
-        bot.send_message(uid, "⏳ У вас уже есть активный заказ!", reply_markup=main_menu_client(uid))
+        bot.send_message(uid, "⏳ У ваc есть активный заказ!", reply_markup=main_menu_client(uid))
         return
     if uid not in user_state:
         user_state[uid] = {}
