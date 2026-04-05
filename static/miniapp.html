@@ -157,19 +157,19 @@
   <div id="step-tariff" class="step">
     <h2>💰 Тариф и оплата</h2>
     <div class="tariff-grid">
-      <div class="tariff-btn" onclick="selectTariff(8,'Mustamäe',event)">
+      <div class="tariff-btn" onclick="selectTariff(8,'Mustamäe', this)">
         <div class="price">8€</div>
         <div class="label">Mustamäe</div>
       </div>
-      <div class="tariff-btn" onclick="selectTariff(10,'Город',event)">
+      <div class="tariff-btn" onclick="selectTariff(10,'Город', this)">
         <div class="price">10€</div>
         <div class="label">Город</div>
       </div>
-      <div class="tariff-btn" onclick="selectTariff(15,'Далеко',event)">
+      <div class="tariff-btn" onclick="selectTariff(15,'Далеко', this)">
         <div class="price">15€</div>
         <div class="label">Далеко</div>
       </div>
-      <div class="tariff-btn" onclick="selectTariff(20,'Аэропорт',event)">
+      <div class="tariff-btn" onclick="selectTariff(20,'Аэропорт', this)">
         <div class="price">20€</div>
         <div class="label">Аэропорт</div>
       </div>
@@ -211,30 +211,18 @@ const map = new mapboxgl.Map({
 });
 
 // ── ГЕОЛОКАЦИЯ через Telegram LocationManager ──
-// Telegram.WebApp.LocationManager доступен начиная с Bot API 8.0
-// Если недоступен — fallback на браузерный watchPosition
-
 function initLocation() {
   if (tg.LocationManager && tg.LocationManager.isInited !== undefined) {
-    // Используем Telegram LocationManager
     tg.LocationManager.init(() => {
-      if (tg.LocationManager.isLocationAvailable) {
-        startTelegramLocation();
-      } else {
-        startBrowserLocation();
-      }
+      if (tg.LocationManager.isLocationAvailable) startTelegramLocation();
+      else startBrowserLocation();
     });
-  } else {
-    // Fallback: браузерный watchPosition
-    startBrowserLocation();
-  }
+  } else startBrowserLocation();
 }
 
 function startTelegramLocation() {
   tg.LocationManager.getLocation((loc) => {
-    if (loc) {
-      updateMyPosition(loc.latitude, loc.longitude);
-    }
+    if (loc) updateMyPosition(loc.latitude, loc.longitude);
   });
 }
 
@@ -242,9 +230,7 @@ let browserWatchId = null;
 
 function startBrowserLocation() {
   if (!navigator.geolocation) return;
-  if (browserWatchId !== null) {
-    navigator.geolocation.clearWatch(browserWatchId);
-  }
+  if (browserWatchId !== null) navigator.geolocation.clearWatch(browserWatchId);
   browserWatchId = navigator.geolocation.watchPosition(
     (pos) => updateMyPosition(pos.coords.latitude, pos.coords.longitude),
     (err) => console.warn('Геолокация:', err.message),
@@ -261,31 +247,21 @@ function updateMyPosition(lat, lon) {
     window._meMarker = new mapboxgl.Marker({ element: el })
       .setLngLat([lon, lat])
       .addTo(map);
-  } else {
-    window._meMarker.setLngLat([lon, lat]);
-  }
+  } else window._meMarker.setLngLat([lon, lat]);
 }
 
-// Перезапуск при возврате в приложение
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    if (tg.LocationManager && tg.LocationManager.isInited) {
-      startTelegramLocation();
-    } else {
-      startBrowserLocation();
-    }
+    if (tg.LocationManager && tg.LocationManager.isInited) startTelegramLocation();
+    else startBrowserLocation();
   }
 });
 
 initLocation();
 
 function goToMyLocation() {
-  if (state.myLat && state.myLon) {
-    map.flyTo({ center: [state.myLon, state.myLat], zoom: 15, duration: 800 });
-  } else {
-    showToast('Геолокация ещё не получена...');
-    initLocation();
-  }
+  if (state.myLat && state.myLon) map.flyTo({ center: [state.myLon, state.myLat], zoom: 15, duration: 800 });
+  else { showToast('Геолокация ещё не получена...'); initLocation(); }
 }
 
 // ── ВЫБОР ТОЧКИ НА КАРТЕ ──
@@ -302,13 +278,8 @@ async function confirmMapPoint() {
   const center = map.getCenter();
   const lat = center.lat, lon = center.lng;
   const address = await reverseGeocode(lat, lon);
-  if (state.pickingFor === 'from') {
-    state.from = { lat, lon, address };
-    setFromUI(address);
-  } else {
-    state.to = { lat, lon, address };
-    setToUI(address);
-  }
+  if (state.pickingFor === 'from') { state.from = { lat, lon, address }; setFromUI(address); }
+  else { state.to = { lat, lon, address }; setToUI(address); }
   document.getElementById('panel').classList.remove('hidden');
   document.getElementById('center-marker').style.display = 'none';
   document.getElementById('confirm-point-btn').style.display = 'none';
@@ -379,9 +350,7 @@ async function reverseGeocode(lat, lon) {
     const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ru&limit=1`);
     const d = await r.json();
     return d.features?.[0]?.place_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-  } catch(e) {
-    return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-  }
+  } catch(e) { return `${lat.toFixed(5)}, ${lon.toFixed(5)}`; }
 }
 
 // ── UI ──
@@ -410,52 +379,3 @@ function goToTariff() {
   const bounds = new mapboxgl.LngLatBounds();
   bounds.extend([state.from.lon, state.from.lat]);
   bounds.extend([state.to.lon, state.to.lat]);
-  map.fitBounds(bounds, { padding: 60, duration: 800 });
-}
-
-function selectTariff(price, label, e) {
-  state.price = price;
-  state.priceLabel = label;
-  document.querySelectorAll('.tariff-btn').forEach(b => b.classList.remove('selected'));
-  e.currentTarget.classList.add('selected');
-  updateOrderBtn();
-}
-
-function selectPayment(type) {
-  state.payment = type;
-  document.getElementById('pay-cash').classList.toggle('selected', type === 'cash');
-  document.getElementById('pay-card').classList.toggle('selected', type === 'card');
-}
-
-function updateOrderBtn() {
-  const btn = document.getElementById('confirm-order-btn');
-  btn.disabled = !state.price;
-  btn.textContent = state.price ? `Заказать такси · ${state.price}€` : 'Заказать такси';
-}
-
-function sendOrder() {
-  if (!state.from || !state.to || !state.price) { showToast('Заполните все поля'); return; }
-  const payload = {
-    from_address: state.from.address,
-    to_address: state.to.address,
-    from_lat: state.from.lat,
-    from_lon: state.from.lon,
-    to_lat: state.to.lat,
-    to_lon: state.to.lon,
-    price: state.price,
-    driver_gets: state.price - 1,
-    payment: state.payment,
-    time: 'Сейчас'
-  };
-  tg.WebApp.sendData(JSON.stringify(payload));
-}
-
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2500);
-}
-</script>
-</body>
-</html>
