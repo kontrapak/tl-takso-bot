@@ -165,6 +165,53 @@ def api_accept_order(order_id):
         return json.dumps({'ok': True})
     return json.dumps({'ok': False}), 400
 
+@app.route('/api/create_order', methods=['POST'])
+def api_create_order():
+    try:
+        data = request.get_json()
+        if not data:
+            return json.dumps({'ok': False, 'error': 'No data'}), 400
+
+        client_id = data.get('client_id')
+        client_name = data.get('client_name', 'Клиент')
+
+        if not client_id:
+            return json.dumps({'ok': False, 'error': 'No client_id'}), 400
+
+        client_id = int(client_id)
+        oid = new_order_id()
+        orders[oid] = {
+            "id": oid, "client_id": client_id, "client_name": client_name,
+            "from": data.get("from_address", "—"), "to": data.get("to_address", "—"),
+            "from_lat": data.get("from_lat", 0), "from_lon": data.get("from_lon", 0),
+            "to_lat": data.get("to_lat", 0), "to_lon": data.get("to_lon", 0),
+            "time": data.get("time", "Сейчас"),
+            "payment": "💳 Карта" if data.get("payment") == "card" else "💵 Наличные",
+            "pay_type": data.get("payment", "cash"),
+            "price": data.get("price", 0),
+            "driver_gets": data.get("driver_gets", data.get("price", 0)),
+            "status": "pending", "created": now_str(),
+            "driver_id": None, "client_lang": "ru"
+        }
+        if client_id not in user_state:
+            user_state[client_id] = {}
+        user_state[client_id]["current_order"] = oid
+        save_data()
+
+        try:
+            bot.send_message(client_id,
+                f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from'][:50]}\n🏁 {orders[oid]['to'][:50]}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...",
+                parse_mode="Markdown", reply_markup=main_menu_client(client_id))
+        except Exception as e:
+            print(f"Ошибка отправки клиенту: {e}")
+
+        notify_drivers(oid)
+        return json.dumps({'ok': True, 'order_id': oid})
+
+    except Exception as e:
+        print(f"Ошибка create_order: {e}")
+        return json.dumps({'ok': False, 'error': str(e)}), 500
+
 @app.route(f'/webhook/{WEBHOOK_SECRET}', methods=['POST'])
 def telegram_webhook():
     if request.headers.get('content-type') == 'application/json':
