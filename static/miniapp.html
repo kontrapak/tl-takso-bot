@@ -447,7 +447,7 @@ function sendOrder() {
     payment: state.payment,
     time: 'Сейчас'
   };
-  Telegram.WebApp.sendData(JSON.stringify(payload));
+  tg.WebApp.sendData(JSON.stringify(payload));
 }
 
 function showToast(msg) {
