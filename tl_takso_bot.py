@@ -887,6 +887,35 @@ def relay_message(msg):
 # ═══════════════════════════════════════════════════════════════
 # ═══════════════════ ЗАПУСК БОТА ═══════════════════════════════
 # ═══════════════════════════════════════════════════════════════
+@bot.message_handler(content_types=['web_app_data'])
+def handle_webapp_data(msg):
+    uid = msg.from_user.id
+    print(f"WebApp data from {uid}: {msg.web_app_data.data}")
+    try:
+        data = json.loads(msg.web_app_data.data)
+        oid = new_order_id()
+        orders[oid] = {
+            "id": oid, "client_id": uid, "client_name": msg.from_user.first_name,
+            "from": data.get("from_address", "—"), "to": data.get("to_address", "—"),
+            "from_lat": data.get("from_lat", 0), "from_lon": data.get("from_lon", 0),
+            "to_lat": data.get("to_lat", 0), "to_lon": data.get("to_lon", 0),
+            "time": data.get("time", "Сейчас"),
+            "payment": "💳 Карта" if data.get("payment") == "card" else "💵 Наличные",
+            "pay_type": data.get("payment", "cash"),
+            "price": data.get("price", 0),
+            "driver_gets": data.get("driver_gets", data.get("price", 0)),
+            "status": "pending", "created": now_str(),
+            "driver_id": None, "client_lang": get_lang(uid)
+        }
+        user_state[uid]["current_order"] = oid
+        save_data()
+        bot.send_message(uid,
+            f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from'][:50]}\n🏁 {orders[oid]['to'][:50]}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...",
+            parse_mode="Markdown", reply_markup=main_menu_client(uid))
+        notify_drivers(oid)
+    except Exception as e:
+        print(f"Ошибка webapp data: {e}")
+        bot.send_message(uid, "❌ Ошибка создания заказа. Попробуйте снова.")
 
 def setup_webhook():
     webhook_url = f"https://{RAILWAY_DOMAIN}/webhook/{WEBHOOK_SECRET}"
