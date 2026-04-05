@@ -76,6 +76,7 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
 # ⬇️ СЮДА ВСТАВИТЬ ОБРАБОТЧИК
 
+
 @bot.message_handler(content_types=['web_app_data'])
 def handle_web_app_data(message):
     
@@ -89,6 +90,7 @@ if ADMIN_ID not in drivers:
         "car": "Toyota Camry", "phone": "+123456789", "lang": "ru",
         "earnings": 0, "trips": 0, "commission": 0, "balance": 50.0
     }
+    
 @bot.message_handler(content_types=['web_app_data'])
 def handle_web_app_data(message):
     """Получение заказа из WebApp"""
