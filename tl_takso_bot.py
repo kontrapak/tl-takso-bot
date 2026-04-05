@@ -74,12 +74,69 @@ load_data()
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
+# ⬇️ СЮДА ВСТАВИТЬ ОБРАБОТЧИК
+
+@bot.message_handler(content_types=['web_app_data'])
+def handle_web_app_data(message):
+    
+
+# ⬇️ Дальше ваши другие обработчики (@bot.message_handler...)
+
+
 if ADMIN_ID not in drivers:
     drivers[ADMIN_ID] = {
         "approved": True, "online": True, "full_name": "S.L.",
         "car": "Toyota Camry", "phone": "+123456789", "lang": "ru",
         "earnings": 0, "trips": 0, "commission": 0, "balance": 50.0
     }
+@bot.message_handler(content_types=['web_app_data'])
+def handle_web_app_data(message):
+    """Получение заказа из WebApp"""
+    try:
+        data = json.loads(message.web_app_data.data)
+        
+        # Формируем текст заказа
+        order_text = (
+            f"🚖 *НОВЫЙ ЗАКАЗ #{order_counter[0]}*\n\n"
+            f"📍 *Откуда:* `{data['from_address']}`\n"
+            f"🏁 *Куда:* `{data['to_address']}`\n"
+            f"💰 *Цена:* {data['price']}€ (водителю: {data['driver_gets']}€)\n"
+            f"💳 *Оплата:* {data['payment']}\n"
+            f"⏰ *Время:* {data['time']}"
+        )
+        
+        # Отправляем админу
+        bot.send_message(ADMIN_ID, order_text, parse_mode="Markdown")
+        
+        # Подтверждение клиенту
+        bot.send_message(
+            message.chat.id,
+            "✅ *Заказ принят!* Ищем водителя...",
+            parse_mode="Markdown"
+        )
+        
+        # Сохраняем заказ
+        orders[order_counter[0]] = {
+            "id": order_counter[0],
+            "client_id": message.chat.id,
+            "from_address": data['from_address'],
+            "to_address": data['to_address'],
+            "from_lat": data.get('from_lat'),
+            "from_lon": data.get('from_lon'),
+            "to_lat": data.get('to_lat'),
+            "to_lon": data.get('to_lon'),
+            "price": data['price'],
+            "driver_gets": data['driver_gets'],
+            "payment": data['payment'],
+            "status": "new",
+            "created_at": datetime.datetime.now().isoformat()
+        }
+        order_counter[0] += 1
+        save_data()
+        
+    except Exception as e:
+        print(f"❌ Ошибка обработки заказа: {e}")
+        bot.send_message(message.chat.id, "❌ Ошибка оформления заказа")
 
 # ── FLASK ──
 
