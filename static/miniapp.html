@@ -153,17 +153,9 @@ function selectPayment(type){ state.payment=type; document.getElementById('pay-c
 function updateOrderBtn(){ const btn=document.getElementById('confirm-order-btn'); btn.disabled=!state.price; btn.textContent=state.price?`Заказать такси · ${state.price}€`:'Заказать такси'; }
 
 // ── ОТПРАВКА ДАННЫХ ──
-function sendOrder(){ 
+function sendOrder(){
   if(!state.from||!state.to||!state.price){ showToast('Заполните все поля'); return; }
   const payload={from_address:state.from.address,to_address:state.to.address,from_lat:state.from.lat,from_lon:state.from.lon,to_lat:state.to.lat,to_lon:state.to.lon,price:state.price,driver_gets:state.price-1,payment:state.payment,time:'Сейчас'};
-  
-  alert('Отправляю: ' + JSON.stringify(payload));
-  
-  console.log('Payload:',payload);
-  tg.sendData(JSON.stringify(payload));
-  showToast('✅ Заказ отправлен!');
-}
-
   console.log('Payload:',payload);
   tg.sendData(JSON.stringify(payload));
   showToast('✅ Заказ отправлен!');
@@ -173,4 +165,3 @@ function showToast(msg){ const el=document.getElementById('toast'); el.textConte
 </script>
 </body>
 </html>
-
