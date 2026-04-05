@@ -115,6 +115,7 @@ body {
   cursor: pointer; transition: transform 0.15s;
 }
 .btn-accept:active { transform: scale(0.97); }
+.btn-accept:disabled { background: #555; color: #888; }
 .btn-reject {
   flex: 1; height: 52px;
   background: transparent; color: var(--red);
@@ -198,7 +199,7 @@ body {
       </div>
     </div>
     <div class="order-actions">
-      <button class="btn-accept" onclick="acceptOrder()">✅ ПРИНЯТЬ</button>
+      <button class="btn-accept" id="btnAccept" onclick="acceptOrder()">✅ ПРИНЯТЬ</button>
       <button class="btn-reject" onclick="rejectOrder()">ОТКАЗ</button>
     </div>
   </div>
@@ -239,7 +240,7 @@ const map = new mapboxgl.Map({
   attributionControl: false
 });
 
-// ── ГЕОЛОКАЦИЯ через Telegram LocationManager (не спрашивает каждый раз) ──
+// ── ГЕОЛОКАЦИЯ ──
 
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
@@ -284,7 +285,6 @@ function updatePosition(lat, lon) {
   }
 }
 
-// Перезапуск при возврате в приложение
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     if (tg.LocationManager && tg.LocationManager.isInited) {
@@ -330,7 +330,6 @@ function toggleStatus() {
     document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">⛔</div><div class="no-orders-text">Вы офлайн</div>';
     showToast('🔴 Вы офлайн');
   }
-  tg.sendData(JSON.stringify({ action: isOnline ? 'go_online' : 'go_offline' }));
 }
 
 function showIncomingOrder(order) {
@@ -351,21 +350,52 @@ function hideOrder() {
   }
 }
 
-function acceptOrder() {
+// ── ПРИНЯТЬ ЗАКАЗ через fetch ──
+async function acceptOrder() {
   if (!currentOrder) return;
-  trips++;
-  earned += currentOrder.price || 0;
-  balance = Math.max(0, balance - 1);
-  updateUI();
-  showToast('✅ Заказ принят!');
-  tg.sendData(JSON.stringify({ action: 'accept_order', order_id: currentOrder.id }));
-  hideOrder();
+  const btn = document.getElementById('btnAccept');
+  btn.disabled = true;
+  btn.textContent = 'Принимаем...';
+  try {
+    const r = await fetch(`/api/accept_order/${currentOrder.id}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        driver_id: tg.initDataUnsafe?.user?.id,
+        driver_name: tg.initDataUnsafe?.user?.first_name || 'Водитель'
+      })
+    });
+    const result = await r.json();
+    if (result.ok) {
+      trips++;
+      earned += currentOrder.price || 0;
+      balance = Math.max(0, balance - 1);
+      updateUI();
+      showToast('✅ Заказ принят!');
+      hideOrder();
+    } else {
+      showToast('❌ ' + (result.error || 'Ошибка'));
+      btn.disabled = false;
+      btn.textContent = '✅ ПРИНЯТЬ';
+    }
+  } catch(e) {
+    showToast('❌ Ошибка соединения');
+    btn.disabled = false;
+    btn.textContent = '✅ ПРИНЯТЬ';
+  }
 }
 
-function rejectOrder() {
+// ── ОТКАЗАТЬ через fetch ──
+async function rejectOrder() {
   if (!currentOrder) return;
+  try {
+    await fetch(`/api/reject_order/${currentOrder.id}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: tg.initDataUnsafe?.user?.id })
+    });
+  } catch(e) {}
   showToast('❌ Заказ отклонён');
-  tg.sendData(JSON.stringify({ action: 'reject_order', order_id: currentOrder.id }));
   hideOrder();
 }
 
