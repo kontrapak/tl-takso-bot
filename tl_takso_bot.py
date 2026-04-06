@@ -166,7 +166,7 @@ def api_accept_order(order_id):
     return json.dumps({'ok': False}), 400
 
 @app.route('/api/create_order', methods=['POST'])
-app.route('/api/accept_order/<order_id>', methods=['POST'])
+@app.route('/api/accept_order/<order_id>', methods=['POST'])
 def api_accept_order_driver(order_id):
     try:
         data = request.get_json()
