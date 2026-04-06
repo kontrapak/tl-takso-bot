@@ -157,14 +157,6 @@ def api_orders():
             })
     return json.dumps(result, ensure_ascii=False)
 
-@app.route('/api/orders/<order_id>/accept', methods=['PUT'])
-def api_accept_order(order_id):
-    if order_id in orders and orders[order_id]['status'] == 'pending':
-        orders[order_id]['status'] = 'accepted'
-        save_data()
-        return json.dumps({'ok': True})
-    return json.dumps({'ok': False}), 400
-
 @app.route('/api/create_order', methods=['POST'])
 @app.route('/api/accept_order/<order_id>', methods=['POST'])
 def api_accept_order_driver(order_id):
