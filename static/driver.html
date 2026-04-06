@@ -7,66 +7,150 @@
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: system-ui, sans-serif; background:#0A0A0A; color:#fff; height:100vh; display:flex; flex-direction:column; }
-.header { display:flex; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #222; }
-.logo { font-size:22px; font-weight:bold; color:#FFD600; }
-.balance-value { font-size:20px; font-weight:bold; color:#FFD600; }
-.status-bar { display:flex; justify-content:space-between; padding:10px 16px; background:#111; }
-.toggle { width:52px; height:28px; background:#00E676; border-radius:14px; cursor:pointer; border:none; }
-.toggle.off { background:#555; }
-.toggle::after { content:''; display:block; width:22px; height:22px; background:#fff; border-radius:50%; margin:3px; transition:0.2s; }
-.toggle.off::after { margin-left:27px; }
-#map { flex:1; position:relative; }
-.order-overlay, .trip-panel { position:absolute; bottom:0; left:0; right:0; background:#111; border-top:2px solid #FFD600; border-radius:20px 20px 0 0; padding:16px; transform:translateY(100%); transition:0.3s; z-index:10; }
-.order-overlay.show, .trip-panel.show { transform:translateY(0); }
-.btn-accept { background:#FFD600; color:#000; border:none; padding:14px; border-radius:12px; font-weight:bold; width:100%; margin-top:10px; }
-.btn-reject, .btn-cancel { background:transparent; border:1px solid #FF3B30; color:#FF3B30; padding:10px; border-radius:12px; margin-top:8px; width:100%; }
-.btn-arrived, .btn-finish { background:#00E676; color:#000; border:none; padding:14px; border-radius:12px; font-weight:bold; width:100%; margin-top:8px; }
-.btn-finish { background:#FFD600; }
-.bottom-panel { display:flex; gap:10px; padding:12px 16px; background:#111; }
-.stat-block { flex:1; background:#1A1A1A; padding:10px; border-radius:12px; text-align:center; }
-.toast { position:fixed; top:80px; left:50%; transform:translateX(-50%); background:#FFD600; color:#000; padding:8px 16px; border-radius:30px; font-weight:bold; opacity:0; transition:0.3s; z-index:100; }
-.toast.show { opacity:1; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --yellow: #FFD600; --black: #0A0A0A; --dark: #111111;
+  --card: #1A1A1A; --border: #2A2A2A; --muted: #888;
+  --green: #00E676; --red: #FF3B30;
+}
+body { background: var(--black); color: #fff; font-family: 'Inter', sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--black); z-index: 20; }
+.logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: var(--yellow); }
+.logo span { color: #fff; }
+.balance-block { text-align: right; }
+.balance-label { font-size: 10px; color: var(--muted); }
+.balance-value { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--yellow); }
+.status-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--dark); border-bottom: 1px solid var(--border); }
+.status-text { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+.status-dot.offline { background: var(--red); animation: none; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+.toggle { width: 52px; height: 28px; background: var(--green); border-radius: 14px; position: relative; cursor: pointer; transition: background 0.3s; border: none; }
+.toggle.off { background: #333; }
+.toggle::after { content:''; position:absolute; width:22px; height:22px; background:white; border-radius:50%; top:3px; left:3px; transition:left 0.3s; }
+.toggle.off::after { left: 27px; }
+#map { flex: 1; position: relative; }
+.order-overlay { position:absolute; bottom:0; left:0; right:0; background:var(--dark); border-top:2px solid var(--yellow); border-radius:20px 20px 0 0; padding:16px; z-index:30; transform:translateY(100%); transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+.order-overlay.show { transform: translateY(0); }
+.order-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.order-title { font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--yellow); letter-spacing:2px; }
+.order-price { font-family:'Bebas Neue',sans-serif; font-size:32px; color:var(--yellow); }
+.order-route { background:var(--card); border-radius:12px; padding:12px; margin-bottom:14px; }
+.route-item { display:flex; align-items:flex-start; gap:10px; padding:6px 0; }
+.route-item+.route-item { border-top:1px solid var(--border); }
+.route-icon { font-size:16px; margin-top:2px; }
+.route-label { font-size:10px; color:var(--muted); }
+.route-addr { font-size:13px; font-weight:600; }
+.order-actions { display:flex; gap:10px; }
+.btn-accept { flex:2; height:52px; background:var(--yellow); color:var(--black); border:none; border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; cursor:pointer; }
+.btn-accept:disabled { background:#555; color:#888; }
+.btn-reject { flex:1; height:52px; background:transparent; color:var(--red); border:1px solid var(--red); border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:18px; cursor:pointer; }
+
+/* Активный заказ */
+.active-order { position:absolute; bottom:0; left:0; right:0; background:var(--dark); border-top:2px solid var(--green); border-radius:20px 20px 0 0; padding:16px; z-index:30; display:none; }
+.active-order.show { display:block; }
+.active-title { font-family:'Bebas Neue',sans-serif; font-size:18px; color:var(--green); margin-bottom:12px; }
+.active-route { background:var(--card); border-radius:12px; padding:12px; margin-bottom:12px; font-size:13px; }
+.active-route .from { color:#4CAF50; margin-bottom:6px; }
+.active-route .to { color:var(--yellow); }
+.btn-arrived { width:100%; height:52px; background:var(--green); color:var(--black); border:none; border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; cursor:pointer; margin-bottom:10px; }
+.btn-arrived:disabled { background:#555; color:#888; }
+.btn-done { width:100%; height:48px; background:var(--yellow); color:var(--black); border:none; border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:18px; cursor:pointer; margin-bottom:10px; }
+.btn-cancel-order { width:100%; height:44px; background:transparent; color:var(--red); border:1px solid var(--red); border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:16px; cursor:pointer; }
+
+.no-orders { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:var(--muted); pointer-events:none; }
+.no-orders-icon { font-size:40px; margin-bottom:10px; }
+.no-orders-text { font-size:14px; }
+.bottom-panel { background:var(--dark); border-top:1px solid var(--border); padding:12px 16px 20px; display:flex; gap:10px; z-index:20; }
+.stat-block { flex:1; background:var(--card); border-radius:10px; padding:10px; text-align:center; }
+.stat-label { font-size:10px; color:var(--muted); }
+.stat-value { font-family:'Bebas Neue',sans-serif; font-size:22px; color:#fff; margin-top:2px; }
+.stat-value.yellow { color:var(--yellow); }
+.mapboxgl-ctrl-logo,.mapboxgl-ctrl-attrib,.mapboxgl-ctrl-group { display:none !important; }
+.toast { position:fixed; top:80px; left:50%; transform:translateX(-50%) translateY(-20px); background:var(--yellow); color:var(--black); padding:10px 20px; border-radius:30px; font-weight:700; font-size:14px; z-index:100; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="logo">TL.TAKSO</div>
+  <div class="logo">TL<span>.</span>TAKSO</div>
   <div class="balance-block">
-    <div style="font-size:12px; color:#888;">БАЛАНС</div>
+    <div class="balance-label">БАЛАНС</div>
     <div class="balance-value" id="balanceVal">—€</div>
   </div>
 </div>
 
 <div class="status-bar">
-  <span id="statusText">🟢 Онлайн</span>
+  <div class="status-text">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Онлайн — жду заказ</span>
+  </div>
   <button class="toggle" id="toggleBtn" onclick="toggleStatus()"></button>
 </div>
 
-<div id="map"></div>
+<div id="map">
+  <div class="no-orders" id="noOrders">
+    <div class="no-orders-icon">🚕</div>
+    <div class="no-orders-text">Ждём заказов...</div>
+  </div>
 
-<div class="order-overlay" id="orderOverlay">
-  <div style="font-size:18px; font-weight:bold;">📋 НОВЫЙ ЗАКАЗ</div>
-  <div id="orderPrice" style="font-size:28px; color:#FFD600;">—€</div>
-  <div><span>📍</span> <span id="orderFrom">—</span></div>
-  <div><span>🎯</span> <span id="orderTo">—</span></div>
-  <button class="btn-accept" onclick="acceptOrder()">✅ ПРИНЯТЬ</button>
-  <button class="btn-reject" onclick="rejectOrder()">ОТКАЗ</button>
-</div>
+  <!-- Новый заказ -->
+  <div class="order-overlay" id="orderOverlay">
+    <div class="order-header">
+      <div class="order-title">📋 НОВЫЙ ЗАКАЗ</div>
+      <div class="order-price" id="orderPrice">—€</div>
+    </div>
+    <div class="order-route">
+      <div class="route-item">
+        <div class="route-icon">📍</div>
+        <div class="route-info">
+          <div class="route-label">ОТКУДА</div>
+          <div class="route-addr" id="orderFrom">—</div>
+        </div>
+      </div>
+      <div class="route-item">
+        <div class="route-icon">🎯</div>
+        <div class="route-info">
+          <div class="route-label">КУДА</div>
+          <div class="route-addr" id="orderTo">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="order-actions">
+      <button class="btn-accept" id="btnAccept" onclick="acceptOrder()">✅ ПРИНЯТЬ</button>
+      <button class="btn-reject" onclick="rejectOrder()">ОТКАЗ</button>
+    </div>
+  </div>
 
-<div class="trip-panel" id="tripPanel">
-  <div style="font-size:18px; font-weight:bold;">🚖 Поездка</div>
-  <button class="btn-arrived" onclick="arrived()">📍 Я прибыл!</button>
-  <button class="btn-finish" onclick="finishTrip()">✅ Завершить поездку</button>
-  <button class="btn-cancel" onclick="cancelTrip()">❌ Отменить</button>
+  <!-- Активный заказ -->
+  <div class="active-order" id="activeOrderPanel">
+    <div class="active-title">🚖 АКТИВНЫЙ ЗАКАЗ</div>
+    <div class="active-route">
+      <div class="from">📍 <span id="activeFrom">—</span></div>
+      <div class="to">🏁 <span id="activeTo">—</span></div>
+    </div>
+    <button class="btn-arrived" id="btnArrived" onclick="markArrived()">📍 Я ПРИБЫЛ!</button>
+    <button class="btn-done" id="btnDone" onclick="completeOrder()">✅ ПОЕЗДКА ЗАВЕРШЕНА</button>
+    <button class="btn-cancel-order" onclick="cancelActiveOrder()">❌ Отменить заказ</button>
+  </div>
 </div>
 
 <div class="bottom-panel">
-  <div class="stat-block"><div>ПОЕЗДОК</div><div id="tripsVal">0</div></div>
-  <div class="stat-block"><div>СЕГОДНЯ</div><div id="earnVal">0€</div></div>
+  <div class="stat-block">
+    <div class="stat-label">ПОЕЗДОК</div>
+    <div class="stat-value" id="tripsVal">0</div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-label">СЕГОДНЯ</div>
+    <div class="stat-value yellow" id="earnVal">0€</div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-label">СТАТУС</div>
+    <div class="stat-value" id="statStatus" style="font-size:14px;padding-top:4px">🟢</div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -76,18 +160,96 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
-const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/dark-v11', center: [24.7536, 59.4370], zoom: 12 });
+const DRIVER_ID = tg.initDataUnsafe?.user?.id;
+const DRIVER_NAME = tg.initDataUnsafe?.user?.first_name || 'Водитель';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
+const TALLINN = [24.7536, 59.4370];
 
-let isOnline = true, currentOrder = null, trips = 0, earned = 0, balance = 50;
-let userMarker = null, routeLayer = null;
+let isOnline = true;
+let currentOrder = null;
+let activeOrderId = null;
+let trips = 0, earned = 0, balance = 50;
+let userMarker = null, clientMarker = null;
+let browserWatchId = null;
+let myLat = null, myLon = null;
+let locationInterval = null;
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/dark-v11',
+  center: TALLINN, zoom: 12,
+  attributionControl: false
+});
+
+// ── ГЕОЛОКАЦИЯ ──
+
+function initLocation() {
+  if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
+    tg.LocationManager.init(() => {
+      if (tg.LocationManager.isLocationAvailable) {
+        getTelegramLocation();
+      } else {
+        startBrowserLocation();
+      }
+    });
+  } else {
+    startBrowserLocation();
+  }
 }
+
+function getTelegramLocation() {
+  tg.LocationManager.getLocation((loc) => {
+    if (loc) updatePosition(loc.latitude, loc.longitude);
+  });
+}
+
+function startBrowserLocation() {
+  if (!navigator.geolocation) return;
+  if (browserWatchId !== null) navigator.geolocation.clearWatch(browserWatchId);
+  browserWatchId = navigator.geolocation.watchPosition(
+    (pos) => updatePosition(pos.coords.latitude, pos.coords.longitude),
+    (err) => console.warn('Геолокация:', err.message),
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+  );
+}
+
+function updatePosition(lat, lon) {
+  myLat = lat; myLon = lon;
+  if (!userMarker) {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:18px;height:18px;background:#FFD600;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(255,214,0,0.3)';
+    userMarker = new mapboxgl.Marker(el).setLngLat([lon, lat]).addTo(map);
+    map.flyTo({ center: [lon, lat], zoom: 14 });
+  } else {
+    userMarker.setLngLat([lon, lat]);
+  }
+  // Отправляем позицию на сервер если есть активный заказ
+  if (activeOrderId) sendLocationToServer(lat, lon);
+}
+
+function sendLocationToServer(lat, lon) {
+  fetch(`/api/driver_location/${activeOrderId}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ lat, lon })
+  }).catch(() => {});
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    if (tg.LocationManager && tg.LocationManager.isInited) getTelegramLocation();
+    else startBrowserLocation();
+  }
+});
+
+initLocation();
+
+// Периодически отправляем геопозицию пока есть активный заказ
+setInterval(() => {
+  if (activeOrderId && myLat && myLon) sendLocationToServer(myLat, myLon);
+}, 5000);
+
+// ── UI ──
 
 function updateUI() {
   document.getElementById('balanceVal').textContent = balance + '€';
@@ -98,98 +260,224 @@ updateUI();
 
 function toggleStatus() {
   isOnline = !isOnline;
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
   const btn = document.getElementById('toggleBtn');
-  const statusText = document.getElementById('statusText');
+  const stat = document.getElementById('statStatus');
   if (isOnline) {
-    btn.classList.remove('off');
-    statusText.innerHTML = '🟢 Онлайн';
+    dot.className = 'status-dot';
+    text.textContent = 'Онлайн — жду заказ';
+    btn.className = 'toggle';
+    stat.textContent = '🟢';
+    document.getElementById('noOrders').style.display = 'block';
+    showToast('🟢 Вы онлайн');
     startPolling();
   } else {
-    btn.classList.add('off');
-    statusText.innerHTML = '🔴 Офлайн';
+    dot.className = 'status-dot offline';
+    text.textContent = 'Офлайн';
+    btn.className = 'toggle off';
+    stat.textContent = '🔴';
+    hideNewOrder();
+    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">⛔</div><div class="no-orders-text">Вы офлайн</div>';
+    showToast('🔴 Вы офлайн');
   }
 }
 
-async function pollOrders() {
-  if (!isOnline) return;
-  const res = await fetch('/api/orders');
-  const orders = await res.json();
-  if (orders.length > 0 && !currentOrder) {
-    currentOrder = orders[0];
-    document.getElementById('orderPrice').textContent = currentOrder.price + '€';
-    document.getElementById('orderFrom').textContent = currentOrder.from_address;
-    document.getElementById('orderTo').textContent = currentOrder.to_address;
-    document.getElementById('orderOverlay').classList.add('show');
+function showNewOrder(order) {
+  currentOrder = order;
+  document.getElementById('orderPrice').textContent = order.price + '€';
+  document.getElementById('orderFrom').textContent = order.from_address || '—';
+  document.getElementById('orderTo').textContent = order.to_address || '—';
+  document.getElementById('orderOverlay').classList.add('show');
+  document.getElementById('noOrders').style.display = 'none';
+
+  // Показываем маркер клиента
+  if (order.from_lat && order.from_lon) {
+    if (clientMarker) clientMarker.remove();
+    clientMarker = new mapboxgl.Marker({ color: '#4CAF50' })
+      .setLngLat([order.from_lon, order.from_lat]).addTo(map);
+    map.flyTo({ center: [order.from_lon, order.from_lat], zoom: 13 });
   }
 }
+
+function hideNewOrder() {
+  document.getElementById('orderOverlay').classList.remove('show');
+  currentOrder = null;
+  if (clientMarker) { clientMarker.remove(); clientMarker = null; }
+  if (isOnline) {
+    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div class="no-orders-text">Ждём заказов...</div>';
+    document.getElementById('noOrders').style.display = 'block';
+  }
+}
+
+function showActiveOrder(order) {
+  activeOrderId = order.id;
+  document.getElementById('activeFrom').textContent = order.from_address || order.from || '—';
+  document.getElementById('activeTo').textContent = order.to_address || order.to || '—';
+  document.getElementById('activeOrderPanel').classList.add('show');
+  document.getElementById('noOrders').style.display = 'none';
+  document.getElementById('statusText').textContent = '🚖 Везу клиента';
+
+  // Показываем маркер назначения
+  const toLat = order.to_lat, toLon = order.to_lon;
+  if (toLat && toLon) {
+    const el = document.createElement('div');
+    el.textContent = '🏁';
+    el.style.fontSize = '24px';
+    new mapboxgl.Marker({ element: el }).setLngLat([toLon, toLat]).addTo(map);
+  }
+}
+
+function hideActiveOrder() {
+  document.getElementById('activeOrderPanel').classList.remove('show');
+  activeOrderId = null;
+  document.getElementById('statusText').textContent = 'Онлайн — жду заказ';
+  if (isOnline) {
+    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div class="no-orders-text">Ждём заказов...</div>';
+    document.getElementById('noOrders').style.display = 'block';
+  }
+}
+
+// ── ПРИНЯТЬ ЗАКАЗ ──
 
 async function acceptOrder() {
-  await fetch('/api/accept_order/' + currentOrder.id, { method: 'POST' });
-  document.getElementById('orderOverlay').classList.remove('show');
-  document.getElementById('tripPanel').classList.add('show');
-  drawRouteToClient();
-  startLocationTracking();
-  showToast('✅ Заказ принят');
-}
-
-function drawRouteToClient() {
   if (!currentOrder) return;
-  const from = [currentOrder.from_lon, currentOrder.from_lat];
-  const to = [currentOrder.to_lon, currentOrder.to_lat];
-  fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${from[0]},${from[1]};${to[0]},${to[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`)
-    .then(res => res.json())
-    .then(data => {
-      if (routeLayer) map.removeLayer('route').removeSource('route');
-      map.addSource('route', { type: 'geojson', data: data.routes[0].geometry });
-      map.addLayer({ id: 'route', type: 'line', source: 'route', paint: { 'line-color': '#FFD600', 'line-width': 4 } });
+  const btn = document.getElementById('btnAccept');
+  btn.disabled = true;
+  btn.textContent = 'Принимаем...';
+  try {
+    const r = await fetch(`/api/accept_order/${currentOrder.id}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
     });
+    const result = await r.json();
+    if (result.ok) {
+      trips++;
+      earned += currentOrder.price || 0;
+      balance = Math.max(0, balance - 1);
+      updateUI();
+      showToast('✅ Заказ принят!');
+      const order = currentOrder;
+      hideNewOrder();
+      showActiveOrder(order);
+    } else {
+      showToast('❌ ' + (result.error || 'Ошибка'));
+      btn.disabled = false;
+      btn.textContent = '✅ ПРИНЯТЬ';
+    }
+  } catch(e) {
+    showToast('❌ Ошибка соединения');
+    btn.disabled = false;
+    btn.textContent = '✅ ПРИНЯТЬ';
+  }
 }
 
-function startLocationTracking() {
-  setInterval(() => {
-    if (!userMarker) return;
-    const lngLat = userMarker.getLngLat();
-    fetch('/api/driver_location', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ driver_id: tg.initDataUnsafe?.user?.id, lat: lngLat.lat, lon: lngLat.lng })
+// ── ОТКАЗАТЬ ──
+
+async function rejectOrder() {
+  if (!currentOrder) return;
+  try {
+    await fetch(`/api/reject_order/${currentOrder.id}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID })
     });
-  }, 3000);
+  } catch(e) {}
+  showToast('❌ Заказ отклонён');
+  hideNewOrder();
 }
 
-async function arrived() {
-  await fetch('/api/driver_arrived/' + currentOrder.id, { method: 'POST' });
-  showToast('📍 Клиент уведомлён');
+// ── Я ПРИБЫЛ ──
+
+async function markArrived() {
+  if (!activeOrderId) return;
+  const btn = document.getElementById('btnArrived');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/arrived/${activeOrderId}`, { method: 'POST' });
+    const result = await r.json();
+    if (result.ok) {
+      showToast('📍 Клиент уведомлён!');
+      btn.textContent = '✅ Клиент уведомлён';
+    } else {
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+    btn.disabled = false;
+  }
 }
 
-async function finishTrip() {
-  await fetch('/api/finish_order', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ order_id: currentOrder.id })
-  });
-  trips++;
-  earned += currentOrder.price;
-  balance = Math.max(0, balance - 1);
-  updateUI();
-  document.getElementById('tripPanel').classList.remove('show');
-  if (routeLayer) map.removeLayer('route').removeSource('route');
-  currentOrder = null;
-  showToast('🏁 Поездка завершена');
+// ── ЗАВЕРШИТЬ ПОЕЗДКУ ──
+
+async function completeOrder() {
+  if (!activeOrderId) return;
+  try {
+    const r = await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' });
+    const result = await r.json();
+    if (result.ok) {
+      showToast('🏁 Поездка завершена!');
+      hideActiveOrder();
+      startPolling();
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+  }
 }
 
-function rejectOrder() { document.getElementById('orderOverlay').classList.remove('show'); currentOrder = null; }
-function cancelTrip() { document.getElementById('tripPanel').classList.remove('show'); currentOrder = null; }
+// ── ОТМЕНИТЬ АКТИВНЫЙ ЗАКАЗ ──
 
-// Геолокация
-navigator.geolocation.watchPosition(pos => {
-  const { latitude, longitude } = pos.coords;
-  if (!userMarker) {
-    userMarker = new mapboxgl.Marker({ color: '#FFD600' }).setLngLat([longitude, latitude]).addTo(map);
-    map.flyTo({ center: [longitude, latitude], zoom: 14 });
-  } else userMarker.setLngLat([longitude, latitude]);
-}, null, { enableHighAccuracy: true });
+async function cancelActiveOrder() {
+  if (!activeOrderId) return;
+  if (!confirm('Отменить заказ?')) return;
+  try {
+    const r = await fetch(`/api/cancel_order_driver/${activeOrderId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID })
+    });
+    const result = await r.json();
+    if (result.ok) {
+      trips = Math.max(0, trips - 1);
+      updateUI();
+      showToast('❌ Заказ отменён');
+      hideActiveOrder();
+      startPolling();
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+  }
+}
+
+// ── POLLING ──
+
+async function pollOrders() {
+  if (!isOnline || activeOrderId) return;
+  try {
+    const res = await fetch('/api/orders');
+    if (res.ok) {
+      const orders = await res.json();
+      if (orders.length > 0 && !currentOrder) showNewOrder(orders[0]);
+    }
+  } catch(e) {}
+}
+
+let pollInterval;
+function startPolling() {
+  clearInterval(pollInterval);
+  pollInterval = setInterval(pollOrders, 4000);
+  pollOrders();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
 
 startPolling();
-setInterval(pollOrders, 4000);
 </script>
 </body>
 </html>
