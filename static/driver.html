@@ -11,151 +11,70 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --yellow: #FFD600;
-  --black: #0A0A0A;
-  --dark: #111111;
-  --card: #1A1A1A;
-  --border: #2A2A2A;
-  --muted: #888;
-  --green: #00E676;
-  --red: #FF3B30;
+  --yellow: #FFD600; --black: #0A0A0A; --dark: #111111;
+  --card: #1A1A1A; --border: #2A2A2A; --muted: #888;
+  --green: #00E676; --red: #FF3B30;
 }
-body {
-  background: var(--black);
-  color: #fff;
-  font-family: 'Inter', sans-serif;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--black);
-  z-index: 20;
-}
-.logo {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 22px;
-  letter-spacing: 3px;
-  color: var(--yellow);
-}
+body { background: var(--black); color: #fff; font-family: 'Inter', sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--black); z-index: 20; }
+.logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: var(--yellow); }
 .logo span { color: #fff; }
 .balance-block { text-align: right; }
 .balance-label { font-size: 10px; color: var(--muted); }
 .balance-value { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--yellow); }
-.status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: var(--dark);
-  border-bottom: 1px solid var(--border);
-}
+.status-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--dark); border-bottom: 1px solid var(--border); }
 .status-text { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
 .status-dot.offline { background: var(--red); animation: none; }
-@keyframes pulse {
-  0%,100% { opacity:1; transform:scale(1); }
-  50% { opacity:0.5; transform:scale(0.8); }
-}
-.toggle {
-  width: 52px; height: 28px;
-  background: var(--green);
-  border-radius: 14px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.3s;
-  border: none;
-}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+.toggle { width: 52px; height: 28px; background: var(--green); border-radius: 14px; position: relative; cursor: pointer; transition: background 0.3s; border: none; }
 .toggle.off { background: #333; }
-.toggle::after {
-  content: '';
-  position: absolute;
-  width: 22px; height: 22px;
-  background: white;
-  border-radius: 50%;
-  top: 3px; left: 3px;
-  transition: left 0.3s;
-}
+.toggle::after { content:''; position:absolute; width:22px; height:22px; background:white; border-radius:50%; top:3px; left:3px; transition:left 0.3s; }
 .toggle.off::after { left: 27px; }
 #map { flex: 1; position: relative; }
-.order-overlay {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  background: var(--dark);
-  border-top: 2px solid var(--yellow);
-  border-radius: 20px 20px 0 0;
-  padding: 16px;
-  z-index: 30;
-  transform: translateY(100%);
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+.order-overlay { position:absolute; bottom:0; left:0; right:0; background:var(--dark); border-top:2px solid var(--yellow); border-radius:20px 20px 0 0; padding:16px; z-index:30; transform:translateY(100%); transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
 .order-overlay.show { transform: translateY(0); }
-.order-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.order-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--yellow); letter-spacing: 2px; }
-.order-price { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--yellow); }
-.order-route { background: var(--card); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
-.route-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; }
-.route-item + .route-item { border-top: 1px solid var(--border); }
-.route-icon { font-size: 16px; margin-top: 2px; }
-.route-label { font-size: 10px; color: var(--muted); }
-.route-addr { font-size: 13px; font-weight: 600; }
-.order-actions { display: flex; gap: 10px; }
-.btn-accept {
-  flex: 2; height: 52px;
-  background: var(--yellow); color: var(--black);
-  border: none; border-radius: 12px;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 20px; letter-spacing: 2px;
-  cursor: pointer; transition: transform 0.15s;
-}
-.btn-accept:active { transform: scale(0.97); }
-.btn-accept:disabled { background: #555; color: #888; }
-.btn-reject {
-  flex: 1; height: 52px;
-  background: transparent; color: var(--red);
-  border: 1px solid var(--red); border-radius: 12px;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 18px; letter-spacing: 1px; cursor: pointer;
-}
-.btn-reject:active { background: var(--red); color: white; }
-.no-orders {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center; color: var(--muted); pointer-events: none;
-}
-.no-orders-icon { font-size: 40px; margin-bottom: 10px; }
-.no-orders-text { font-size: 14px; }
-.bottom-panel {
-  background: var(--dark);
-  border-top: 1px solid var(--border);
-  padding: 12px 16px 20px;
-  display: flex; gap: 10px; z-index: 20;
-}
-.stat-block { flex: 1; background: var(--card); border-radius: 10px; padding: 10px; text-align: center; }
-.stat-label { font-size: 10px; color: var(--muted); }
-.stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: #fff; margin-top: 2px; }
-.stat-value.yellow { color: var(--yellow); }
-.mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-group { display: none !important; }
-.toast {
-  position: fixed; top: 80px; left: 50%;
-  transform: translateX(-50%) translateY(-20px);
-  background: var(--yellow); color: var(--black);
-  padding: 10px 20px; border-radius: 30px;
-  font-weight: 700; font-size: 14px;
-  z-index: 100; opacity: 0; transition: all 0.3s;
-  pointer-events: none; white-space: nowrap;
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.order-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.order-title { font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--yellow); letter-spacing:2px; }
+.order-price { font-family:'Bebas Neue',sans-serif; font-size:32px; color:var(--yellow); }
+.order-route { background:var(--card); border-radius:12px; padding:12px; margin-bottom:14px; }
+.route-item { display:flex; align-items:flex-start; gap:10px; padding:6px 0; }
+.route-item+.route-item { border-top:1px solid var(--border); }
+.route-icon { font-size:16px; margin-top:2px; }
+.route-label { font-size:10px; color:var(--muted); }
+.route-addr { font-size:13px; font-weight:600; }
+.order-actions { display:flex; gap:10px; }
+.btn-accept { flex:2; height:52px; background:var(--yellow); color:var(--black); border:none; border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; cursor:pointer; }
+.btn-accept:disabled { background:#555; color:#888; }
+.btn-reject { flex:1; height:52px; background:transparent; color:var(--red); border:1px solid var(--red); border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:18px; cursor:pointer; }
+
+/* Активный заказ */
+.active-order { position:absolute; bottom:0; left:0; right:0; background:var(--dark); border-top:2px solid var(--green); border-radius:20px 20px 0 0; padding:16px; z-index:30; display:none; }
+.active-order.show { display:block; }
+.active-title { font-family:'Bebas Neue',sans-serif; font-size:18px; color:var(--green); margin-bottom:12px; }
+.active-route { background:var(--card); border-radius:12px; padding:12px; margin-bottom:12px; font-size:13px; }
+.active-route .from { color:#4CAF50; margin-bottom:6px; }
+.active-route .to { color:var(--yellow); }
+.btn-arrived { width:100%; height:52px; background:var(--green); color:var(--black); border:none; border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; cursor:pointer; margin-bottom:10px; }
+.btn-arrived:disabled { background:#555; color:#888; }
+.btn-done { width:100%; height:48px; background:var(--yellow); color:var(--black); border:none; border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:18px; cursor:pointer; margin-bottom:10px; }
+.btn-cancel-order { width:100%; height:44px; background:transparent; color:var(--red); border:1px solid var(--red); border-radius:12px; font-family:'Bebas Neue',sans-serif; font-size:16px; cursor:pointer; }
+
+.no-orders { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:var(--muted); pointer-events:none; }
+.no-orders-icon { font-size:40px; margin-bottom:10px; }
+.no-orders-text { font-size:14px; }
+.bottom-panel { background:var(--dark); border-top:1px solid var(--border); padding:12px 16px 20px; display:flex; gap:10px; z-index:20; }
+.stat-block { flex:1; background:var(--card); border-radius:10px; padding:10px; text-align:center; }
+.stat-label { font-size:10px; color:var(--muted); }
+.stat-value { font-family:'Bebas Neue',sans-serif; font-size:22px; color:#fff; margin-top:2px; }
+.stat-value.yellow { color:var(--yellow); }
+.mapboxgl-ctrl-logo,.mapboxgl-ctrl-attrib,.mapboxgl-ctrl-group { display:none !important; }
+.toast { position:fixed; top:80px; left:50%; transform:translateX(-50%) translateY(-20px); background:var(--yellow); color:var(--black); padding:10px 20px; border-radius:30px; font-weight:700; font-size:14px; z-index:100; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
-
 <body>
+
 <div class="header">
   <div class="logo">TL<span>.</span>TAKSO</div>
   <div class="balance-block">
@@ -177,6 +96,8 @@ body {
     <div class="no-orders-icon">🚕</div>
     <div class="no-orders-text">Ждём заказов...</div>
   </div>
+
+  <!-- Новый заказ -->
   <div class="order-overlay" id="orderOverlay">
     <div class="order-header">
       <div class="order-title">📋 НОВЫЙ ЗАКАЗ</div>
@@ -203,6 +124,18 @@ body {
       <button class="btn-reject" onclick="rejectOrder()">ОТКАЗ</button>
     </div>
   </div>
+
+  <!-- Активный заказ -->
+  <div class="active-order" id="activeOrderPanel">
+    <div class="active-title">🚖 АКТИВНЫЙ ЗАКАЗ</div>
+    <div class="active-route">
+      <div class="from">📍 <span id="activeFrom">—</span></div>
+      <div class="to">🏁 <span id="activeTo">—</span></div>
+    </div>
+    <button class="btn-arrived" id="btnArrived" onclick="markArrived()">📍 Я ПРИБЫЛ!</button>
+    <button class="btn-done" id="btnDone" onclick="completeOrder()">✅ ПОЕЗДКА ЗАВЕРШЕНА</button>
+    <button class="btn-cancel-order" onclick="cancelActiveOrder()">❌ Отменить заказ</button>
+  </div>
 </div>
 
 <div class="bottom-panel">
@@ -227,11 +160,19 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
+const DRIVER_ID = tg.initDataUnsafe?.user?.id;
+const DRIVER_NAME = tg.initDataUnsafe?.user?.first_name || 'Водитель';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
 const TALLINN = [24.7536, 59.4370];
-let isOnline = true, currentOrder = null, trips = 0, earned = 0, balance = 50;
-let userMarker = null;
+
+let isOnline = true;
+let currentOrder = null;
+let activeOrderId = null;
+let trips = 0, earned = 0, balance = 50;
+let userMarker = null, clientMarker = null;
 let browserWatchId = null;
+let myLat = null, myLon = null;
+let locationInterval = null;
 
 const map = new mapboxgl.Map({
   container: 'map',
@@ -264,9 +205,7 @@ function getTelegramLocation() {
 
 function startBrowserLocation() {
   if (!navigator.geolocation) return;
-  if (browserWatchId !== null) {
-    navigator.geolocation.clearWatch(browserWatchId);
-  }
+  if (browserWatchId !== null) navigator.geolocation.clearWatch(browserWatchId);
   browserWatchId = navigator.geolocation.watchPosition(
     (pos) => updatePosition(pos.coords.latitude, pos.coords.longitude),
     (err) => console.warn('Геолокация:', err.message),
@@ -275,27 +214,40 @@ function startBrowserLocation() {
 }
 
 function updatePosition(lat, lon) {
+  myLat = lat; myLon = lon;
   if (!userMarker) {
     const el = document.createElement('div');
-    el.style.cssText = 'width:16px;height:16px;background:#FFD600;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(255,214,0,0.3)';
+    el.style.cssText = 'width:18px;height:18px;background:#FFD600;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(255,214,0,0.3)';
     userMarker = new mapboxgl.Marker(el).setLngLat([lon, lat]).addTo(map);
-    map.flyTo({ center: [lon, lat], zoom: 13 });
+    map.flyTo({ center: [lon, lat], zoom: 14 });
   } else {
     userMarker.setLngLat([lon, lat]);
   }
+  // Отправляем позицию на сервер если есть активный заказ
+  if (activeOrderId) sendLocationToServer(lat, lon);
+}
+
+function sendLocationToServer(lat, lon) {
+  fetch(`/api/driver_location/${activeOrderId}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ lat, lon })
+  }).catch(() => {});
 }
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    if (tg.LocationManager && tg.LocationManager.isInited) {
-      getTelegramLocation();
-    } else {
-      startBrowserLocation();
-    }
+    if (tg.LocationManager && tg.LocationManager.isInited) getTelegramLocation();
+    else startBrowserLocation();
   }
 });
 
 initLocation();
+
+// Периодически отправляем геопозицию пока есть активный заказ
+setInterval(() => {
+  if (activeOrderId && myLat && myLon) sendLocationToServer(myLat, myLon);
+}, 5000);
 
 // ── UI ──
 
@@ -317,7 +269,6 @@ function toggleStatus() {
     text.textContent = 'Онлайн — жду заказ';
     btn.className = 'toggle';
     stat.textContent = '🟢';
-    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div class="no-orders-text">Ждём заказов...</div>';
     document.getElementById('noOrders').style.display = 'block';
     showToast('🟢 Вы онлайн');
     startPolling();
@@ -326,31 +277,69 @@ function toggleStatus() {
     text.textContent = 'Офлайн';
     btn.className = 'toggle off';
     stat.textContent = '🔴';
-    hideOrder();
+    hideNewOrder();
     document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">⛔</div><div class="no-orders-text">Вы офлайн</div>';
     showToast('🔴 Вы офлайн');
   }
 }
 
-function showIncomingOrder(order) {
+function showNewOrder(order) {
   currentOrder = order;
   document.getElementById('orderPrice').textContent = order.price + '€';
   document.getElementById('orderFrom').textContent = order.from_address || '—';
   document.getElementById('orderTo').textContent = order.to_address || '—';
   document.getElementById('orderOverlay').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
+
+  // Показываем маркер клиента
+  if (order.from_lat && order.from_lon) {
+    if (clientMarker) clientMarker.remove();
+    clientMarker = new mapboxgl.Marker({ color: '#4CAF50' })
+      .setLngLat([order.from_lon, order.from_lat]).addTo(map);
+    map.flyTo({ center: [order.from_lon, order.from_lat], zoom: 13 });
+  }
 }
 
-function hideOrder() {
+function hideNewOrder() {
   document.getElementById('orderOverlay').classList.remove('show');
   currentOrder = null;
+  if (clientMarker) { clientMarker.remove(); clientMarker = null; }
   if (isOnline) {
     document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div class="no-orders-text">Ждём заказов...</div>';
     document.getElementById('noOrders').style.display = 'block';
   }
 }
 
-// ── ПРИНЯТЬ ЗАКАЗ через fetch ──
+function showActiveOrder(order) {
+  activeOrderId = order.id;
+  document.getElementById('activeFrom').textContent = order.from_address || order.from || '—';
+  document.getElementById('activeTo').textContent = order.to_address || order.to || '—';
+  document.getElementById('activeOrderPanel').classList.add('show');
+  document.getElementById('noOrders').style.display = 'none';
+  document.getElementById('statusText').textContent = '🚖 Везу клиента';
+
+  // Показываем маркер назначения
+  const toLat = order.to_lat, toLon = order.to_lon;
+  if (toLat && toLon) {
+    const el = document.createElement('div');
+    el.textContent = '🏁';
+    el.style.fontSize = '24px';
+    new mapboxgl.Marker({ element: el }).setLngLat([toLon, toLat]).addTo(map);
+  }
+}
+
+function hideActiveOrder() {
+  document.getElementById('activeOrderPanel').classList.remove('show');
+  activeOrderId = null;
+  document.getElementById('statusText').textContent = 'Онлайн — жду заказ';
+  if (isOnline) {
+    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div class="no-orders-text">Ждём заказов...</div>';
+    document.getElementById('noOrders').style.display = 'block';
+  }
+}
+
+// ── ПРИНЯТЬ ЗАКАЗ ──
+
 async function acceptOrder() {
   if (!currentOrder) return;
   const btn = document.getElementById('btnAccept');
@@ -360,10 +349,7 @@ async function acceptOrder() {
     const r = await fetch(`/api/accept_order/${currentOrder.id}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        driver_id: tg.initDataUnsafe?.user?.id,
-        driver_name: tg.initDataUnsafe?.user?.first_name || 'Водитель'
-      })
+      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
     });
     const result = await r.json();
     if (result.ok) {
@@ -372,7 +358,9 @@ async function acceptOrder() {
       balance = Math.max(0, balance - 1);
       updateUI();
       showToast('✅ Заказ принят!');
-      hideOrder();
+      const order = currentOrder;
+      hideNewOrder();
+      showActiveOrder(order);
     } else {
       showToast('❌ ' + (result.error || 'Ошибка'));
       btn.disabled = false;
@@ -385,27 +373,92 @@ async function acceptOrder() {
   }
 }
 
-// ── ОТКАЗАТЬ через fetch ──
+// ── ОТКАЗАТЬ ──
+
 async function rejectOrder() {
   if (!currentOrder) return;
   try {
     await fetch(`/api/reject_order/${currentOrder.id}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: tg.initDataUnsafe?.user?.id })
+      body: JSON.stringify({ driver_id: DRIVER_ID })
     });
   } catch(e) {}
   showToast('❌ Заказ отклонён');
-  hideOrder();
+  hideNewOrder();
 }
 
+// ── Я ПРИБЫЛ ──
+
+async function markArrived() {
+  if (!activeOrderId) return;
+  const btn = document.getElementById('btnArrived');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/arrived/${activeOrderId}`, { method: 'POST' });
+    const result = await r.json();
+    if (result.ok) {
+      showToast('📍 Клиент уведомлён!');
+      btn.textContent = '✅ Клиент уведомлён';
+    } else {
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+    btn.disabled = false;
+  }
+}
+
+// ── ЗАВЕРШИТЬ ПОЕЗДКУ ──
+
+async function completeOrder() {
+  if (!activeOrderId) return;
+  try {
+    const r = await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' });
+    const result = await r.json();
+    if (result.ok) {
+      showToast('🏁 Поездка завершена!');
+      hideActiveOrder();
+      startPolling();
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+  }
+}
+
+// ── ОТМЕНИТЬ АКТИВНЫЙ ЗАКАЗ ──
+
+async function cancelActiveOrder() {
+  if (!activeOrderId) return;
+  if (!confirm('Отменить заказ?')) return;
+  try {
+    const r = await fetch(`/api/cancel_order_driver/${activeOrderId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID })
+    });
+    const result = await r.json();
+    if (result.ok) {
+      trips = Math.max(0, trips - 1);
+      updateUI();
+      showToast('❌ Заказ отменён');
+      hideActiveOrder();
+      startPolling();
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+  }
+}
+
+// ── POLLING ──
+
 async function pollOrders() {
-  if (!isOnline) return;
+  if (!isOnline || activeOrderId) return;
   try {
     const res = await fetch('/api/orders');
     if (res.ok) {
       const orders = await res.json();
-      if (orders.length > 0 && !currentOrder) showIncomingOrder(orders[0]);
+      if (orders.length > 0 && !currentOrder) showNewOrder(orders[0]);
     }
   } catch(e) {}
 }
