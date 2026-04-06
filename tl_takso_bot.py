@@ -19,10 +19,14 @@ RAILWAY_DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN") or os.environ.get("RAIL
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", BOT_TOKEN.split(':')[1][:16])
 MINI_APP_URL = f"https://{RAILWAY_DOMAIN}/static/miniapp.html"
 DRIVER_MAP_URL = f"https://{RAILWAY_DOMAIN}/static/driver.html"
+TRACKING_URL = f"https://{RAILWAY_DOMAIN}/static/tracking.html"
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "1873195803"))
 
 DATA_FILE = "/mnt/data/tltakso_data.json"
 data_lock = threading.Lock()
+
+# Хранилище геопозиций водителей: {order_id: {lat, lon, updated}}
+driver_locations = {}
 
 def save_data():
     with data_lock:
@@ -74,58 +78,6 @@ load_data()
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
-# ⬇️ СЮДА ВСТАВИТЬ ОБРАБОТЧИК
-
-@bot.message_handler(content_types=['web_app_data'])
-def handle_web_app_data(message):
-    """Получение заказа из WebApp"""
-    try:
-        data = json.loads(message.web_app_data.data)
-        
-        # Формируем текст заказа
-        order_text = (
-            f"🚖 *НОВЫЙ ЗАКАЗ #{order_counter[0]}*\n\n"
-            f"📍 *Откуда:* `{data['from_address']}`\n"
-            f"🏁 *Куда:* `{data['to_address']}`\n"
-            f"💰 *Цена:* {data['price']}€ (водителю: {data['driver_gets']}€)\n"
-            f"💳 *Оплата:* {data['payment']}\n"
-            f"⏰ *Время:* {data['time']}"
-        )
-        
-        # Отправляем админу
-        bot.send_message(ADMIN_ID, order_text, parse_mode="Markdown")
-        
-        # Подтверждение клиенту
-        bot.send_message(
-            message.chat.id,
-            "✅ *Заказ принят!* Ищем водителя...",
-            parse_mode="Markdown"
-        )
-        
-        # Сохраняем заказ
-        orders[order_counter[0]] = {
-            "id": order_counter[0],
-            "client_id": message.chat.id,
-            "from_address": data['from_address'],
-            "to_address": data['to_address'],
-            "from_lat": data.get('from_lat'),
-            "from_lon": data.get('from_lon'),
-            "to_lat": data.get('to_lat'),
-            "to_lon": data.get('to_lon'),
-            "price": data['price'],
-            "driver_gets": data['driver_gets'],
-            "payment": data['payment'],
-            "status": "new",
-            "created_at": datetime.datetime.now().isoformat()
-        }
-        order_counter[0] += 1
-        save_data()
-        
-    except Exception as e:
-        print(f"❌ Ошибка обработки заказа: {e}")
-        bot.send_message(message.chat.id, "❌ Ошибка оформления заказа")
-
-
 if ADMIN_ID not in drivers:
     drivers[ADMIN_ID] = {
         "approved": True, "online": True, "full_name": "S.L.",
@@ -133,8 +85,7 @@ if ADMIN_ID not in drivers:
         "earnings": 0, "trips": 0, "commission": 0, "balance": 50.0
     }
 
-
-# ── FLASK ──
+# ── FLASK ROUTES ──
 
 @app.route('/')
 def home():
@@ -220,10 +171,14 @@ def api_accept_order_driver(order_id):
             if order.get('pay_type') == 'cash':
                 drivers[driver_id]['balance'] = drivers[driver_id].get('balance', 0) - 1
         save_data()
+        # Отправляем клиенту сообщение + кнопку для открытия карты слежения
+        tracking_url = f"{TRACKING_URL}?order={order_id}"
         try:
+            kb = types.InlineKeyboardMarkup()
+            kb.add(types.InlineKeyboardButton(text="🗺️ Следить за водителем", web_app=types.WebAppInfo(url=tracking_url)))
             bot.send_message(order['client_id'],
-                f"🚖 *Водитель найден!*\n\n👤 {driver_name}\n⏱ Едет к вам...",
-                parse_mode="Markdown")
+                f"🚖 *Водитель найден!*\n\n👤 {driver_name}\n🚗 {drivers.get(driver_id, {}).get('car', '')}\n⏱ Едет к вам...",
+                parse_mode="Markdown", reply_markup=kb)
         except Exception as e:
             print(f"Ошибка уведомления клиента: {e}")
         return json.dumps({'ok': True})
@@ -235,52 +190,116 @@ def api_accept_order_driver(order_id):
 def api_reject_order_driver(order_id):
     order = orders.get(order_id)
     if order and order['status'] == 'pending':
-        pass  # заказ остаётся pending для других водителей
+        pass
     return json.dumps({'ok': True})
-def api_create_order():
+
+@app.route('/api/driver_location/<order_id>', methods=['POST'])
+def api_driver_location(order_id):
+    """Водитель отправляет свою геопозицию"""
     try:
         data = request.get_json()
-        if not data:
-            return json.dumps({'ok': False, 'error': 'No data'}), 400
-
-        client_id = data.get('client_id')
-        client_name = data.get('client_name', 'Клиент')
-
-        if not client_id:
-            return json.dumps({'ok': False, 'error': 'No client_id'}), 400
-
-        client_id = int(client_id)
-        oid = new_order_id()
-        orders[oid] = {
-            "id": oid, "client_id": client_id, "client_name": client_name,
-            "from": data.get("from_address", "—"), "to": data.get("to_address", "—"),
-            "from_lat": data.get("from_lat", 0), "from_lon": data.get("from_lon", 0),
-            "to_lat": data.get("to_lat", 0), "to_lon": data.get("to_lon", 0),
-            "time": data.get("time", "Сейчас"),
-            "payment": "💳 Карта" if data.get("payment") == "card" else "💵 Наличные",
-            "pay_type": data.get("payment", "cash"),
-            "price": data.get("price", 0),
-            "driver_gets": data.get("driver_gets", data.get("price", 0)),
-            "status": "pending", "created": now_str(),
-            "driver_id": None, "client_lang": "ru"
+        lat = data.get('lat')
+        lon = data.get('lon')
+        if lat is None or lon is None:
+            return json.dumps({'ok': False}), 400
+        driver_locations[order_id] = {
+            'lat': lat, 'lon': lon,
+            'updated': time.time()
         }
-        if client_id not in user_state:
-            user_state[client_id] = {}
-        user_state[client_id]["current_order"] = oid
-        save_data()
-
-        try:
-            bot.send_message(client_id,
-                f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from'][:50]}\n🏁 {orders[oid]['to'][:50]}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...",
-                parse_mode="Markdown", reply_markup=main_menu_client(client_id))
-        except Exception as e:
-            print(f"Ошибка отправки клиенту: {e}")
-
-        notify_drivers(oid)
-        return json.dumps({'ok': True, 'order_id': oid})
-
+        return json.dumps({'ok': True})
     except Exception as e:
-        print(f"Ошибка create_order: {e}")
+        return json.dumps({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/order_status/<order_id>', methods=['GET'])
+def api_order_status(order_id):
+    """Клиент запрашивает статус заказа и позицию водителя"""
+    order = orders.get(order_id)
+    if not order:
+        return json.dumps({'ok': False, 'error': 'Not found'}), 404
+    loc = driver_locations.get(order_id)
+    result = {
+        'ok': True,
+        'status': order.get('status'),
+        'driver_name': order.get('driver_name', ''),
+        'driver_lat': loc['lat'] if loc else None,
+        'driver_lon': loc['lon'] if loc else None,
+        'to_lat': order.get('to_lat'),
+        'to_lon': order.get('to_lon'),
+        'from_lat': order.get('from_lat'),
+        'from_lon': order.get('from_lon'),
+    }
+    return json.dumps(result)
+
+@app.route('/api/arrived/<order_id>', methods=['POST'])
+def api_arrived(order_id):
+    """Водитель нажал 'Я прибыл'"""
+    try:
+        order = orders.get(order_id)
+        if not order or order['status'] != 'accepted':
+            return json.dumps({'ok': False}), 400
+        order['status'] = 'arrived'
+        save_data()
+        try:
+            bot.send_message(order['client_id'],
+                f"📍 *Водитель прибыл!*\n\n🚖 {order.get('driver_name', 'Водитель')} ждёт вас. Выходите! 😊",
+                parse_mode="Markdown")
+        except Exception as e:
+            print(f"Ошибка уведомления: {e}")
+        return json.dumps({'ok': True})
+    except Exception as e:
+        return json.dumps({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/complete_order/<order_id>', methods=['POST'])
+def api_complete_order(order_id):
+    """Водитель завершил поездку"""
+    try:
+        order = orders.get(order_id)
+        if not order or order['status'] not in ['accepted', 'arrived']:
+            return json.dumps({'ok': False}), 400
+        order['status'] = 'done'
+        save_data()
+        driver_locations.pop(order_id, None)
+        try:
+            bot.send_message(order['client_id'],
+                "🏁 *Поездка завершена!*\n\nСпасибо что выбрали TL.TAKSO!",
+                parse_mode="Markdown", reply_markup=main_menu_client(order['client_id']))
+        except Exception as e:
+            print(f"Ошибка уведомления: {e}")
+        if order['client_id'] in user_state:
+            user_state[order['client_id']].pop("current_order", None)
+        return json.dumps({'ok': True})
+    except Exception as e:
+        return json.dumps({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/cancel_order_driver/<order_id>', methods=['POST'])
+def api_cancel_order_driver(order_id):
+    """Водитель отменил заказ"""
+    try:
+        data = request.get_json() or {}
+        driver_id = data.get('driver_id')
+        order = orders.get(order_id)
+        if not order or order['status'] not in ['accepted', 'arrived']:
+            return json.dumps({'ok': False}), 400
+        order['status'] = 'pending'
+        order['driver_id'] = None
+        order.pop('driver_name', None)
+        if driver_id:
+            driver_id = int(driver_id)
+            if driver_id in drivers:
+                drivers[driver_id]['trips'] = max(0, drivers[driver_id].get('trips', 0) - 1)
+                drivers[driver_id]['earnings'] = max(0, drivers[driver_id].get('earnings', 0) - order.get('driver_gets', 0))
+                drivers[driver_id]['commission'] = max(0, drivers[driver_id].get('commission', 0) - 1)
+                if order.get('pay_type') == 'cash':
+                    drivers[driver_id]['balance'] = drivers[driver_id].get('balance', 0) + 1
+        driver_locations.pop(order_id, None)
+        save_data()
+        try:
+            bot.send_message(order['client_id'], "⚠️ Водитель отменил заказ. Ищем нового...")
+        except:
+            pass
+        notify_drivers(order_id)
+        return json.dumps({'ok': True})
+    except Exception as e:
         return json.dumps({'ok': False, 'error': str(e)}), 500
 
 @app.route(f'/webhook/{WEBHOOK_SECRET}', methods=['POST'])
@@ -349,11 +368,9 @@ def notify_drivers(oid):
             try:
                 bot.send_message(driver_id, text, parse_mode="Markdown", reply_markup=driver_order_kb(oid))
                 notified += 1
-                print(f"   ✅ Отправлено водителю {driver_id}")
             except Exception as e:
                 print(f"   ❌ Ошибка водителю {driver_id}: {e}")
     if notified == 0:
-        print(f"❌ Нет доступных водителей для заказа {oid}")
         bot.send_message(order["client_id"], "⚠️ Сейчас нет свободных водителей. Попробуйте позже.")
 
 # ── ПЕРЕВОДЫ ──
@@ -368,7 +385,7 @@ T = {
     "i_driver": {"ru": "🧑‍✈️ Я водитель", "et": "🧑‍✈️ Olen juht", "en": "🧑‍✈️ I'm a driver"},
     "welcome_client": {"ru": "👋 Добро пожаловать!\n\nНажмите кнопку чтобы заказать такси.", "et": "👋 Tere tulemast!\n\nVajutage nuppu takso tellimiseks.", "en": "👋 Welcome!\n\nPress the button to order a taxi."},
     "order_taxi": {"ru": "🚖 Заказать такси", "et": "🚖 Telli takso", "en": "🚖 Order taxi"},
-    "driver_found": {"ru": "🚖 *Водитель найден!*\n\n👤 Водитель: {name}\n🚗 Машина: {car}\n⏱ Едет к вам...", "et": "🚖 *Juht leitud!*\n\n👤 Juht: {name}\n🚗 Auto: {car}\n⏱ Sõidab teie juurde...", "en": "🚖 *Driver found!*\n\n👤 Driver: {name}\n🚗 Car: {car}\n⏱ On the way..."},
+    "driver_found": {"ru": "🚖 *Водитель найден!*\n\n👤 {name}\n🚗 {car}\n⏱ Едет к вам...", "et": "🚖 *Juht leitud!*\n\n👤 {name}\n🚗 {car}\n⏱ Sõidab teie juurde...", "en": "🚖 *Driver found!*\n\n👤 {name}\n🚗 {car}\n⏱ On the way..."},
     "arrived": {"ru": "📍 *Водитель прибыл!*\n\n🚖 {name} ждёт вас. Выходите! 😊", "et": "📍 *Juht on kohal!*\n\n🚖 {name} ootab teid. Tulge välja! 😊", "en": "📍 *Driver arrived!*\n\n🚖 {name} is waiting. Please come out! 😊"},
     "trip_done": {"ru": "🏁 *Поездка завершена!*\n\nСпасибо что выбрали TL.TAKSO!", "et": "🏁 *Sõit lõpetatud!*\n\nTäname, et valisite TL.TAKSO!", "en": "🏁 *Trip completed!*\n\nThank you for choosing TL.TAKSO!"},
     "cancel_order": {"ru": "❌ Отменить заказ", "et": "❌ Tühista tellimus", "en": "❌ Cancel order"},
@@ -617,42 +634,7 @@ def order_start(msg):
     kb.add(types.InlineKeyboardButton(text="🗺️ Выбрать на карте", web_app=types.WebAppInfo(url=MINI_APP_URL)))
     bot.send_message(uid, "📍 Нажмите кнопку чтобы выбрать маршрут на карте:", reply_markup=kb)
 
-# ── ОБРАБОТКА ДАННЫХ ИЗ MINI APP ──
-
-@bot.message_handler(content_types=['web_app_data'])
-def handle_webapp_data(msg):
-    uid = msg.from_user.id
-    print(f"WebApp data from {uid}: {msg.web_app_data.data}")
-    try:
-        data = json.loads(msg.web_app_data.data)
-        oid = new_order_id()
-        orders[oid] = {
-            "id": oid, "client_id": uid, "client_name": msg.from_user.first_name,
-            "from": data.get("from_address", "—"), "to": data.get("to_address", "—"),
-            "from_lat": data.get("from_lat", 0), "from_lon": data.get("from_lon", 0),
-            "to_lat": data.get("to_lat", 0), "to_lon": data.get("to_lon", 0),
-            "time": data.get("time", "Сейчас"),
-            "payment": "💳 Карта" if data.get("payment") == "card" else "💵 Наличные",
-            "pay_type": data.get("payment", "cash"),
-            "price": data.get("price", 0),
-            "driver_gets": data.get("driver_gets", data.get("price", 0)),
-            "status": "pending", "created": now_str(),
-            "driver_id": None, "client_lang": get_lang(uid)
-        }
-        if uid not in user_state:
-            user_state[uid] = {}
-        user_state[uid]["current_order"] = oid
-        user_state[uid]["step"] = None
-        save_data()
-        bot.send_message(uid,
-            f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from'][:50]}\n🏁 {orders[oid]['to'][:50]}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...",
-            parse_mode="Markdown", reply_markup=main_menu_client(uid))
-        notify_drivers(oid)
-    except Exception as e:
-        print(f"Ошибка webapp data: {e}")
-        bot.send_message(uid, "❌ Ошибка создания заказа. Попробуйте снова.")
-
-# ── ПРИНЯТЬ / ОТКАЗАТЬ ──
+# ── ПРИНЯТЬ / ОТКАЗАТЬ (через бот кнопки) ──
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("accept_") or c.data.startswith("decline_"))
 def cb_driver_response(call):
@@ -676,12 +658,18 @@ def cb_driver_response(call):
             drivers[driver_id]["balance"] = drivers[driver_id].get("balance", 0) - 1
         save_data()
         bot.edit_message_text(
-            f"✅ *Заказ #{oid} принят!*\n\n📍 {order['from'][:40]}\n🏁 {order['to'][:40]}\n👤 {order['client_name']}",
-            call.message.chat.id, call.message.message_id,
-            parse_mode="Markdown", reply_markup=driver_active_kb(oid))
-        bot.send_message(order["client_id"],
-            t("driver_found", order["client_id"], name=drivers[driver_id]["full_name"], car=drivers[driver_id]["car"]),
-            parse_mode="Markdown")
+            f"✅ *Заказ #{oid} принят!*\n\n📍 {order['from'][:40]}\n🏁 {order['to'][:40]}",
+            call.message.chat.id, call.message.message_id, parse_mode="Markdown")
+        # Отправляем клиенту кнопку слежения
+        tracking_url = f"{TRACKING_URL}?order={oid}"
+        try:
+            kb = types.InlineKeyboardMarkup()
+            kb.add(types.InlineKeyboardButton(text="🗺️ Следить за водителем", web_app=types.WebAppInfo(url=tracking_url)))
+            bot.send_message(order["client_id"],
+                f"🚖 *Водитель найден!*\n\n👤 {drivers[driver_id]['full_name']}\n🚗 {drivers[driver_id]['car']}\n⏱ Едет к вам...",
+                parse_mode="Markdown", reply_markup=kb)
+        except Exception as e:
+            print(f"Ошибка уведомления клиента: {e}")
     elif action == "decline":
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
         bot.answer_callback_query(call.id, "Отклонён")
@@ -694,7 +682,12 @@ def cb_arrived(call):
         order["status"] = "arrived"
         save_data()
         bot.answer_callback_query(call.id, "✅ Клиент уведомлён!")
-        bot.send_message(order["client_id"], t("arrived", order["client_id"], name=order["driver_name"]), parse_mode="Markdown")
+        try:
+            bot.send_message(order["client_id"],
+                f"📍 *Водитель прибыл!*\n\n🚖 {order.get('driver_name', 'Водитель')} ждёт вас. Выходите! 😊",
+                parse_mode="Markdown")
+        except:
+            pass
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("done_"))
 def cb_done(call):
@@ -703,15 +696,20 @@ def cb_done(call):
     if order and order["status"] in ["accepted", "arrived"]:
         order["status"] = "done"
         save_data()
+        driver_locations.pop(oid, None)
         bot.edit_message_text(f"✅ *Поездка #{oid} завершена!*", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
-        bot.send_message(order["client_id"], t("trip_done", order["client_id"]), parse_mode="Markdown", reply_markup=main_menu_client(order["client_id"]))
+        try:
+            bot.send_message(order["client_id"], t("trip_done", order["client_id"]),
+                parse_mode="Markdown", reply_markup=main_menu_client(order["client_id"]))
+        except:
+            pass
         if order["client_id"] in user_state:
             user_state[order["client_id"]].pop("current_order", None)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("driver_cancel_"))
 def cb_driver_cancel(call):
     parts = call.data.split("_")
-    oid = parts[-1] if len(parts) >= 3 else parts[1]
+    oid = parts[-1]
     order = orders.get(oid)
     if order and order["status"] in ["accepted", "arrived"]:
         driver_id = call.from_user.id
@@ -723,18 +721,15 @@ def cb_driver_cancel(call):
         drivers[driver_id]["commission"] = max(0, drivers[driver_id].get("commission", 0) - 1)
         if order.get("pay_type") == "cash":
             drivers[driver_id]["balance"] = drivers[driver_id].get("balance", 0) + 1
+        driver_locations.pop(oid, None)
         save_data()
-        bot.edit_message_text(f"❌ Заказ #{oid} отменён. Возвращён в поиск.", call.message.chat.id, call.message.message_id)
+        bot.edit_message_text(f"❌ Заказ #{oid} отменён.", call.message.chat.id, call.message.message_id)
         bot.answer_callback_query(call.id, "Заказ отменён")
-        bot.send_message(order["client_id"], "⚠️ Водитель отменил заказ. Ищем нового...", reply_markup=cancel_kb(order["client_id"]))
-        for did, d in drivers.items():
-            if d.get("approved") and d.get("online") and d.get("balance", 0) > 0 and not has_active_order(did) and did != driver_id:
-                try:
-                    bot.send_message(did,
-                        f"🔔 *Заказ #{oid} (повторно)*\n\n👤 {order['client_name']}\n📍 {order['from'][:40]}\n🏁 {order['to'][:40]}\n💰 *{order['driver_gets']}€*",
-                        parse_mode="Markdown", reply_markup=driver_order_kb(oid))
-                except:
-                    pass
+        try:
+            bot.send_message(order["client_id"], "⚠️ Водитель отменил заказ. Ищем нового...", reply_markup=cancel_kb(order["client_id"]))
+        except:
+            pass
+        notify_drivers(oid)
 
 @bot.callback_query_handler(func=lambda c: c.data == "cancel_order")
 def cb_cancel(call):
@@ -754,6 +749,7 @@ def cb_cancel(call):
                     drivers[order["driver_id"]]["commission"] = max(0, drivers[order["driver_id"]].get("commission", 0) - 1)
                 except:
                     pass
+            driver_locations.pop(oid, None)
             save_data()
     bot.edit_message_text(t("order_cancelled", uid), call.message.chat.id, call.message.message_id)
     bot.send_message(uid, t("order_cancelled", uid), reply_markup=main_menu_client(uid))
