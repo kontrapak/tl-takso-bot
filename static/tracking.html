@@ -16,24 +16,29 @@ body { background:#0A0A0A; color:#fff; font-family:-apple-system,sans-serif; hei
 .status-badge { background:#1A1A1A; border:1px solid #2A2A2A; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:600; }
 .status-badge.arrived { border-color:#FFD600; color:#FFD600; }
 .status-badge.accepted { border-color:#00E676; color:#00E676; }
+.status-badge.done { border-color:#aaa; color:#aaa; }
 
-#map { flex:1; position:relative; }
+#map { flex:1; position:relative; min-height:0; }
 
-.info-panel { background:#111; border-top:2px solid #FFD600; padding:16px; }
-.driver-info { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-.driver-icon { width:44px; height:44px; background:#1A1A1A; border-radius:50%; border:2px solid #FFD600; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
-.driver-name { font-weight:700; font-size:16px; }
+.arrived-banner { display:none; background:#FFD600; color:#000; text-align:center; padding:14px; font-weight:700; font-size:16px; }
+.arrived-banner.show { display:block; }
+
+.done-banner { display:none; background:#1A1A1A; border-top:2px solid #FFD600; color:#fff; text-align:center; padding:16px; }
+.done-banner.show { display:block; }
+.done-banner p { font-size:15px; margin-bottom:12px; }
+.btn-close { width:100%; padding:14px; background:#FFD600; color:#000; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
+
+.info-panel { background:#111; border-top:2px solid #FFD600; padding:14px 16px; }
+.driver-info { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.driver-icon { width:40px; height:40px; background:#1A1A1A; border-radius:50%; border:2px solid #FFD600; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.driver-name { font-weight:700; font-size:15px; }
 .driver-sub { font-size:12px; color:#888; margin-top:2px; }
-
-.route-info { background:#1A1A1A; border-radius:12px; padding:12px; }
+.route-info { background:#1A1A1A; border-radius:12px; padding:10px 12px; }
 .route-row { display:flex; align-items:flex-start; gap:10px; padding:5px 0; font-size:13px; }
 .route-row+.route-row { border-top:1px solid #2A2A2A; }
 .route-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:3px; }
 .route-dot.from { background:#4CAF50; }
 .route-dot.to { background:#FFD600; }
-
-.arrived-banner { display:none; background:#FFD600; color:#000; text-align:center; padding:14px; font-weight:700; font-size:16px; }
-.arrived-banner.show { display:block; }
 
 .mapboxgl-ctrl-logo,.mapboxgl-ctrl-attrib { display:none !important; }
 </style>
@@ -51,7 +56,12 @@ body { background:#0A0A0A; color:#fff; font-family:-apple-system,sans-serif; hei
   📍 Водитель прибыл! Выходите! 🚕
 </div>
 
-<div class="info-panel">
+<div class="done-banner" id="doneBanner">
+  <p>🏁 <b>Поездка завершена!</b><br>Спасибо что выбрали TL.TAKSO!</p>
+  <button class="btn-close" onclick="closePage()">Закрыть</button>
+</div>
+
+<div class="info-panel" id="infoPanel">
   <div class="driver-info">
     <div class="driver-icon">🧑‍✈️</div>
     <div>
@@ -77,8 +87,6 @@ tg.ready();
 tg.expand();
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
-
-// Получаем order_id из URL параметра
 const params = new URLSearchParams(window.location.search);
 const ORDER_ID = params.get('order');
 
@@ -96,10 +104,9 @@ const map = new mapboxgl.Map({
 });
 
 let driverMarker = null;
-let clientMarker = null;
-let destinationMarker = null;
 let lastStatus = null;
 let initialized = false;
+let pollTimer = null;
 
 async function fetchStatus() {
   if (!ORDER_ID) return;
@@ -108,39 +115,32 @@ async function fetchStatus() {
     const data = await r.json();
     if (!data.ok) return;
 
-    // Обновляем имя водителя
     if (data.driver_name) {
       document.getElementById('driverName').textContent = data.driver_name;
     }
 
-    // Статус
     if (data.status !== lastStatus) {
       lastStatus = data.status;
       updateStatus(data.status);
     }
 
-    // Маркеры точки назначения и отправления (один раз)
     if (!initialized) {
       initialized = true;
       if (data.from_lat && data.from_lon) {
         const el = document.createElement('div');
         el.style.cssText = 'width:14px;height:14px;background:#4CAF50;border:3px solid white;border-radius:50%';
-        clientMarker = new mapboxgl.Marker({ element: el })
-          .setLngLat([data.from_lon, data.from_lat]).addTo(map);
+        new mapboxgl.Marker({ element: el }).setLngLat([data.from_lon, data.from_lat]).addTo(map);
       }
       if (data.to_lat && data.to_lon) {
         const el = document.createElement('div');
         el.textContent = '🏁';
         el.style.fontSize = '20px';
-        destinationMarker = new mapboxgl.Marker({ element: el })
-          .setLngLat([data.to_lon, data.to_lat]).addTo(map);
+        new mapboxgl.Marker({ element: el }).setLngLat([data.to_lon, data.to_lat]).addTo(map);
       }
-      // Адреса
       document.getElementById('fromAddr').textContent = data.from_address || '—';
       document.getElementById('toAddr').textContent = data.to_address || '—';
     }
 
-    // Позиция водителя
     if (data.driver_lat && data.driver_lon) {
       if (!driverMarker) {
         const el = document.createElement('div');
@@ -154,11 +154,6 @@ async function fetchStatus() {
       }
     }
 
-    // Если поездка завершена — закрываем
-    if (data.status === 'done') {
-      setTimeout(() => tg.close(), 3000);
-    }
-
   } catch(e) {
     console.error(e);
   }
@@ -167,28 +162,38 @@ async function fetchStatus() {
 function updateStatus(status) {
   const badge = document.getElementById('statusBadge');
   const sub = document.getElementById('driverStatus');
-  const banner = document.getElementById('arrivedBanner');
 
   if (status === 'arrived') {
     badge.className = 'status-badge arrived';
     badge.textContent = '📍 Прибыл!';
     sub.textContent = 'Водитель ждёт вас';
-    banner.classList.add('show');
-    // Вибрация при прибытии
+    document.getElementById('arrivedBanner').classList.add('show');
     if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+
   } else if (status === 'accepted') {
     badge.className = 'status-badge accepted';
     badge.textContent = '🚖 Едет к вам';
     sub.textContent = 'Едет к вам';
+
   } else if (status === 'done') {
+    badge.className = 'status-badge done';
     badge.textContent = '✅ Завершено';
     sub.textContent = 'Поездка завершена';
+    document.getElementById('arrivedBanner').classList.remove('show');
+    document.getElementById('infoPanel').style.display = 'none';
+    document.getElementById('doneBanner').classList.add('show');
+    // Останавливаем polling
+    if (pollTimer) clearInterval(pollTimer);
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
   }
 }
 
-// Обновляем каждые 4 секунды
+function closePage() {
+  tg.close();
+}
+
 fetchStatus();
-setInterval(fetchStatus, 4000);
+pollTimer = setInterval(fetchStatus, 4000);
 </script>
 </body>
 </html>
