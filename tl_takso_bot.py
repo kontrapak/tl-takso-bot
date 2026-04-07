@@ -356,22 +356,49 @@ def notify_drivers(oid):
     order = orders.get(oid)
     if not order:
         return
-    print(f"🔔 Новый заказ #{oid}, водителей: {len(drivers)}")
+
+    print(f"🔔 Новый заказ #{oid}, всего водителей: {len(drivers)}")
+
     text = (f"🔔 *Новый заказ #{oid}*\n\n"
             f"👤 {order['client_name']}\n"
             f"📍 {order['from'][:40]}\n"
             f"🏁 {order['to'][:40]}\n"
             f"💰 *{order['driver_gets']}€*")
+
     notified = 0
+
     for driver_id, d in drivers.items():
-        if d.get("approved") and d.get("online") and d.get("balance", 0) > 0 and not has_active_order(driver_id):
-            try:
-                bot.send_message(driver_id, text, parse_mode="Markdown", reply_markup=driver_order_kb(oid))
-                notified += 1
-            except Exception as e:
-                print(f"   ❌ Ошибка водителю {driver_id}: {e}")
+        print(f"👉 {driver_id}: approved={d.get('approved')} online={d.get('online')} balance={d.get('balance')}")
+
+        # ✅ МИНИМАЛЬНЫЙ фильтр (адекватный)
+        if not d.get("approved"):
+            continue
+
+        if not d.get("online"):
+            continue
+
+        if has_active_order(driver_id):
+            continue
+
+        try:
+            bot.send_message(
+                driver_id,
+                text,
+                parse_mode="Markdown",
+                reply_markup=driver_order_kb(oid)
+            )
+            print(f"✅ Отправлено водителю {driver_id}")
+            notified += 1
+
+        except Exception as e:
+            print(f"❌ Ошибка водителю {driver_id}: {e}")
+
     if notified == 0:
-        bot.send_message(order["client_id"], "⚠️ Сейчас нет свободных водителей. Попробуйте позже.")
+        print("⚠️ Нет доступных водителей")
+        bot.send_message(
+            order["client_id"],
+            "⚠️ Сейчас нет свободных водителей. Попробуйте позже."
+        )
 
 # ── ПЕРЕВОДЫ ──
 
