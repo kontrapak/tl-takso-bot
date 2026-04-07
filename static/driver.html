@@ -340,36 +340,58 @@ function hideActiveOrder() {
 
 // ── ПРИНЯТЬ ЗАКАЗ ──
 
+
 async function acceptOrder() {
   if (!currentOrder) return;
   const btn = document.getElementById('btnAccept');
   btn.disabled = true;
   btn.textContent = 'Принимаем...';
+
   try {
+    // Отправляем серверу, что заказ принят этим водителем
     const r = await fetch(`/api/accept_order/${currentOrder.id}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
+      body: JSON.stringify({
+        driver_id: DRIVER_ID,
+        driver_name: DRIVER_NAME
+      })
     });
+
     const result = await r.json();
+
     if (result.ok) {
+      // Обновляем локальные показатели
       trips++;
       earned += currentOrder.price || 0;
       balance = Math.max(0, balance - 1);
       updateUI();
+
       showToast('✅ Заказ принят!');
+
+      // Сохраняем активный заказ
       const order = currentOrder;
       hideNewOrder();
       showActiveOrder(order);
+
+      // Сразу оповещаем сервер для синхронизации с другими водителями
+      fetch(`/api/orders/notify_update`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ order_id: order.id, driver_id: DRIVER_ID })
+      }).catch(() => {});
+
     } else {
       showToast('❌ ' + (result.error || 'Ошибка'));
       btn.disabled = false;
       btn.textContent = '✅ ПРИНЯТЬ';
     }
+
   } catch(e) {
     showToast('❌ Ошибка соединения');
     btn.disabled = false;
     btn.textContent = '✅ ПРИНЯТЬ';
+    console.error('acceptOrder error:', e);
   }
 }
 
