@@ -557,7 +557,44 @@ def force_admin(msg):
     save_data()
     bot.send_message(uid, "👨‍💼 *Панель администратора*",
                      parse_mode="Markdown", reply_markup=main_menu_admin())
+# ═══════════════════════════════════════════════════════════════
+# ═══════════════════ WEBAPP DATA HANDLER ═══════════════════════
+# ═══════════════════════════════════════════════════════════════
 
+@bot.message_handler(content_types=['web_app_data'])
+def handle_webapp_data(msg):
+    uid = msg.from_user.id
+    print(f"📩 WebApp данные от {uid}: {msg.web_app_data.data}")
+    
+    try:
+        data = json.loads(msg.web_app_data.data)
+        oid = new_order_id()
+        
+        orders[oid] = {
+            "id": oid,
+            "client_id": uid,
+            "client_name": msg.from_user.first_name,
+            "from": data.get("from", "—"),
+            "to": data.get("to", "—"),
+            "price": data.get("price", 10),
+            "driver_gets": data.get("price", 10) - 1,
+            "status": "pending",
+            "created": now_str(),
+            "driver_id": None
+        }
+        
+        user_state[uid]["current_order"] = oid
+        save_data()
+        
+        bot.send_message(uid, f"✅ *Заказ #{oid} создан!*\n\n📍 {orders[oid]['from']}\n🏁 {orders[oid]['to']}\n💰 *{orders[oid]['price']}€*\n\n⏳ Ищем водителя...",
+                         parse_mode="Markdown")
+        
+        # Уведомляем водителей
+        notify_drivers(oid)
+        
+    except Exception as e:
+        print(f"❌ Ошибка обработки webapp: {e}")
+        bot.send_message(uid, "❌ Ошибка создания заказа. Попробуйте снова.")
 # ── ВЫБОР ЯЗЫКА И РОЛИ ──
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("lang_"))
