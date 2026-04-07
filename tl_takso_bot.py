@@ -102,9 +102,14 @@ def api_orders():
         if order.get('status') == 'pending':
             result.append({
                 'id': oid,
-                'price': order.get('price', 0),
+                'price': order.get('driver_gets', order.get('price', 0)),
                 'from_address': order.get('from', '—'),
-                'to_address': order.get('to', '—')
+                'to_address': order.get('to', '—'),
+                'from_lat': order.get('from_lat'),
+                'from_lon': order.get('from_lon'),
+                'to_lat': order.get('to_lat'),
+                'to_lon': order.get('to_lon'),
+                'client_name': order.get('client_name', 'Клиент')
             })
     return json.dumps(result, ensure_ascii=False)
 
