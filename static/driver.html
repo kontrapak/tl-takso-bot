@@ -480,9 +480,10 @@ async function pollOrders() {
     const res = await fetch('/api/orders');
     if (res.ok) {
       const orders = await res.json();
+      console.log('Orders:', orders, 'currentOrder:', currentOrder);
       if (orders.length > 0 && !currentOrder) showNewOrder(orders[0]);
     }
-  } catch(e) {}
+  } catch(e) { console.error(e); }
 }
 
 let pollInterval;
