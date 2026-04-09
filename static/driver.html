@@ -2,61 +2,127 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Водитель Такси</title>
-<link href="https://api.mapbox.com/mapbox-gl-js/v2.20.0/mapbox-gl.css" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TL.TAKSO — Водитель</title>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-body { margin:0; font-family:sans-serif; background:#121212; color:#fff; }
-#map { position:absolute; top:0; bottom:0; width:100%; }
-#ui { position:absolute; top:10px; left:10px; z-index:2; }
-.status-dot { display:inline-block; width:12px; height:12px; border-radius:50%; background:#4CAF50; margin-right:5px; }
-.status-dot.offline { background:#f44336; }
-.toggle { margin-top:5px; padding:5px 10px; background:#4CAF50; border:none; color:#fff; cursor:pointer; border-radius:4px; }
-.toggle.off { background:#f44336; }
-#noOrders { margin-top:10px; text-align:center; }
-#orderOverlay, #activeOrderPanel { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:#1e1e1e; padding:10px 15px; border-radius:8px; display:none; z-index:3; width:90%; max-width:360px; }
-#orderOverlay.show, #activeOrderPanel.show { display:block; }
-#orderOverlay div, #activeOrderPanel div { margin:5px 0; }
-button { cursor:pointer; border:none; padding:5px 10px; border-radius:4px; margin-right:5px; }
-#toast { position:absolute; bottom:80px; left:50%; transform:translateX(-50%); background:#333; padding:8px 12px; border-radius:4px; display:none; opacity:0.9; }
-#toast.show { display:block; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#121212; color:#fff; font-family:sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+
+.header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#1a1a1a; border-bottom:1px solid #2a2a2a; z-index:20; }
+.logo { font-size:18px; font-weight:700; color:#FFD600; letter-spacing:2px; }
+.balance { font-size:16px; font-weight:700; color:#FFD600; }
+
+.statusbar { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:#111; border-bottom:1px solid #2a2a2a; }
+.status-left { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+.dot { width:8px; height:8px; border-radius:50%; background:#00E676; }
+.dot.off { background:#FF3B30; }
+
+.toggle-btn { width:50px; height:26px; background:#00E676; border-radius:13px; border:none; cursor:pointer; position:relative; transition:background 0.3s; }
+.toggle-btn.off { background:#333; }
+.toggle-btn::after { content:''; position:absolute; width:20px; height:20px; background:#fff; border-radius:50%; top:3px; left:3px; transition:left 0.3s; }
+.toggle-btn.off::after { left:27px; }
+
+#map { flex:1; position:relative; min-height:0; }
+
+/* Новый заказ */
+.order-card { position:absolute; bottom:0; left:0; right:0; background:#1a1a1a; border-top:3px solid #FFD600; border-radius:20px 20px 0 0; padding:16px; z-index:30; transform:translateY(100%); transition:transform 0.4s ease; }
+.order-card.show { transform:translateY(0); }
+.order-card-title { font-size:13px; font-weight:700; color:#FFD600; letter-spacing:1px; margin-bottom:10px; }
+.order-price-big { font-size:36px; font-weight:700; color:#FFD600; margin-bottom:10px; }
+.order-route { background:#111; border-radius:10px; padding:10px 12px; margin-bottom:12px; }
+.route-line { display:flex; gap:10px; align-items:flex-start; padding:5px 0; font-size:13px; }
+.route-line+.route-line { border-top:1px solid #2a2a2a; }
+.rdot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+.rdot.from { background:#4CAF50; }
+.rdot.to { background:#FFD600; }
+.order-btns { display:flex; gap:10px; }
+.btn-yes { flex:2; height:50px; background:#FFD600; color:#000; border:none; border-radius:12px; font-size:18px; font-weight:700; cursor:pointer; }
+.btn-yes:disabled { background:#444; color:#888; }
+.btn-no { flex:1; height:50px; background:transparent; color:#FF3B30; border:2px solid #FF3B30; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
+
+/* Активный заказ */
+.active-card { position:absolute; bottom:0; left:0; right:0; background:#1a1a1a; border-top:3px solid #00E676; border-radius:20px 20px 0 0; padding:16px; z-index:30; display:none; }
+.active-card.show { display:block; }
+.active-title { font-size:13px; font-weight:700; color:#00E676; letter-spacing:1px; margin-bottom:10px; }
+.active-route { background:#111; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:13px; }
+.active-from { color:#4CAF50; margin-bottom:6px; }
+.active-to { color:#FFD600; }
+.btn-arrived { width:100%; height:50px; background:#00E676; color:#000; border:none; border-radius:12px; font-size:17px; font-weight:700; cursor:pointer; margin-bottom:8px; }
+.btn-arrived:disabled { background:#333; color:#666; }
+.btn-done { width:100%; height:46px; background:#FFD600; color:#000; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:8px; }
+.btn-cancel { width:100%; height:42px; background:transparent; color:#FF3B30; border:1px solid #FF3B30; border-radius:12px; font-size:14px; cursor:pointer; }
+
+.no-orders { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#555; pointer-events:none; font-size:14px; }
+.no-orders-icon { font-size:40px; margin-bottom:8px; }
+
+.stats { background:#1a1a1a; border-top:1px solid #2a2a2a; padding:10px 14px; display:flex; gap:10px; z-index:20; }
+.stat { flex:1; background:#111; border-radius:8px; padding:8px; text-align:center; }
+.stat-label { font-size:9px; color:#555; text-transform:uppercase; }
+.stat-val { font-size:20px; font-weight:700; margin-top:2px; }
+.stat-val.y { color:#FFD600; }
+
+.mapboxgl-ctrl-logo,.mapboxgl-ctrl-attrib,.mapboxgl-ctrl-group { display:none !important; }
+.toast { position:fixed; top:80px; left:50%; transform:translateX(-50%) translateY(-20px); background:#FFD600; color:#000; padding:10px 20px; border-radius:30px; font-weight:700; font-size:14px; z-index:100; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
-<div id="map"></div>
+<div class="header">
+  <div class="logo">TL.TAKSO</div>
+  <div class="balance" id="balanceVal">50€</div>
+</div>
 
-<div id="ui">
-  <div><span id="statusDot" class="status-dot"></span><span id="statusText">Онлайн — жду заказ</span></div>
-  <button id="toggleBtn" class="toggle">Переключить</button>
-  <div>Баланс: <span id="balanceVal">50€</span></div>
-  <div>Поездки: <span id="tripsVal">0</span></div>
-  <div>Заработано: <span id="earnVal">0€</span></div>
-  <div id="noOrders">
+<div class="statusbar">
+  <div class="status-left">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">Онлайн — жду заказ</span>
+  </div>
+  <button class="toggle-btn" id="toggleBtn" onclick="toggleStatus()"></button>
+</div>
+
+<div id="map">
+  <div class="no-orders" id="noOrders">
     <div class="no-orders-icon">🚕</div>
-    <div class="no-orders-text">Ждём заказов...</div>
+    <div>Ждём заказов...</div>
+  </div>
+
+  <div class="order-card" id="orderCard">
+    <div class="order-card-title">📋 НОВЫЙ ЗАКАЗ</div>
+    <div class="order-price-big" id="orderPrice">—€</div>
+    <div class="order-route">
+      <div class="route-line"><div class="rdot from"></div><span id="orderFrom">—</span></div>
+      <div class="route-line"><div class="rdot to"></div><span id="orderTo">—</span></div>
+    </div>
+    <div class="order-btns">
+      <button class="btn-yes" id="btnAccept" onclick="acceptOrder()">✅ ПРИНЯТЬ</button>
+      <button class="btn-no" onclick="rejectOrder()">ОТКАЗ</button>
+    </div>
+  </div>
+
+  <div class="active-card" id="activeCard">
+    <div class="active-title">🚖 АКТИВНЫЙ ЗАКАЗ</div>
+    <div class="active-route">
+      <div class="active-from">📍 <span id="activeFrom">—</span></div>
+      <div class="active-to">🏁 <span id="activeTo">—</span></div>
+    </div>
+    <button class="btn-arrived" id="btnArrived" onclick="markArrived()">📍 Я ПРИБЫЛ!</button>
+    <button class="btn-done" onclick="completeOrder()">✅ ЗАВЕРШИТЬ ПОЕЗДКУ</button>
+    <button class="btn-cancel" onclick="cancelActiveOrder()">❌ Отменить заказ</button>
   </div>
 </div>
 
-<div id="orderOverlay">
-  <div>Цена: <span id="orderPrice">0€</span></div>
-  <div>От: <span id="orderFrom">—</span></div>
-  <div>До: <span id="orderTo">—</span></div>
-  <button id="btnAccept">✅ ПРИНЯТЬ</button>
-  <button id="btnReject">❌ ОТКАЗАТЬ</button>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Поездок</div><div class="stat-val" id="tripsVal">0</div></div>
+  <div class="stat"><div class="stat-label">Сегодня</div><div class="stat-val y" id="earnVal">0€</div></div>
+  <div class="stat"><div class="stat-label">Статус</div><div class="stat-val" id="statIcon">🟢</div></div>
 </div>
 
-<div id="activeOrderPanel">
-  <div>От: <span id="activeFrom">—</span></div>
-  <div>До: <span id="activeTo">—</span></div>
-  <button id="btnArrived">📍 Я прибыл</button>
-  <button id="btnComplete">🏁 Завершить</button>
-  <button id="btnCancel">❌ Отменить</button>
-</div>
+<div class="toast" id="toast"></div>
 
-<div id="toast"></div>
-
-<script src="https://api.mapbox.com/mapbox-gl-js/v2.20.0/mapbox-gl.js"></script>
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready();
@@ -75,6 +141,7 @@ let browserWatchId = null;
 let myLat = null, myLon = null;
 let pollInterval = null;
 
+mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/dark-v11',
@@ -83,6 +150,7 @@ const map = new mapboxgl.Map({
 });
 
 // ── ГЕОЛОКАЦИЯ ──
+
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
     tg.LocationManager.init(() => {
@@ -101,7 +169,7 @@ function startBrowserLocation() {
   if (browserWatchId !== null) navigator.geolocation.clearWatch(browserWatchId);
   browserWatchId = navigator.geolocation.watchPosition(
     pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
-    err => console.warn('Геолокация:', err.message),
+    err => console.warn(err.message),
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
   );
 }
@@ -113,14 +181,17 @@ function updatePosition(lat, lon) {
     el.style.cssText = 'width:18px;height:18px;background:#FFD600;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(255,214,0,0.3)';
     userMarker = new mapboxgl.Marker(el).setLngLat([lon, lat]).addTo(map);
     map.flyTo({ center: [lon, lat], zoom: 14 });
-  } else userMarker.setLngLat([lon, lat]);
-  if (activeOrderId) sendLocationToServer(lat, lon);
+  } else {
+    userMarker.setLngLat([lon, lat]);
+  }
+  if (activeOrderId) sendLocation(lat, lon);
 }
 
-function sendLocationToServer(lat, lon) {
+function sendLocation(lat, lon) {
   fetch(`/api/driver_location/${activeOrderId}`, {
-    method: 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ lat, lon })
-  }).catch(()=>{});
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ lat, lon })
+  }).catch(() => {});
 }
 
 document.addEventListener('visibilitychange', () => {
@@ -130,52 +201,54 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+setInterval(() => {
+  if (activeOrderId && myLat && myLon) sendLocation(myLat, myLon);
+}, 5000);
+
 initLocation();
 
 // ── UI ──
+
 function updateUI() {
   document.getElementById('balanceVal').textContent = balance + '€';
   document.getElementById('tripsVal').textContent = trips;
   document.getElementById('earnVal').textContent = earned + '€';
 }
-updateUI();
-
-document.getElementById('toggleBtn').addEventListener('click', toggleStatus);
-document.getElementById('btnAccept').addEventListener('click', acceptOrder);
-document.getElementById('btnReject').addEventListener('click', rejectOrder);
-document.getElementById('btnArrived').addEventListener('click', markArrived);
-document.getElementById('btnComplete').addEventListener('click', completeOrder);
-document.getElementById('btnCancel').addEventListener('click', cancelActiveOrder);
 
 function toggleStatus() {
   isOnline = !isOnline;
   const dot = document.getElementById('statusDot');
   const text = document.getElementById('statusText');
   const btn = document.getElementById('toggleBtn');
-  const stat = document.getElementById('statStatus');
+  const icon = document.getElementById('statIcon');
   if (isOnline) {
-    dot.className = 'status-dot';
+    dot.className = 'dot';
     text.textContent = 'Онлайн — жду заказ';
-    btn.className = 'toggle';
+    btn.className = 'toggle-btn';
+    icon.textContent = '🟢';
+    document.getElementById('noOrders').style.display = 'block';
     showToast('🟢 Вы онлайн');
     startPolling();
   } else {
-    dot.className = 'status-dot offline';
+    dot.className = 'dot off';
     text.textContent = 'Офлайн';
-    btn.className = 'toggle off';
+    btn.className = 'toggle-btn off';
+    icon.textContent = '🔴';
     hideNewOrder();
-    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">⛔</div><div class="no-orders-text">Вы офлайн</div>';
+    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">⛔</div><div>Вы офлайн</div>';
     showToast('🔴 Вы офлайн');
   }
 }
 
 function showNewOrder(order) {
   currentOrder = order;
-  document.getElementById('orderPrice').textContent = order.price + '€';
+  document.getElementById('orderPrice').textContent = (order.price || '?') + '€';
   document.getElementById('orderFrom').textContent = order.from_address || '—';
   document.getElementById('orderTo').textContent = order.to_address || '—';
-  document.getElementById('orderOverlay').classList.add('show');
+  document.getElementById('orderCard').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
+  document.getElementById('btnAccept').disabled = false;
+  document.getElementById('btnAccept').textContent = '✅ ПРИНЯТЬ';
   if (order.from_lat && order.from_lon) {
     if (clientMarker) clientMarker.remove();
     clientMarker = new mapboxgl.Marker({ color: '#4CAF50' })
@@ -185,11 +258,11 @@ function showNewOrder(order) {
 }
 
 function hideNewOrder() {
-  document.getElementById('orderOverlay').classList.remove('show');
+  document.getElementById('orderCard').classList.remove('show');
   currentOrder = null;
   if (clientMarker) { clientMarker.remove(); clientMarker = null; }
   if (isOnline) {
-    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div class="no-orders-text">Ждём заказов...</div>';
+    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div>Ждём заказов...</div>';
     document.getElementById('noOrders').style.display = 'block';
   }
 }
@@ -198,58 +271,149 @@ function showActiveOrder(order) {
   activeOrderId = order.id;
   document.getElementById('activeFrom').textContent = order.from_address || order.from || '—';
   document.getElementById('activeTo').textContent = order.to_address || order.to || '—';
-  document.getElementById('activeOrderPanel').classList.add('show');
+  document.getElementById('activeCard').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
   document.getElementById('statusText').textContent = '🚖 Везу клиента';
+  document.getElementById('btnArrived').disabled = false;
+  document.getElementById('btnArrived').textContent = '📍 Я ПРИБЫЛ!';
 }
 
 function hideActiveOrder() {
-  document.getElementById('activeOrderPanel').classList.remove('show');
+  document.getElementById('activeCard').classList.remove('show');
   activeOrderId = null;
   document.getElementById('statusText').textContent = 'Онлайн — жду заказ';
   if (isOnline) {
-    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div class="no-orders-text">Ждём заказов...</div>';
+    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div>Ждём заказов...</div>';
     document.getElementById('noOrders').style.display = 'block';
   }
 }
 
 // ── ДЕЙСТВИЯ ──
+
 async function acceptOrder() {
   if (!currentOrder) return;
-  const btn = document.getElementById('btnAccept'); btn.disabled = true; btn.textContent = 'Принимаем...';
+  const btn = document.getElementById('btnAccept');
+  btn.disabled = true; btn.textContent = 'Принимаем...';
   try {
     const r = await fetch(`/api/accept_order/${currentOrder.id}`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
     });
-    const result = await r.json();
-    if (result.ok) {
-      trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1); updateUI();
+    const res = await r.json();
+    if (res.ok) {
+      trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1);
+      updateUI();
       showToast('✅ Заказ принят!');
       const order = currentOrder;
-      hideNewOrder(); currentOrder = null;
+      hideNewOrder();
       showActiveOrder(order);
-    } else { showToast('❌ ' + (result.error || 'Ошибка')); btn.disabled=false; btn.textContent='✅ ПРИНЯТЬ'; }
-  } catch(e) { showToast('❌ Ошибка'); btn.disabled=false; btn.textContent='✅ ПРИНЯТЬ'; console.error(e); }
+    } else {
+      showToast('❌ ' + (res.error || 'Ошибка'));
+      btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
+    }
+  } catch(e) {
+    showToast('❌ Ошибка соединения');
+    btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
+  }
 }
 
 async function rejectOrder() {
   if (!currentOrder) return;
-  try { await fetch(`/api/reject_order/${currentOrder.id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ driver_id: DRIVER_ID }) }); } catch(e){}
-  showToast('❌ Заказ отклонён'); hideNewOrder();
+  try {
+    await fetch(`/api/reject_order/${currentOrder.id}`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID })
+    });
+  } catch(e) {}
+  showToast('❌ Отклонён');
+  hideNewOrder();
 }
 
-async function markArrived() { if (!activeOrderId) return; const btn=document.getElementById('btnArrived'); btn.disabled=true; try { const r=await fetch(`/api/arrived/${activeOrderId}`,{method:'POST'}); const result=await r.json(); if(result.ok){showToast('📍 Клиент уведомлён!');btn.textContent='✅ Клиент уведомлён';}else btn.disabled=false;}catch(e){showToast('❌ Ошибка');btn.disabled=false;} }
+async function markArrived() {
+  if (!activeOrderId) return;
+  const btn = document.getElementById('btnArrived');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/arrived/${activeOrderId}`, { method: 'POST' });
+    const res = await r.json();
+    if (res.ok) {
+      showToast('📍 Клиент уведомлён!');
+      btn.textContent = '✅ Клиент уведомлён';
+    } else {
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+    btn.disabled = false;
+  }
+}
 
-async function completeOrder() { if(!activeOrderId) return; try{ const r=await fetch(`/api/complete_order/${activeOrderId}`,{method:'POST'}); const result=await r.json(); if(result.ok){showToast('🏁 Поездка завершена!');hideActiveOrder();startPolling();}}catch(e){showToast('❌ Ошибка');} }
+async function completeOrder() {
+  if (!activeOrderId) return;
+  try {
+    const r = await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' });
+    const res = await r.json();
+    if (res.ok) {
+      showToast('🏁 Поездка завершена!');
+      hideActiveOrder();
+      startPolling();
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+  }
+}
 
-async function cancelActiveOrder() { if(!activeOrderId) return; if(!confirm('Отменить заказ?')) return; try{ const r=await fetch(`/api/cancel_order_driver/${activeOrderId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({driver_id:DRIVER_ID}) }); const result=await r.json(); if(result.ok){trips=Math.max(0,trips-1);updateUI();showToast('❌ Заказ отменён');hideActiveOrder();startPolling();}}catch(e){showToast('❌ Ошибка');} }
+async function cancelActiveOrder() {
+  if (!activeOrderId) return;
+  if (!confirm('Отменить заказ?')) return;
+  try {
+    const r = await fetch(`/api/cancel_order_driver/${activeOrderId}`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID })
+    });
+    const res = await r.json();
+    if (res.ok) {
+      trips = Math.max(0, trips - 1);
+      updateUI();
+      showToast('❌ Заказ отменён');
+      hideActiveOrder();
+      startPolling();
+    }
+  } catch(e) {
+    showToast('❌ Ошибка');
+  }
+}
 
 // ── POLLING ──
-async function pollOrders() { if(!isOnline || activeOrderId) return; try{ const res=await fetch('/api/orders'); if(res.ok){ const orders=await res.json(); if(orders.length>0) showNewOrder(orders[0]); }}catch(e){console.error(e);} }
-function startPolling(){ clearInterval(pollInterval); pollInterval=setInterval(pollOrders,4000); pollOrders(); }
 
-function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+async function pollOrders() {
+  if (!isOnline || activeOrderId) return;
+  try {
+    const res = await fetch('/api/orders');
+    if (res.ok) {
+      const list = await res.json();
+      if (list.length > 0 && !currentOrder) {
+        showNewOrder(list[0]);
+      } else if (list.length === 0 && currentOrder) {
+        hideNewOrder();
+      }
+    }
+  } catch(e) {}
+}
 
+function startPolling() {
+  clearInterval(pollInterval);
+  pollInterval = setInterval(pollOrders, 3000);
+  pollOrders();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+updateUI();
 startPolling();
 </script>
 </body>
