@@ -97,6 +97,8 @@ def static_files(filename):
 
 @app.route('/api/orders', methods=['GET'])
 def api_orders():
+    load_data()
+    
     result = []
     for oid, order in orders.items():
         if True:
