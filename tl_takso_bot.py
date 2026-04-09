@@ -99,7 +99,7 @@ def static_files(filename):
 def api_orders():
     result = []
     for oid, order in orders.items():
-        if order.get('status') == 'pending':
+        if True:
             result.append({
                 'id': oid,
                 'price': order.get('driver_gets', order.get('price', 0)),
