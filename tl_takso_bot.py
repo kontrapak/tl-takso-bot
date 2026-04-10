@@ -263,7 +263,7 @@ def api_complete_order(order_id):
         order = orders.get(order_id)
         if not order or order['status'] not in ['accepted', 'arrived']:
             return json.dumps({'ok': False}), 400
-        order['status'] = 'done'
+        order['status'] = 'finished'
         save_data()
         driver_locations.pop(order_id, None)
         try:
