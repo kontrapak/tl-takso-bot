@@ -4,18 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TL.TAKSO — Клиент</title>
+
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
 <style>
-body, html { margin:0; padding:0; height:100%; font-family:sans-serif; }
+body, html { margin:0; padding:0; height:100%; font-family:sans-serif; background:#121212; }
 #map { position:absolute; top:0; bottom:0; width:100%; }
-.controls { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; }
-button { padding:12px 20px; border:none; border-radius:10px; font-weight:700; cursor:pointer; }
+
+.controls {
+  position:absolute;
+  bottom:15px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:10px;
+  z-index:2;
+}
+
+button {
+  padding:12px 18px;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+}
+
 #callTaxi { background:#FFD600; color:#000; }
 #cancelRide { background:#FF3B30; color:#fff; }
 #contactDriver { background:#00E676; color:#000; }
-.toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#FFD600; padding:10px 20px; border-radius:20px; font-weight:700; opacity:0; transition:all 0.3s; }
+
+.toast {
+  position:fixed;
+  top:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#FFD600;
+  padding:10px 20px;
+  border-radius:20px;
+  font-weight:700;
+  opacity:0;
+  transition:0.3s;
+}
 .toast.show { opacity:1; }
 </style>
 </head>
@@ -24,9 +55,9 @@ button { padding:12px 20px; border:none; border-radius:10px; font-weight:700; cu
 <div id="map"></div>
 
 <div class="controls">
-  <button id="callTaxi">🚖 Вызвать такси</button>
-  <button id="cancelRide">❌ Отменить поездку</button>
-  <button id="contactDriver">📞 Связь с водителем</button>
+  <button id="callTaxi">🚖 Вызвать</button>
+  <button id="cancelRide">❌ Отмена</button>
+  <button id="contactDriver">📞 Водитель</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -36,9 +67,20 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-let map, taxiMarker = null, myLat = 59.4370, myLon = 24.7536, rideId = null;
+// ── ДАННЫЕ ──
+const USER_ID = tg.initDataUnsafe?.user?.id;
+const USER_NAME = tg.initDataUnsafe?.user?.first_name || "Клиент";
 
+let map;
+let myLat = 59.4370;
+let myLon = 24.7536;
+
+let orderId = null;
+let taxiMarker = null;
+
+// ── MAP ──
 mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
+
 map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/dark-v11',
@@ -47,55 +89,103 @@ map = new mapboxgl.Map({
   attributionControl:false
 });
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
+// ── GEO ──
+navigator.geolocation.watchPosition(pos => {
+  myLat = pos.coords.latitude;
+  myLon = pos.coords.longitude;
+}, ()=>{}, {enableHighAccuracy:true});
+
+// ── TOAST ──
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
   t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2500);
+  setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-// ── КНОПКИ ──
+// ── ВЫЗОВ ТАКСИ ──
 document.getElementById('callTaxi').onclick = async () => {
   try {
-    const r = await fetch('/api/request_ride', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({lat:myLat, lon:myLon})});
+    const r = await fetch('/api/create_order', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        client_id: USER_ID,
+        client_name: USER_NAME,
+        from_lat: myLat,
+        from_lon: myLon,
+        from_address: "Моя точка",
+        to_address: "Не указано",
+        price: 5
+      })
+    });
+
     const res = await r.json();
-    if(res.ok) { rideId = res.ride_id; showToast('🚖 Такси вызвано'); } 
-    else showToast('❌ Ошибка');
-  } catch(e){ showToast('❌ Ошибка сети'); }
+
+    if(res.ok){
+      orderId = res.order_id;
+      showToast("🚖 Заказ создан");
+    } else {
+      showToast("❌ Ошибка");
+    }
+
+  } catch(e){
+    showToast("❌ Ошибка сети");
+  }
 };
 
+// ── ОТМЕНА ──
 document.getElementById('cancelRide').onclick = async () => {
-  if(!rideId) return showToast('Нет активной поездки');
+  if(!orderId) return showToast("Нет заказа");
+
   try {
-    const r = await fetch(`/api/cancel_ride/${rideId}`, { method:'POST' });
-    const res = await r.json();
-    if(res.ok){ rideId=null; showToast('❌ Поездка отменена'); if(taxiMarker){ taxiMarker.remove(); taxiMarker=null;} } 
-    else showToast('❌ Ошибка');
-  } catch(e){ showToast('❌ Ошибка сети'); }
+    await fetch(`/api/cancel_order_client/${orderId}`, {method:'POST'});
+    orderId = null;
+
+    if(taxiMarker){
+      taxiMarker.remove();
+      taxiMarker = null;
+    }
+
+    showToast("❌ Отменено");
+
+  } catch(e){
+    showToast("❌ Ошибка");
+  }
 };
 
+// ── СВЯЗЬ ──
 document.getElementById('contactDriver').onclick = () => {
-  if(!rideId) return showToast('Нет активной поездки');
-  // сюда можно вставить звонок или чат через бот
-  showToast('📞 Связь с водителем открыта');
+  if(!orderId) return showToast("Нет заказа");
+  showToast("📞 Связь позже сделаем");
 };
 
-// ── ПОЛЛИНГ МЕСТОПОЛОЖЕНИЯ ──
-async function updateTaxiLocation() {
-  if(!rideId) return;
+// ── СЛЕЖЕНИЕ ЗА ВОДИТЕЛЕМ ──
+async function trackDriver(){
+  if(!orderId) return;
+
   try {
-    const r = await fetch(`/api/ride_location/${rideId}`);
+    const r = await fetch(`/api/driver_location/${orderId}`);
     if(!r.ok) return;
+
     const res = await r.json();
+
     if(res.lat && res.lon){
       if(!taxiMarker){
-        taxiMarker = new mapboxgl.Marker({color:'#FFD600'}).setLngLat([res.lon,res.lat]).addTo(map);
+        taxiMarker = new mapboxgl.Marker({color:'#FFD600'})
+          .setLngLat([res.lon, res.lat])
+          .addTo(map);
+
         map.flyTo({center:[res.lon,res.lat], zoom:14});
-      } else taxiMarker.setLngLat([res.lon,res.lat]);
+      } else {
+        taxiMarker.setLngLat([res.lon, res.lat]);
+      }
     }
+
   } catch(e){}
 }
-setInterval(updateTaxiLocation,3000);
+
+setInterval(trackDriver, 3000);
 
 </script>
 </body>
