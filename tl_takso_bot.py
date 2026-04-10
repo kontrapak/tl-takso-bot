@@ -164,41 +164,41 @@ def api_create_order():
         return json.dumps({'ok': False, 'error': str(e)}), 500
 
 @app.route('/api/accept_order/<order_id>', methods=['POST'])
-def api_accept_order_driver(order_id):
+def api_accept_order(order_id):
     try:
         data = request.get_json()
+
         driver_id = data.get('driver_id')
         driver_name = data.get('driver_name', 'Водитель')
+
         if not driver_id:
-            return json.dumps({'ok': False, 'error': 'No driver_id'}), 400
+            return jsonify({'ok': False, 'error': 'No driver_id'}), 400
+
         driver_id = int(driver_id)
+
         order = orders.get(order_id)
-        if not order or order['status'] != 'pending':
-            return json.dumps({'ok': False, 'error': 'Order not available'}), 400
+
+        if not order:
+            return jsonify({'ok': False, 'error': 'Not found'}), 404
+
+        # 🔥 ВАЖНЫЙ ЗАМОК
+        if order.get('status') != 'pending':
+            return jsonify({'ok': False, 'error': 'Already taken'}), 409
+
+        # 🔥 СРАЗУ БЛОКИРУЕМ
         order['status'] = 'accepted'
         order['driver_id'] = driver_id
         order['driver_name'] = driver_name
-        if driver_id in drivers:
-            drivers[driver_id]['trips'] = drivers[driver_id].get('trips', 0) + 1
-            drivers[driver_id]['earnings'] = drivers[driver_id].get('earnings', 0) + order['driver_gets']
-            drivers[driver_id]['commission'] = drivers[driver_id].get('commission', 0) + 1
-            if order.get('pay_type') == 'cash':
-                drivers[driver_id]['balance'] = drivers[driver_id].get('balance', 0) - 1
+
         save_data()
-        # Отправляем клиенту сообщение + кнопку для открытия карты слежения
-        tracking_url = f"{TRACKING_URL}?order={order_id}"
-        try:
-            kb = types.InlineKeyboardMarkup()
-            kb.add(types.InlineKeyboardButton(text="🗺️ Следить за водителем", web_app=types.WebAppInfo(url=tracking_url)))
-            bot.send_message(order['client_id'],
-                f"🚖 *Водитель найден!*\n\n👤 {driver_name}\n🚗 {drivers.get(driver_id, {}).get('car', '')}\n⏱ Едет к вам...",
-                parse_mode="Markdown", reply_markup=kb)
-        except Exception as e:
-            print(f"Ошибка уведомления клиента: {e}")
-        return json.dumps({'ok': True})
+
+        return jsonify({
+            'ok': True,
+            'order_id': order_id
+        })
+
     except Exception as e:
-        print(f"Ошибка accept_order: {e}")
-        return json.dumps({'ok': False, 'error': str(e)}), 500
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 @app.route('/api/reject_order/<order_id>', methods=['POST'])
 def api_reject_order_driver(order_id):
