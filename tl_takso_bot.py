@@ -98,21 +98,28 @@ def static_files(filename):
 @app.route('/api/orders', methods=['GET'])
 def api_orders():
     load_data()
-    
+
     result = []
+
     for oid, order in orders.items():
-        if True:
-            result.append({
-                'id': oid,
-                'price': order.get('driver_gets', order.get('price', 0)),
-                'from_address': order.get('from', '—'),
-                'to_address': order.get('to', '—'),
-                'from_lat': order.get('from_lat'),
-                'from_lon': order.get('from_lon'),
-                'to_lat': order.get('to_lat'),
-                'to_lon': order.get('to_lon'),
-                'client_name': order.get('client_name', 'Клиент')
-            })
+
+        # 🔥 ВАЖНО: показываем ТОЛЬКО активные
+        if order.get('status') != 'pending':
+            continue
+
+        result.append({
+            'id': oid,
+            'price': order.get('driver_gets', order.get('price', 0)),
+            'from_address': order.get('from', '—'),
+            'to_address': order.get('to', '—'),
+            'from_lat': order.get('from_lat'),
+            'from_lon': order.get('from_lon'),
+            'to_lat': order.get('to_lat'),
+            'to_lon': order.get('to_lon'),
+            'client_name': order.get('client_name', 'Клиент')
+        })
+
+    return jsonify(result)
     return json.dumps(result, ensure_ascii=False)
 
 @app.route('/api/create_order', methods=['POST'])
