@@ -463,7 +463,9 @@ async function sendOrder() {
     const result = await r.json();
     if (result.ok) {
       showToast('✅ Заказ создан! Ищем водителя...');
-      setTimeout(() => tg.close(), 2000);
+      setTimeout(() => {
+        window.location.href = `/static/tracking.html?order=${result.order_id}`;
+      }, 1000);
     } else {
       showToast('❌ ' + (result.error || 'Ошибка. Попробуйте снова.'));
       btn.disabled = false;
