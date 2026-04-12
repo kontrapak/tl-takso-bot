@@ -547,9 +547,12 @@ def cmd_start(msg):
     if uid in pending_drivers:
         bot.send_message(uid, t("pending", uid))
         return
-    if uid not in user_state:
-        user_state[uid] = {"role": None, "lang": "ru"}
-    bot.send_message(uid, "🌍 Vali keel / Выберите язык:", reply_markup=lang_kb())
+    # Клиент — сразу открываем Mini App
+    user_state[uid] = {"role": "client", "lang": "ru"}
+    save_data()
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton(text="🚖 Заказать такси", web_app=types.WebAppInfo(url=MINI_APP_URL)))
+    bot.send_message(uid, "🚖 *TL.TAKSO*\n\nТакси по Таллинну", parse_mode="Markdown", reply_markup=kb)
 
 @bot.message_handler(commands=["client"])
 def force_client(msg):
