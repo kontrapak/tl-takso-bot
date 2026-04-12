@@ -290,12 +290,65 @@ function hideActiveOrder() {
 
 // ── ДЕЙСТВИЯ ──
 
+let reserveTimer = null;
+let reservedOrderId = null;
+let reserveCountdown = 0;
+
 async function acceptOrder() {
   if (!currentOrder) return;
   const btn = document.getElementById('btnAccept');
-  btn.disabled = true; btn.textContent = 'Принимаем...';
+  btn.disabled = true; btn.textContent = 'Резервируем...';
   try {
-    const r = await fetch(`/api/accept_order/${currentOrder.id}`, {
+    // Шаг 1: резервируем
+    const r = await fetch(`/api/reserve_order/${currentOrder.id}`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
+    });
+    const res = await r.json();
+    if (res.ok) {
+      // Резерв получен — запускаем таймер подтверждения
+      reservedOrderId = currentOrder.id;
+      reserveCountdown = 10;
+      btn.disabled = false;
+      btn.style.background = '#FF6B00';
+      btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
+      btn.onclick = confirmOrder;
+      reserveTimer = setInterval(() => {
+        reserveCountdown--;
+        if (reserveCountdown > 0) {
+          btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
+        } else {
+          clearInterval(reserveTimer);
+          reserveTimer = null;
+          reservedOrderId = null;
+          btn.style.background = '';
+          btn.textContent = '✅ ПРИНЯТЬ';
+          btn.onclick = acceptOrder;
+          showToast('⏰ Время вышло — заказ отменён');
+          hideNewOrder();
+        }
+      }, 1000);
+    } else if (res.error === 'Already taken' || res.error === 'Reserved') {
+      showToast('❌ Уже взят другим водителем');
+      hideNewOrder();
+    } else {
+      showToast('❌ ' + (res.error || 'Ошибка'));
+      btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
+    }
+  } catch(e) {
+    showToast('❌ Ошибка соединения');
+    btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
+  }
+}
+
+async function confirmOrder() {
+  if (!reservedOrderId) return;
+  const btn = document.getElementById('btnAccept');
+  btn.disabled = true; btn.textContent = 'Принимаем...';
+  clearInterval(reserveTimer);
+  reserveTimer = null;
+  try {
+    const r = await fetch(`/api/confirm_order/${reservedOrderId}`, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
     });
@@ -304,16 +357,32 @@ async function acceptOrder() {
       trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1);
       updateUI();
       showToast('✅ Заказ принят!');
+      btn.style.background = '';
+      btn.onclick = acceptOrder;
       const order = currentOrder;
+      reservedOrderId = null;
       hideNewOrder();
       showActiveOrder(order);
+    } else if (res.error === 'Reserve expired') {
+      showToast('⏰ Резерв истёк — заказ ушёл другому');
+      btn.style.background = '';
+      btn.onclick = acceptOrder;
+      reservedOrderId = null;
+      hideNewOrder();
+    } else if (res.error === 'Already taken') {
+      showToast('❌ Уже взят другим водителем');
+      btn.style.background = '';
+      btn.onclick = acceptOrder;
+      reservedOrderId = null;
+      hideNewOrder();
     } else {
       showToast('❌ ' + (res.error || 'Ошибка'));
-      btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
+      btn.disabled = false;
+      btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
     }
   } catch(e) {
     showToast('❌ Ошибка соединения');
-    btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
+    btn.disabled = false;
   }
 }
 
