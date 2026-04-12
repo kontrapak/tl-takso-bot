@@ -2,58 +2,46 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>TL.TAKSO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TL.TAKSO — Клиент</title>
 
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
-body { margin:0; font-family:sans-serif; background:#111; color:#fff; }
+body, html { margin:0; padding:0; height:100%; font-family:sans-serif; background:#121212; }
 #map { position:absolute; top:0; bottom:0; width:100%; }
 
-.panel {
+.controls {
   position:absolute;
-  bottom:0;
-  left:0;
-  right:0;
-  background:#1a1a1a;
-  padding:14px;
-  border-top-left-radius:18px;
-  border-top-right-radius:18px;
-  z-index:10;
+  bottom:15px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:10px;
+  z-index:2;
 }
 
-.hidden { display:none; }
-
-.big-btn {
-  width:100%;
-  padding:14px;
-  font-size:18px;
-  font-weight:700;
+button {
+  padding:12px 18px;
   border:none;
-  border-radius:12px;
-  background:#FFD600;
-  color:#000;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
 }
 
-.info { font-size:14px; margin-bottom:8px; opacity:0.9; }
-
-.status {
-  text-align:center;
-  padding:10px;
-  font-size:16px;
-}
+#callTaxi { background:#FFD600; color:#000; }
+#cancelRide { background:#FF3B30; color:#fff; }
+#contactDriver { background:#00E676; color:#000; }
 
 .toast {
-  position:absolute;
+  position:fixed;
   top:20px;
   left:50%;
   transform:translateX(-50%);
   background:#FFD600;
-  color:#000;
-  padding:10px 16px;
+  padding:10px 20px;
   border-radius:20px;
   font-weight:700;
   opacity:0;
@@ -62,138 +50,143 @@ body { margin:0; font-family:sans-serif; background:#111; color:#fff; }
 .toast.show { opacity:1; }
 </style>
 </head>
-
 <body>
 
 <div id="map"></div>
 
-<div id="toast" class="toast"></div>
-
-<!-- PANEL ВЫБОРА -->
-<div class="panel" id="selectPanel">
-  <div class="info">📍 Тапни по карте чтобы выбрать точку назначения</div>
-  <div class="info" id="distance">📏 Расстояние: —</div>
-  <div class="info" id="price">💰 Цена: —</div>
-  <button class="big-btn" id="orderBtn" disabled>🚖 Заказать</button>
+<div class="controls">
+  <button id="callTaxi">🚖 Вызвать</button>
+  <button id="cancelRide">❌ Отмена</button>
+  <button id="contactDriver">📞 Водитель</button>
 </div>
 
-<!-- СТАТУС -->
-<div class="panel hidden" id="statusPanel">
-  <div class="status" id="statusText">🚖 Ищем водителя...</div>
-</div>
+<div class="toast" id="toast"></div>
 
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-mapboxgl.accessToken = "YOUR_MAPBOX_KEY";
+// ── ДАННЫЕ ──
+const USER_ID = tg.initDataUnsafe?.user?.id;
+const USER_NAME = tg.initDataUnsafe?.user?.first_name || "Клиент";
 
-const map = new mapboxgl.Map({
-  container: "map",
-  style: "mapbox://styles/mapbox/dark-v11",
-  center: [24.7536, 59.4370],
-  zoom: 12
-});
-
+let map;
 let myLat = 59.4370;
 let myLon = 24.7536;
 
-let destLat = null;
-let destLon = null;
+let orderId = null;
+let taxiMarker = null;
 
-let rideId = null;
+// ── MAP ──
+mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
 
-// GPS (упрощённо)
-navigator.geolocation.getCurrentPosition(pos => {
+map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/dark-v11',
+  center: [myLon, myLat],
+  zoom: 12,
+  attributionControl:false
+});
+
+// ── GEO ──
+navigator.geolocation.watchPosition(pos => {
   myLat = pos.coords.latitude;
   myLon = pos.coords.longitude;
-  map.setCenter([myLon, myLat]);
-});
+}, ()=>{}, {enableHighAccuracy:true});
 
-// MARK DESTINATION
-map.on("click", (e) => {
-  destLat = e.lngLat.lat;
-  destLon = e.lngLat.lng;
-
-  const distKm = calcKm(myLat, myLon, destLat, destLon);
-  const price = Math.max(8, distKm * 1);
-
-  document.getElementById("distance").innerText = "📏 " + distKm.toFixed(1) + " km";
-  document.getElementById("price").innerText = "💰 " + price.toFixed(2) + " €";
-
-  document.getElementById("orderBtn").disabled = false;
-});
-
-// PRICE CALC
-function calcKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI/180;
-  const dLon = (lon2 - lon1) * Math.PI/180;
-
-  const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1*Math.PI/180) *
-    Math.cos(lat2*Math.PI/180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+// ── TOAST ──
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-// ORDER
-document.getElementById("orderBtn").onclick = async () => {
+// ── ВЫЗОВ ТАКСИ ──
+document.getElementById('callTaxi').onclick = async () => {
   try {
-    const res = await fetch("/api/create_order", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
+    const r = await fetch('/api/create_order', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
+        client_id: USER_ID,
+        client_name: USER_NAME,
         from_lat: myLat,
         from_lon: myLon,
-        to_lat: destLat,
-        to_lon: destLon
+        from_address: "Моя точка",
+        to_address: "Не указано",
+        price: 5
       })
     });
 
-    const data = await res.json();
+    const res = await r.json();
 
-    if (data.ok) {
-      rideId = data.order_id;
-
-      document.getElementById("selectPanel").classList.add("hidden");
-      document.getElementById("statusPanel").classList.remove("hidden");
-      document.getElementById("statusText").innerText = "🚖 Водитель найден";
-
-      showToast("Заказ создан");
+    if(res.ok){
+      orderId = res.order_id;
+      showToast("🚖 Заказ создан");
     } else {
-      showToast("Ошибка заказа");
+      showToast("❌ Ошибка");
     }
-  } catch (e) {
-    showToast("Ошибка сети");
+
+  } catch(e){
+    showToast("❌ Ошибка сети");
   }
 };
 
-// STATUS POLL
-setInterval(async () => {
-  if (!rideId) return;
+// ── ОТМЕНА ──
+document.getElementById('cancelRide').onclick = async () => {
+  if(!orderId) return showToast("Нет заказа");
 
-  const res = await fetch("/api/order_status/" + rideId);
-  if (!res.ok) return;
+  try {
+    await fetch(`/api/cancel_order_client/${orderId}`, {method:'POST'});
+    orderId = null;
 
-  const data = await res.json();
+    if(taxiMarker){
+      taxiMarker.remove();
+      taxiMarker = null;
+    }
 
-  if (data.status === "completed") {
-    document.getElementById("statusText").innerText = "🏁 Поездка завершена";
+    showToast("❌ Отменено");
+
+  } catch(e){
+    showToast("❌ Ошибка");
   }
-}, 3000);
+};
 
-// TOAST
-function showToast(text) {
-  const t = document.getElementById("toast");
-  t.innerText = text;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 2000);
+// ── СВЯЗЬ ──
+document.getElementById('contactDriver').onclick = () => {
+  if(!orderId) return showToast("Нет заказа");
+  showToast("📞 Связь позже сделаем");
+};
+
+// ── СЛЕЖЕНИЕ ЗА ВОДИТЕЛЕМ ──
+async function trackDriver(){
+  if(!orderId) return;
+
+  try {
+    const r = await fetch(`/api/driver_location/${orderId}`);
+    if(!r.ok) return;
+
+    const res = await r.json();
+
+    if(res.lat && res.lon){
+      if(!taxiMarker){
+        taxiMarker = new mapboxgl.Marker({color:'#FFD600'})
+          .setLngLat([res.lon, res.lat])
+          .addTo(map);
+
+        map.flyTo({center:[res.lon,res.lat], zoom:14});
+      } else {
+        taxiMarker.setLngLat([res.lon, res.lat]);
+      }
+    }
+
+  } catch(e){}
 }
-</script>
 
+setInterval(trackDriver, 3000);
+
+</script>
 </body>
 </html>
