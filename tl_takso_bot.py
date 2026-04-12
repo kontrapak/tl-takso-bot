@@ -28,6 +28,9 @@ data_lock = threading.Lock()
 # Хранилище геопозиций водителей: {order_id: {lat, lon, updated}}
 driver_locations = {}
 
+# Резервы заказов: {order_id: {driver_id, driver_name, expires}}
+order_reserves = {}
+
 def save_data():
     with data_lock:
         data = {
@@ -67,6 +70,18 @@ def auto_save():
     while True:
         time.sleep(60)
         save_data()
+
+def cleanup_reserves():
+    """Очищает истёкшие резервы и переводит заказы обратно в пул"""
+    while True:
+        time.sleep(3)
+        now = time.time()
+        expired = [oid for oid, r in list(order_reserves.items()) if r['expires'] < now]
+        for oid in expired:
+            order_reserves.pop(oid, None)
+            order = orders.get(oid)
+            if order and order.get('status') == 'pending':
+                print(f"⏰ Резерв истёк для заказа #{oid}, возвращаем в пул")
 
 orders = {}
 user_state = {}
@@ -153,6 +168,87 @@ def api_create_order():
         return jsonify({'ok': True, 'order_id': oid})
     except Exception as e:
         print(f"Ошибка create_order: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/reserve_order/<order_id>', methods=['POST'])
+def api_reserve_order(order_id):
+    """Водитель резервирует заказ на 10 секунд"""
+    try:
+        data = request.get_json()
+        driver_id = data.get('driver_id')
+        driver_name = data.get('driver_name', 'Водитель')
+        if not driver_id:
+            return jsonify({'ok': False, 'error': 'No driver_id'}), 400
+        driver_id = int(driver_id)
+        with data_lock:
+            order = orders.get(order_id)
+            if not order:
+                return jsonify({'ok': False, 'error': 'Not found'}), 404
+            if order.get('status') != 'pending':
+                return jsonify({'ok': False, 'error': 'Already taken'}), 409
+            # Проверяем существующий резерв
+            existing = order_reserves.get(order_id)
+            if existing and existing['expires'] > time.time():
+                if existing['driver_id'] != driver_id:
+                    return jsonify({'ok': False, 'error': 'Reserved'}), 409
+            # Ставим резерв на 10 секунд
+            order_reserves[order_id] = {
+                'driver_id': driver_id,
+                'driver_name': driver_name,
+                'expires': time.time() + 10
+            }
+        return jsonify({'ok': True, 'expires_in': 10})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/confirm_order/<order_id>', methods=['POST'])
+def api_confirm_order(order_id):
+    """Водитель подтверждает резерв → заказ принят"""
+    try:
+        data = request.get_json()
+        driver_id = data.get('driver_id')
+        driver_name = data.get('driver_name', 'Водитель')
+        if not driver_id:
+            return jsonify({'ok': False, 'error': 'No driver_id'}), 400
+        driver_id = int(driver_id)
+        with data_lock:
+            order = orders.get(order_id)
+            if not order:
+                return jsonify({'ok': False, 'error': 'Not found'}), 404
+            if order.get('status') != 'pending':
+                return jsonify({'ok': False, 'error': 'Already taken'}), 409
+            reserve = order_reserves.get(order_id)
+            if not reserve:
+                return jsonify({'ok': False, 'error': 'No reserve'}), 409
+            if reserve['driver_id'] != driver_id:
+                return jsonify({'ok': False, 'error': 'Reserved by other'}), 409
+            if reserve['expires'] < time.time():
+                order_reserves.pop(order_id, None)
+                return jsonify({'ok': False, 'error': 'Reserve expired'}), 409
+            # Всё ок — принимаем
+            order['status'] = 'accepted'
+            order['driver_id'] = driver_id
+            order['driver_name'] = driver_name
+            order_reserves.pop(order_id, None)
+        if driver_id in drivers:
+            drivers[driver_id]['trips'] = drivers[driver_id].get('trips', 0) + 1
+            drivers[driver_id]['earnings'] = drivers[driver_id].get('earnings', 0) + order.get('driver_gets', 0)
+            drivers[driver_id]['commission'] = drivers[driver_id].get('commission', 0) + 1
+            if order.get('pay_type') == 'cash':
+                drivers[driver_id]['balance'] = drivers[driver_id].get('balance', 0) - 1
+        save_data()
+        try:
+            tracking_url = f"{TRACKING_URL}?order={order_id}"
+            kb = types.InlineKeyboardMarkup()
+            kb.add(types.InlineKeyboardButton(text="🗺️ Следить за водителем", web_app=types.WebAppInfo(url=tracking_url)))
+            d = drivers.get(driver_id, {})
+            bot.send_message(order['client_id'],
+                f"🚖 *Водитель найден!*\n\n👤 {d.get('full_name', driver_name)}\n🚗 {d.get('car', '')}\n⏱ Едет к вам...",
+                parse_mode="Markdown", reply_markup=kb)
+        except Exception as e:
+            print(f"Ошибка уведомления клиента: {e}")
+        return jsonify({'ok': True, 'order_id': order_id})
+    except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 @app.route('/api/accept_order/<order_id>', methods=['POST'])
@@ -547,12 +643,9 @@ def cmd_start(msg):
     if uid in pending_drivers:
         bot.send_message(uid, t("pending", uid))
         return
-    # Клиент — сразу открываем Mini App
-    user_state[uid] = {"role": "client", "lang": "ru"}
-    save_data()
-    kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton(text="🚖 Заказать такси", web_app=types.WebAppInfo(url=MINI_APP_URL)))
-    bot.send_message(uid, "🚖 *TL.TAKSO*\n\nТакси по Таллинну", parse_mode="Markdown", reply_markup=kb)
+    if uid not in user_state:
+        user_state[uid] = {"role": None, "lang": "ru"}
+    bot.send_message(uid, "🌍 Vali keel / Выберите язык:", reply_markup=lang_kb())
 
 @bot.message_handler(commands=["client"])
 def force_client(msg):
@@ -1041,6 +1134,7 @@ def setup_webhook():
 if __name__ == "__main__":
     print("🚖 TL.TAKSO Bot запускается...")
     threading.Thread(target=auto_save, daemon=True).start()
+    threading.Thread(target=cleanup_reserves, daemon=True).start()
     setup_webhook()
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port, threaded=True, debug=False)
