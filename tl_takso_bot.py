@@ -25,6 +25,37 @@ ADMIN_ID = int(os.environ.get("ADMIN_ID", "1873195803"))
 DATA_FILE = "/mnt/data/tltakso_data.json"
 data_lock = threading.Lock()
 
+# ── TELEGRAM AUTH ──
+import hashlib
+import hmac
+import urllib.parse
+
+def check_telegram_auth(init_data):
+    if not init_data:
+        return False
+
+    data = dict(urllib.parse.parse_qsl(init_data))
+    hash_ = data.pop('hash', None)
+
+    secret = hashlib.sha256(BOT_TOKEN.encode()).digest()
+    check_string = '\n'.join([f"{k}={v}" for k, v in sorted(data.items())])
+
+    h = hmac.new(secret, check_string.encode(), hashlib.sha256).hexdigest()
+
+    return h == hash_
+
+
+def get_user():
+    init_data = request.headers.get('X-Telegram-Init-Data')
+
+    if not check_telegram_auth(init_data):
+        return None
+
+    data = dict(urllib.parse.parse_qsl(init_data))
+    user = json.loads(data.get('user'))
+
+    return user
+
 # Хранилище геопозиций водителей: {order_id: {lat, lon, updated}}
 driver_locations = {}
 
