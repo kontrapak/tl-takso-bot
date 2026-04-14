@@ -14,16 +14,16 @@ app.use(express.json());
 // Старые файлы в корне (работают как раньше)
 app.use(express.static('.'));
 
-// Новые красивые URLы /app/...
-app.use('/app', express.static('статический'));
+// Новые красивые URLы /app/... ← ИСПРАВЛЕНО: 'static' вместо 'статический'
+app.use('/app', express.static('static'));
 
 // Редиректы со старых URL на новые
 app.get('/client.html', (req, res) => {
-  res.redirect('/app/клиент/index.html');
+  res.redirect('/app/index.html');
 });
 
 app.get('/driver.html', (req, res) => {
-  res.redirect('/app/водитель/index.html');
+  res.redirect('/app/driver.html');
 });
 // =================================
 
