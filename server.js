@@ -9,7 +9,23 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// ============ СТАТИКА ============
+// Старые файлы в корне (работают как раньше)
 app.use(express.static('.'));
+
+// Новые красивые URLы /app/...
+app.use('/app', express.static('статический'));
+
+// Редиректы со старых URL на новые
+app.get('/client.html', (req, res) => {
+  res.redirect('/app/клиент/index.html');
+});
+
+app.get('/driver.html', (req, res) => {
+  res.redirect('/app/водитель/index.html');
+});
+// =================================
 
 // Подключение к PostgreSQL
 const pool = new Pool({
