@@ -1,612 +1,394 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>TL.TAKSO</title>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:#111; color:#fff; font-family:sans-serif; height:100dvh; overflow:hidden; }
+  <meta charset="utf-8">
+  <title>TL.TAKSO</title>
 
-#map { position:absolute; inset:0; }
+  <!-- Telegram -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-#locBtn {
-  position:absolute; right:14px; bottom:280px; z-index:10;
-  width:44px; height:44px; background:#1a1a1a; border:1px solid #333;
-  border-radius:12px; display:flex; align-items:center; justify-content:center;
-  font-size:22px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.5);
-}
+  <!-- Mapbox -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
-.panel {
-  position:absolute; bottom:0; left:0; right:0;
-  background:#1a1a1a; border-radius:20px 20px 0 0;
-  border-top:2px solid #2a2a2a;
-  padding:16px; z-index:10;
-}
-
-.hint { font-size:13px; color:#888; margin-bottom:10px; text-align:center; }
-
-/* Поля ввода адреса */
-.address-inputs {
-  background:#111; border-radius:12px;
-  padding:10px 14px; margin-bottom:12px;
-}
-.address-row {
-  display:flex; align-items:center; gap:10px;
-  padding:8px 0;
-}
-.address-row + .address-row { border-top:1px solid #222; }
-.rdot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-.rdot.a { background:#4CAF50; }
-.rdot.b { background:#FFD600; }
-.address-input {
-  flex:1; background:transparent; border:none; color:#fff;
-  font-size:14px; padding:4px 0; outline:none;
-}
-.address-input::placeholder { color:#666; }
-.edit-icon { font-size:14px; opacity:0.6; cursor:pointer; }
-
-/* Подсказки адресов */
-.suggestions {
-  max-height:150px; overflow-y:auto;
-  background:#111; border-radius:8px;
-  margin-top:4px; display:none;
-}
-.suggestions.show { display:block; }
-.suggestion-item {
-  padding:10px 12px; border-bottom:1px solid #222;
-  cursor:pointer; font-size:13px; color:#ccc;
-}
-.suggestion-item:hover { background:#222; color:#fff; }
-
-.price-row {
-  display:flex; justify-content:space-between; align-items:center;
-  margin-bottom:12px;
-}
-.price-label { font-size:13px; color:#666; }
-.price-val { font-size:28px; font-weight:700; color:#FFD600; }
-
-.pay-row { display:flex; gap:8px; margin-bottom:12px; }
-.pay-btn {
-  flex:1; padding:10px; background:#111; border:1px solid #333;
-  border-radius:10px; text-align:center; font-size:13px; cursor:pointer;
-  color:#888;
-}
-.pay-btn.sel { border-color:#FFD600; background:#1f1a00; color:#FFD600; }
-
-.order-btn {
-  width:100%; padding:15px; background:#FFD600; color:#000;
-  border:none; border-radius:14px; font-size:17px; font-weight:700;
-  cursor:pointer;
-}
-.order-btn:disabled { background:#333; color:#555; cursor:default; }
-
-#statusPanel { display:none; }
-.status-icon { font-size:48px; text-align:center; margin-bottom:10px; }
-.status-title { font-size:18px; font-weight:700; text-align:center; margin-bottom:4px; }
-.status-sub { font-size:13px; color:#888; text-align:center; margin-bottom:16px; }
-.cancel-btn {
-  width:100%; padding:12px; background:transparent; color:#FF3B30;
-  border:1px solid #FF3B30; border-radius:12px; font-size:14px;
-  font-weight:700; cursor:pointer;
-}
-
-#toast {
-  position:fixed; top:16px; left:50%; transform:translateX(-50%);
-  background:#FFD600; color:#000; padding:10px 20px; border-radius:30px;
-  font-weight:700; font-size:14px; z-index:100;
-  opacity:0; transition:opacity 0.3s; pointer-events:none; white-space:nowrap;
-}
-#toast.show { opacity:1; }
-
-.driver-marker {
-  font-size: 28px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-.mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-group { display:none !important; }
-</style>
+  <style>
+    body { margin:0; font-family: Arial; }
+    #map { width:100%; height:80vh; }
+    #panel {
+      padding:10px;
+      background:#fff;
+      position:fixed;
+      bottom:0;
+      width:100%;
+      box-shadow:0 -2px 10px rgba(0,0,0,0.1);
+      transition: 0.3s;
+    }
+    button {
+      width:100%;
+      padding:15px;
+      font-size:18px;
+      background:#28a745;
+      color:white;
+      border:none;
+      border-radius:10px;
+      margin-top:10px;
+    }
+    .cancel-btn {
+      background:#dc3545;
+    }
+    #info {
+      margin-bottom:10px;
+      font-size:14px;
+      color:#333;
+    }
+    .status-title {
+      font-weight:bold;
+      font-size:18px;
+      margin-bottom:5px;
+    }
+    .status-sub {
+      font-size:14px;
+      color:#666;
+    }
+    #orderPanel, #statusPanel {
+      display: block;
+    }
+    .hidden {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
 
 <div id="map"></div>
-<div id="locBtn" onclick="goToMe()">📡</div>
-<div id="toast"></div>
 
-<!-- ПАНЕЛЬ ВЫБОРА -->
-<div class="panel" id="selectPanel">
-  <div class="hint">Введите адрес или тапните по карте</div>
-
-  <div class="address-inputs">
-    <div class="address-row">
-      <div class="rdot a"></div>
-      <input type="text" class="address-input" id="inputA" placeholder="Откуда едем?" readonly>
-    </div>
-    <div class="address-row">
-      <div class="rdot b"></div>
-      <input type="text" class="address-input" id="inputB" placeholder="Куда едем?" onclick="startAddressInput()">
-      <div class="edit-icon" onclick="startAddressInput()">✏️</div>
-    </div>
-    <div class="suggestions" id="suggestions"></div>
+<!-- Панель заказа (выбор маршрута) -->
+<div id="orderPanel" class="hidden">
+  <div id="panel" style="position:relative">
+    <div id="info">📍 Нажмите на карту, чтобы выбрать точку назначения</div>
+    <button id="orderBtn" onclick="sendOrder()">🚖 Заказать такси</button>
   </div>
-
-  <div class="price-row">
-    <div class="price-label">Стоимость поездки</div>
-    <div class="price-val" id="priceVal">—</div>
-  </div>
-
-  <div class="pay-row">
-    <div class="pay-btn sel" id="payCash" onclick="setPay('cash')">💵 Наличные</div>
-    <div class="pay-btn" id="payCard" onclick="setPay('card')">💳 Карта</div>
-  </div>
-
-  <button class="order-btn" id="orderBtn" disabled onclick="placeOrder()">
-    🚖 Заказать такси
-  </button>
 </div>
 
-<!-- ПАНЕЛЬ СТАТУСА -->
-<div class="panel" id="statusPanel">
-  <div class="status-icon" id="stIcon">⏳</div>
-  <div class="status-title" id="stTitle">Ищем водителя...</div>
-  <div class="status-sub" id="stSub">Обычно до 2 минут</div>
-  <button class="cancel-btn" id="cancelBtn" onclick="cancelOrder()">❌ Отменить заказ</button>
+<!-- Панель статуса (отслеживание заказа) -->
+<div id="statusPanel" class="hidden">
+  <div id="panel" style="position:relative">
+    <div id="statusIcon" style="font-size:32px; text-align:center">⏳</div>
+    <div id="statusTitle" class="status-title">Ищем водителя...</div>
+    <div id="statusSub" class="status-sub">Обычно до 2 минут</div>
+    <button id="cancelStatusBtn" class="cancel-btn" onclick="cancelActiveOrder()">❌ Отменить заказ</button>
+  </div>
 </div>
 
 <script>
-const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
 
-const MAPBOX = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
-const CLIENT_ID = tg.initDataUnsafe?.user?.id;
-const CLIENT_NAME = tg.initDataUnsafe?.user?.first_name || 'Клиент';
+  // Получаем данные пользователя
+  const userId = tg.initDataUnsafe?.user?.id;
+  const userName = tg.initDataUnsafe?.user?.first_name || 'Клиент';
 
-mapboxgl.accessToken = MAPBOX;
+  // Токен Mapbox
+  mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
 
-let myLat = null, myLon = null;
-let destLat = null, destLon = null;
-let myAddress = 'Определяем геолокацию...';
-let destAddress = '';
-let payment = 'cash';
-let orderId = null;
-let pollTimer = null;
-let markerA = null, markerB = null;
-let driverMarker = null;
-let routeLine = null;
-let isInputActive = false;
+  let userLocation = null;
+  let destination = null;
+  let orderId = null;
+  let pollTimer = null;
 
-// ── КАРТА ──
-const map = new mapboxgl.Map({
-  container: 'map',
-  style: 'mapbox://styles/mapbox/dark-v11',
-  center: [24.7536, 59.4370],
-  zoom: 13,
-  attributionControl: false
-});
+  // Маркеры на карте
+  let userMarker = null;
+  let destMarker = null;
+  let driverMarker = null;
 
-// ── ТАП = точка B ──
-map.on('click', e => {
-  if (isInputActive) return; // Не мешаем при вводе
-  
-  destLat = e.lngLat.lat;
-  destLon = e.lngLat.lng;
-  
-  if (!markerB) {
-    markerB = new mapboxgl.Marker({ color: '#FFD600' })
-      .setLngLat([destLon, destLat]).addTo(map);
-  } else {
-    markerB.setLngLat([destLon, destLat]);
-  }
-  
-  if (myLat) {
-    const b = new mapboxgl.LngLatBounds();
-    b.extend([myLon, myLat]);
-    b.extend([destLon, destLat]);
-    map.fitBounds(b, { padding: 80, duration: 600 });
-  }
-  
-  reverseGeocode(destLat, destLon).then(addr => {
-    destAddress = addr;
-    document.getElementById('inputB').value = addr;
-    updateUI();
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v11',
+    center: [24.7536, 59.4370], // Таллинн
+    zoom: 12
   });
-});
 
-// ── ВВОД АДРЕСА ──
-
-function startAddressInput() {
-  isInputActive = true;
-  const input = document.getElementById('inputB');
-  input.readOnly = false;
-  input.focus();
-  input.value = '';
-  input.placeholder = 'Введите улицу или адрес...';
-  
-  // Показываем подсказки при вводе
-  input.oninput = debounce(() => searchAddress(input.value), 300);
-  
-  // Скрываем подсказки при потере фокуса
-  input.onblur = () => {
-    setTimeout(() => {
-      document.getElementById('suggestions').classList.remove('show');
-      isInputActive = false;
-    }, 200);
-  };
-}
-
-async function searchAddress(query) {
-  if (query.length < 3) {
-    document.getElementById('suggestions').classList.remove('show');
-    return;
+  // ──────────────────────────────────────────────
+  // 1. Получение геолокации пользователя
+  // ──────────────────────────────────────────────
+  function initLocation() {
+    if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
+      tg.LocationManager.init(() => {
+        if (tg.LocationManager.isLocationAvailable) {
+          tg.LocationManager.getLocation(loc => {
+            if (loc) onLocation(loc.latitude, loc.longitude);
+            else browserGeo();
+          });
+        } else browserGeo();
+      });
+    } else browserGeo();
   }
-  
-  try {
-    const r = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
-      `?access_token=${MAPBOX}&language=ru&limit=5&proximity=${myLon || 24.7536},${myLat || 59.4370}`
+
+  function browserGeo() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      pos => onLocation(pos.coords.latitude, pos.coords.longitude),
+      err => console.warn(err),
+      { enableHighAccuracy: true, timeout: 10000 }
     );
-    const d = await r.json();
-    showSuggestions(d.features || []);
-  } catch (e) {
-    console.error('Search error:', e);
   }
-}
 
-function showSuggestions(features) {
-  const container = document.getElementById('suggestions');
-  if (!features.length) {
-    container.classList.remove('show');
-    return;
+  function onLocation(lat, lon) {
+    userLocation = [lon, lat];
+    map.setCenter(userLocation);
+    if (userMarker) userMarker.remove();
+    userMarker = new mapboxgl.Marker({ color: 'blue' })
+      .setLngLat(userLocation)
+      .addTo(map);
   }
-  
-  container.innerHTML = features.map(f => {
-    const addr = f.place_name.replace(/'/g, "&apos;");
-    return `<div class="suggestion-item" onclick="selectAddress(${f.center[1]}, ${f.center[0]}, '${addr}')">${f.place_name}</div>`;
-  }).join('');
-  
-  container.classList.add('show');
-}
 
-function selectAddress(lat, lon, address) {
-  destLat = lat;
-  destLon = lon;
-  destAddress = address;
-  
-  document.getElementById('inputB').value = address;
-  document.getElementById('suggestions').classList.remove('show');
-  
-  // Ставим маркер
-  if (!markerB) {
-    markerB = new mapboxgl.Marker({ color: '#FFD600' })
-      .setLngLat([lon, lat]).addTo(map);
-  } else {
-    markerB.setLngLat([lon, lat]);
-  }
-  
-  if (myLat) {
-    const b = new mapboxgl.LngLatBounds();
-    b.extend([myLon, myLat]);
-    b.extend([lon, lat]);
-    map.fitBounds(b, { padding: 80, duration: 600 });
-  } else {
-    map.flyTo({ center: [lon, lat], zoom: 14 });
-  }
-  
-  updateUI();
-  isInputActive = false;
-}
-
-function debounce(func, wait) {
-  let timeout;
-  return function(...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
-
-// ── ГЕОЛОКАЦИЯ ──
-
-function initLocation() {
-  if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
-    tg.LocationManager.init(() => {
-      if (tg.LocationManager.isLocationAvailable) {
-        tg.LocationManager.getLocation(loc => {
-          if (loc) onPos(loc.latitude, loc.longitude);
-          else startBrowserGeo();
-        });
-      } else startBrowserGeo();
-    });
-  } else startBrowserGeo();
-}
-
-function startBrowserGeo() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(
-    p => onPos(p.coords.latitude, p.coords.longitude),
-    () => {},
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
-  );
-}
-
-function onPos(lat, lon) {
-  myLat = lat; myLon = lon;
-  
-  if (!markerA) {
-    const el = document.createElement('div');
-    el.style.cssText = 'width:14px;height:14px;background:#4CAF50;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 6px rgba(76,175,80,0.25)';
-    markerA = new mapboxgl.Marker({ element: el }).setLngLat([lon, lat]).addTo(map);
-    map.flyTo({ center: [lon, lat], zoom: 14 });
-  } else {
-    markerA.setLngLat([lon, lat]);
-  }
-  
-  reverseGeocode(lat, lon).then(addr => {
-    myAddress = addr;
-    document.getElementById('inputA').value = addr;
-  });
-  
-  updateUI();
-}
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) initLocation();
-});
-
-// ── GEOCODING ──
-
-async function reverseGeocode(lat, lon) {
-  try {
-    const r = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json` +
-      `?access_token=${MAPBOX}&language=ru&limit=1`
-    );
-    const d = await r.json();
-    return d.features?.[0]?.place_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-  } catch { 
-    return `${lat.toFixed(4)}, ${lon.toFixed(4)}`; 
-  }
-}
-
-// ── МАРШРУТ И ВОДИТЕЛЬ ──
-
-async function buildRoute(driverLat, driverLon, toLat, toLon) {
-  try {
-    const response = await fetch(
-      `https://api.mapbox.com/directions/v5/mapbox/driving/${driverLon},${driverLat};${toLon},${toLat}?geometries=geojson&access_token=${MAPBOX}`
-    );
-    const data = await response.json();
-    
-    if (!data.routes || !data.routes[0]) return;
-    
-    if (map.getSource('route')) {
-      map.removeLayer('route');
-      map.removeSource('route');
+  // Клик по карте – выбор точки назначения
+  map.on('click', function (e) {
+    if (destination) {
+      if (destMarker) destMarker.remove();
     }
-    
-    map.addSource('route', {
-      type: 'geojson',
-      data: {
-        type: 'Feature',
-        properties: {},
-        geometry: data.routes[0].geometry
+    destination = [e.lngLat.lng, e.lngLat.lat];
+    destMarker = new mapboxgl.Marker({ color: 'red' })
+      .setLngLat(destination)
+      .addTo(map);
+    document.getElementById("info").innerHTML = "✅ Точка назначения выбрана";
+    document.getElementById("orderBtn").disabled = false;
+  });
+
+  // ──────────────────────────────────────────────
+  // 2. Отправка заказа
+  // ──────────────────────────────────────────────
+  async function sendOrder() {
+    if (!userLocation || !destination) {
+      alert("Сначала выберите место назначения на карте");
+      return;
+    }
+
+    const btn = document.getElementById("orderBtn");
+    btn.disabled = true;
+    btn.innerText = "Отправляем...";
+
+    const price = calcPrice(); // простая функция цены (8€ по умолчанию)
+    const data = {
+      client_id: userId,
+      client_name: userName,
+      from_lat: userLocation[1],
+      from_lon: userLocation[0],
+      to_lat: destination[1],
+      to_lon: destination[0],
+      from_address: "Текущее местоположение",
+      to_address: "Выбранная точка",
+      price: price,
+      driver_gets: price - 1,
+      payment: "cash",
+      time: "Сейчас"
+    };
+
+    try {
+      const res = await fetch('/api/create_order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      if (result.ok) {
+        orderId = result.order_id;
+        showStatusPanel('pending');
+        startPolling();
+      } else {
+        alert("Ошибка: " + (result.error || "неизвестная"));
+        btn.disabled = false;
+        btn.innerText = "🚖 Заказать такси";
       }
-    });
-    
+    } catch (err) {
+      alert("Ошибка сети");
+      btn.disabled = false;
+      btn.innerText = "🚖 Заказать такси";
+    }
+  }
+
+  function calcPrice() {
+    if (!userLocation || !destination) return 8;
+    const R = 6371;
+    const lat1 = userLocation[1], lon1 = userLocation[0];
+    const lat2 = destination[1], lon2 = destination[0];
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+              Math.sin(dLon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const km = R * c;
+    return Math.max(8, Math.round(km));
+  }
+
+  // ──────────────────────────────────────────────
+  // 3. Проверка активного заказа (при прямом открытии)
+  // ──────────────────────────────────────────────
+  async function checkActiveOrder() {
+    if (!userId) return false;
+    try {
+      const res = await fetch(`/api/active_order?user_id=${userId}`);
+      const data = await res.json();
+      if (data.ok && data.order_id) {
+        orderId = data.order_id;
+        showStatusPanel(data.status);
+        startPolling();
+        return true;
+      }
+    } catch (e) {
+      console.error("Ошибка проверки активного заказа:", e);
+    }
+    return false;
+  }
+
+  // ──────────────────────────────────────────────
+  // 4. Отображение панели статуса
+  // ──────────────────────────────────────────────
+  const statusMap = {
+    pending:   { icon: '⏳', title: 'Ищем водителя...',   sub: 'Обычно до 2 минут', cancel: true },
+    accepted:  { icon: '🚖', title: 'Водитель едет к вам!', sub: 'Скоро будет у вас', cancel: true },
+    arrived:   { icon: '📍', title: 'Водитель прибыл!',    sub: 'Выходите, он ждёт', cancel: false },
+    done:      { icon: '✅', title: 'Поездка завершена',   sub: 'Спасибо за поездку!', cancel: false },
+    cancelled: { icon: '❌', title: 'Заказ отменён',       sub: '', cancel: false }
+  };
+
+  function showStatusPanel(status) {
+    const s = statusMap[status] || statusMap.pending;
+    document.getElementById('statusIcon').innerHTML = s.icon;
+    document.getElementById('statusTitle').innerHTML = s.title;
+    document.getElementById('statusSub').innerHTML = s.sub;
+    document.getElementById('cancelStatusBtn').style.display = s.cancel ? 'block' : 'none';
+
+    document.getElementById('orderPanel').classList.add('hidden');
+    document.getElementById('statusPanel').classList.remove('hidden');
+
+    if (status === 'done') {
+      setTimeout(() => tg.close(), 2500);
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // 5. Опрос статуса заказа и отображение водителя
+  // ──────────────────────────────────────────────
+  async function pollStatus() {
+    if (!orderId) return;
+    try {
+      const res = await fetch(`/api/order_status/${orderId}`);
+      if (res.status === 404) {
+        stopPolling();
+        orderId = null;
+        showOrderPanel();
+        return;
+      }
+      const data = await res.json();
+      if (!data.ok) return;
+
+      if (data.status === 'accepted' && data.driver_lat && data.driver_lon) {
+        updateDriverMarker(data.driver_lat, data.driver_lon);
+        if (userLocation) {
+          drawRoute([data.driver_lon, data.driver_lat], userLocation);
+        }
+      }
+
+      showStatusPanel(data.status);
+      if (['done', 'cancelled'].includes(data.status)) {
+        stopPolling();
+        orderId = null;
+        if (driverMarker) driverMarker.remove();
+        removeRoute();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(pollStatus, 3000);
+  }
+
+  function stopPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  function updateDriverMarker(lat, lon) {
+    if (!driverMarker) {
+      const el = document.createElement('div');
+      el.innerHTML = '🚕';
+      el.style.fontSize = '28px';
+      driverMarker = new mapboxgl.Marker(el).setLngLat([lon, lat]).addTo(map);
+    } else {
+      driverMarker.setLngLat([lon, lat]);
+    }
+  }
+
+  let routeLayer = null;
+  function drawRoute(start, end) {
+    if (routeLayer) removeRoute();
+    const geojson = {
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: [start, end]
+      }
+    };
+    map.addSource('route', { type: 'geojson', data: geojson });
     map.addLayer({
       id: 'route',
       type: 'line',
       source: 'route',
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round'
-      },
-      paint: {
-        'line-color': '#00E676',
-        'line-width': 4,
-        'line-opacity': 0.8
-      }
+      paint: { 'line-color': '#00E676', 'line-width': 4 }
     });
-  } catch (e) {
-    console.error('Route error:', e);
+    routeLayer = true;
   }
-}
-
-function updateDriverMarker(lat, lon) {
-  if (!driverMarker) {
-    const el = document.createElement('div');
-    el.className = 'driver-marker';
-    el.innerHTML = '🚕';
-    driverMarker = new mapboxgl.Marker(el)
-      .setLngLat([lon, lat])
-      .addTo(map);
-  } else {
-    driverMarker.setLngLat([lon, lat]);
+  function removeRoute() {
+    if (map.getLayer('route')) map.removeLayer('route');
+    if (map.getSource('route')) map.removeSource('route');
+    routeLayer = null;
   }
-}
 
-function clearDriver() {
-  if (map.getSource('route')) {
-    map.removeLayer('route');
-    map.removeSource('route');
-  }
-  if (driverMarker) {
-    driverMarker.remove();
-    driverMarker = null;
-  }
-}
-
-// ── ЦЕНА ──
-
-function calcKm(lat1, lon1, lat2, lon2) {
-  const R = 6371, dl = (lat2-lat1)*Math.PI/180, dg = (lon2-lon1)*Math.PI/180;
-  const a = Math.sin(dl/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dg/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-function getPrice() {
-  if (!myLat || !destLat) return 0;
-  return Math.max(8, Math.round(calcKm(myLat, myLon, destLat, destLon)));
-}
-
-function updateUI() {
-  const ready = myLat !== null && destLat !== null;
-  const btn = document.getElementById('orderBtn');
-  if (ready) {
-    const p = getPrice();
-    document.getElementById('priceVal').textContent = p + '€';
-    btn.textContent = `🚖 Заказать · ${p}€`;
-    btn.disabled = false;
-  } else {
-    btn.disabled = true;
-    btn.textContent = '🚖 Заказать такси';
-  }
-}
-
-// ── ОПЛАТА ──
-
-function setPay(type) {
-  payment = type;
-  document.getElementById('payCash').classList.toggle('sel', type === 'cash');
-  document.getElementById('payCard').classList.toggle('sel', type === 'card');
-}
-
-// ── МОЯ ТОЧКА ──
-
-function goToMe() {
-  if (myLat) map.flyTo({ center: [myLon, myLat], zoom: 15, duration: 800 });
-  else { showToast('Геолокация не получена'); initLocation(); }
-}
-
-// ── ЗАКАЗАТЬ ──
-
-async function placeOrder() {
-  if (!myLat || !destLat) return;
-  const btn = document.getElementById('orderBtn');
-  btn.disabled = true; btn.textContent = 'Отправляем...';
-  const price = getPrice();
-  try {
-    const r = await fetch('/api/create_order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id:    CLIENT_ID,
-        client_name:  CLIENT_NAME,
-        from_address: myAddress,
-        to_address:   destAddress,
-        from_lat: myLat, from_lon: myLon,
-        to_lat: destLat, to_lon: destLon,
-        price:       price,
-        driver_gets: price - 1,
-        payment:     payment,
-        time:        'Сейчас'
-      })
-    });
-    const res = await r.json();
-    if (res.ok) {
-      orderId = res.order_id;
-      showStatus('pending');
-      pollTimer = setInterval(pollStatus, 3000);
-    } else {
-      showToast('❌ ' + (res.error || 'Ошибка'));
-      btn.disabled = false; btn.textContent = `🚖 Заказать · ${price}€`;
-    }
-  } catch {
-    showToast('❌ Ошибка сети');
-    btn.disabled = false; btn.textContent = `🚖 Заказать · ${price}€`;
-  }
-}
-
-// ── СТАТУС ──
-
-const STATUS = {
-  pending:   { icon:'⏳', title:'Ищем водителя...',    sub:'Обычно до 2 минут',            cancel:true  },
-  accepted:  { icon:'🚖', title:'Водитель едет к вам!', sub:'Скоро будет у вас',            cancel:true  },
-  arrived:   { icon:'📍', title:'Водитель прибыл!',     sub:'Выходите — он ждёт вас 🙂',   cancel:false },
-  done:      { icon:'✅', title:'Поездка завершена',    sub:'Спасибо что выбрали TL.TAKSO!', cancel:false },
-  cancelled: { icon:'❌', title:'Заказ отменён',        sub:'',                              cancel:false },
-};
-
-function showStatus(st) {
-  document.getElementById('selectPanel').style.display = 'none';
-  document.getElementById('statusPanel').style.display = 'block';
-  const s = STATUS[st] || STATUS.pending;
-  document.getElementById('stIcon').textContent  = s.icon;
-  document.getElementById('stTitle').textContent = s.title;
-  document.getElementById('stSub').textContent   = s.sub;
-  document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
-  
-  if (st === 'done') {
-    clearDriver();
-    setTimeout(() => tg.close(), 2500);
-  }
-}
-
-async function pollStatus() {
-  if (!orderId) return;
-  try {
-    const r = await fetch(`/api/order_status/${orderId}`);
-    if (!r.ok) return;
-    const d = await r.json();
-    if (!d.ok) return;
-    
-    if (d.status === 'accepted' && d.driver_lat && d.driver_lon) {
-      updateDriverMarker(d.driver_lat, d.driver_lon);
-      if (myLat && myLon) {
-        buildRoute(d.driver_lat, d.driver_lon, myLat, myLon);
-      }
-    }
-    
-    showStatus(d.status);
-    if (['done', 'cancelled'].includes(d.status)) {
-      clearInterval(pollTimer); 
+  // ──────────────────────────────────────────────
+  // 6. Отмена заказа
+  // ──────────────────────────────────────────────
+  async function cancelActiveOrder() {
+    if (!orderId) return;
+    if (!confirm('Отменить заказ?')) return;
+    try {
+      await fetch(`/api/cancel_order_client/${orderId}`, { method: 'POST' });
+      stopPolling();
       orderId = null;
-      clearDriver();
+      if (driverMarker) driverMarker.remove();
+      removeRoute();
+      showOrderPanel();
+      alert('Заказ отменён');
+    } catch (err) {
+      alert('Ошибка отмены');
     }
-  } catch {}
-}
+  }
 
-// ── ОТМЕНА ──
+  function showOrderPanel() {
+    document.getElementById('statusPanel').classList.add('hidden');
+    document.getElementById('orderPanel').classList.remove('hidden');
+    if (destMarker) destMarker.remove();
+    destination = null;
+    document.getElementById("info").innerHTML = "📍 Нажмите на карту, чтобы выбрать точку назначения";
+    document.getElementById("orderBtn").disabled = true;
+  }
 
-async function cancelOrder() {
-  if (!orderId) return;
-  if (!confirm('Отменить заказ?')) return;
-  try {
-    await fetch(`/api/cancel_order_client/${orderId}`, { method: 'POST' });
-    clearInterval(pollTimer); 
-    orderId = null;
-    clearDriver();
-    destLat = null; destLon = null;
-    destAddress = '';
-    if (markerB) { markerB.remove(); markerB = null; }
-    document.getElementById('inputB').value = '';
-    document.getElementById('priceVal').textContent = '—';
-    document.getElementById('statusPanel').style.display = 'none';
-    document.getElementById('selectPanel').style.display = 'block';
-    document.getElementById('orderBtn').disabled = true;
-    document.getElementById('orderBtn').textContent = '🚖 Заказать такси';
-    showToast('❌ Заказ отменён');
-  } catch { showToast('❌ Ошибка'); }
-}
+  // ──────────────────────────────────────────────
+  // Запуск
+  // ──────────────────────────────────────────────
+  initLocation();
 
-// ── ТОСТ ──
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-initLocation();
+  // Сначала проверяем, есть ли активный заказ
+  checkActiveOrder().then(hasActive => {
+    if (!hasActive) {
+      showOrderPanel();
+    }
+  });
 </script>
 </body>
 </html>
