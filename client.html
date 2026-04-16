@@ -48,7 +48,7 @@ button {
 #cancelRide { background:#FF3B30; color:#fff; }
 #contactDriver { background:#00E676; color:#000; }
 
-#fromAddress {
+#fromAddress, #toAddress {
   width: 100%;
   padding: 12px;
   border-radius: 10px;
@@ -77,7 +77,7 @@ button {
 
 .status-panel {
   position:absolute;
-  bottom:120px;
+  bottom:160px;
   left:50%;
   transform:translateX(-50%);
   background:#1a1a1a;
@@ -98,7 +98,8 @@ button {
 <div id="map"></div>
 
 <div class="controls">
-  <input type="text" id="fromAddress" placeholder="📍 Адрес отправки (например, Таллинн, ул. Лай, 1)" value="Моя точка">
+  <input type="text" id="fromAddress" placeholder="📍 Откуда едем?" value="Моя точка">
+  <input type="text" id="toAddress" placeholder="🏁 Куда едем?">
   <div class="buttons">
     <button id="callTaxi">🚖 Вызвать</button>
     <button id="cancelRide">❌ Отмена</button>
@@ -118,19 +119,16 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// ── ДАННЫЕ ──
 const USER_ID = tg.initDataUnsafe?.user?.id;
 const USER_NAME = tg.initDataUnsafe?.user?.first_name || "Клиент";
 
 let map;
 let myLat = 59.4370;
 let myLon = 24.7536;
-
 let orderId = null;
 let taxiMarker = null;
 let pollTimer = null;
 
-// ── MAP ──
 mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
 
 map = new mapboxgl.Map({
@@ -141,12 +139,9 @@ map = new mapboxgl.Map({
   attributionControl:false
 });
 
-// ── GEO ──
 navigator.geolocation.watchPosition(pos => {
   myLat = pos.coords.latitude;
   myLon = pos.coords.longitude;
-  
-  // Обновляем маркер пользователя
   if (window.userMarker) {
     window.userMarker.setLngLat([myLon, myLat]);
   } else {
@@ -156,7 +151,6 @@ navigator.geolocation.watchPosition(pos => {
   }
 }, ()=>{}, {enableHighAccuracy:true});
 
-// ── TOAST ──
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;
@@ -164,12 +158,10 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-// ── ПОКАЗАТЬ ПАНЕЛЬ СТАТУСА ──
 function showStatusPanel(status) {
   const panel = document.getElementById('statusPanel');
   const title = document.getElementById('statusTitle');
   const sub = document.getElementById('statusSub');
-  
   panel.style.display = 'block';
   
   const statusMap = {
@@ -183,12 +175,9 @@ function showStatusPanel(status) {
   title.textContent = s.title;
   sub.textContent = s.sub;
   
-  // ⚠️ ИЗМЕНЕНИЕ: tg.close() УДАЛЁН — пользователь ОСТАЁТСЯ на странице
   if (status === 'done') {
-    // Показываем кнопку "Новый заказ" через 3 секунды
     setTimeout(() => {
       hideStatusPanel();
-      // Сбрасываем состояние для нового заказа
       orderId = null;
       if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
       showToast("✅ Заказ завершён! Можете заказать снова");
@@ -200,7 +189,6 @@ function hideStatusPanel() {
   document.getElementById('statusPanel').style.display = 'none';
 }
 
-// ── ОПРОС СТАТУСА ЗАКАЗА ──
 async function pollOrderStatus() {
   if (!orderId) return;
   try {
@@ -215,7 +203,6 @@ async function pollOrderStatus() {
     const data = await res.json();
     if (data.ok) {
       showStatusPanel(data.status);
-      
       if (data.status === 'accepted' && data.driver_lat && data.driver_lon) {
         if (!taxiMarker) {
           taxiMarker = new mapboxgl.Marker({ color: '#FFD600' })
@@ -225,7 +212,6 @@ async function pollOrderStatus() {
           taxiMarker.setLngLat([data.driver_lon, data.driver_lat]);
         }
       }
-      
       if (data.status === 'done' || data.status === 'cancelled') {
         stopPolling();
         if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
@@ -235,9 +221,7 @@ async function pollOrderStatus() {
         orderId = null;
       }
     }
-  } catch(e) {
-    console.error('Poll error:', e);
-  }
+  } catch(e) { console.error('Poll error:', e); }
 }
 
 function startPolling() {
@@ -250,7 +234,6 @@ function stopPolling() {
   pollTimer = null;
 }
 
-// ── ПРОВЕРКА АКТИВНОГО ЗАКАЗА ──
 async function checkActiveOrder() {
   if (!USER_ID) return false;
   try {
@@ -262,13 +245,10 @@ async function checkActiveOrder() {
       startPolling();
       return true;
     }
-  } catch(e) {
-    console.error('Ошибка проверки активного заказа:', e);
-  }
+  } catch(e) { console.error(e); }
   return false;
 }
 
-// ── ВЫЗОВ ТАКСИ ──
 document.getElementById('callTaxi').onclick = async () => {
   if (orderId) {
     showToast("У вас уже есть активный заказ!");
@@ -276,8 +256,14 @@ document.getElementById('callTaxi').onclick = async () => {
   }
   
   const fromAddress = document.getElementById('fromAddress').value.trim();
+  const toAddress = document.getElementById('toAddress').value.trim();
+  
   if (!fromAddress) {
     showToast("📍 Введите адрес отправки");
+    return;
+  }
+  if (!toAddress) {
+    showToast("🏁 Введите адрес назначения");
     return;
   }
   
@@ -291,16 +277,14 @@ document.getElementById('callTaxi').onclick = async () => {
         from_lat: myLat,
         from_lon: myLon,
         from_address: fromAddress,
-        to_address: "Не указано",
+        to_address: toAddress,
         price: 8,
         driver_gets: 7,
         payment: "cash",
         time: "Сейчас"
       })
     });
-
     const res = await r.json();
-
     if(res.ok){
       orderId = res.order_id;
       showStatusPanel('pending');
@@ -309,53 +293,31 @@ document.getElementById('callTaxi').onclick = async () => {
     } else {
       showToast("❌ Ошибка: " + (res.error || "неизвестная"));
     }
-
   } catch(e){
     showToast("❌ Ошибка сети");
   }
 };
 
-// ── ОТМЕНА ──
 document.getElementById('cancelRide').onclick = async () => {
-  if(!orderId) {
-    showToast("Нет активного заказа");
-    return;
-  }
-  
+  if(!orderId) { showToast("Нет активного заказа"); return; }
   if (!confirm('Отменить заказ?')) return;
-
   try {
     await fetch(`/api/cancel_order_client/${orderId}`, {method:'POST'});
     stopPolling();
     orderId = null;
     hideStatusPanel();
-
-    if(taxiMarker){
-      taxiMarker.remove();
-      taxiMarker = null;
-    }
-
+    if(taxiMarker){ taxiMarker.remove(); taxiMarker = null; }
     showToast("❌ Заказ отменён");
-
-  } catch(e){
-    showToast("❌ Ошибка отмены");
-  }
+  } catch(e){ showToast("❌ Ошибка отмены"); }
 };
 
-// ── СВЯЗЬ ──
 document.getElementById('contactDriver').onclick = () => {
-  if(!orderId) {
-    showToast("Нет активного заказа");
-    return;
-  }
+  if(!orderId) { showToast("Нет активного заказа"); return; }
   showToast("📞 Связь с водителем появится позже");
 };
 
-// ── ЗАПУСК ──
 checkActiveOrder().then(hasActive => {
-  if (!hasActive) {
-    hideStatusPanel();
-  }
+  if (!hasActive) hideStatusPanel();
 });
 </script>
 </body>
