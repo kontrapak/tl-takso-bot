@@ -117,7 +117,6 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
 <!-- ПАНЕЛЬ ЗАКАЗА -->
 <div class="panel" id="orderPanel">
 
-  <!-- Адрес подачи -->
   <div class="input-wrap" id="wrapFrom">
     <span class="input-icon">🟢</span>
     <input class="addr-input" id="fromInput" placeholder="Откуда забрать?" autocomplete="off"
@@ -129,7 +128,6 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
     📡 Использовать мою геолокацию
   </button>
 
-  <!-- Адрес назначения -->
   <div class="input-wrap" id="wrapTo">
     <span class="input-icon">🔴</span>
     <input class="addr-input" id="toInput" placeholder="Куда едем?" autocomplete="off"
@@ -137,13 +135,11 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
     <div class="suggestions" id="sugTo"></div>
   </div>
 
-  <!-- Цена -->
   <div class="price-row" style="margin-top:10px">
     <div class="price-label">Стоимость</div>
     <div class="price-val" id="priceVal">—</div>
   </div>
 
-  <!-- Оплата -->
   <div class="pay-row">
     <div class="pay-btn sel" id="payCash" onclick="setPay('cash')">💵 Наличные</div>
     <div class="pay-btn"    id="payCard" onclick="setPay('card')">💳 Карта</div>
@@ -170,7 +166,6 @@ const CLIENT_NAME = tg.initDataUnsafe?.user?.first_name || 'Клиент';
 
 mapboxgl.accessToken = MAPBOX;
 
-// ── СОСТОЯНИЕ ──
 let myLat = null, myLon = null;
 let from = null;
 let to   = null;
@@ -181,7 +176,6 @@ let markerFrom = null, markerTo = null, markerMe = null;
 let taxiMarker = null;
 let sugTimers = { from: null, to: null };
 
-// ── КАРТА ──
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/dark-v11',
@@ -189,7 +183,6 @@ const map = new mapboxgl.Map({
   attributionControl: false
 });
 
-// ── ГЕОЛОКАЦИЯ ──
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
     tg.LocationManager.init(() => {
@@ -235,7 +228,6 @@ function useMyLocation() {
   });
 }
 
-// ── GEOCODING ──
 async function geocode(query) {
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
     + `?access_token=${MAPBOX}&country=ee&language=ru&limit=5&proximity=24.7536,59.4370`;
@@ -252,7 +244,6 @@ async function reverseGeocode(lat, lon) {
   } catch { return `${lat.toFixed(4)}, ${lon.toFixed(4)}`; }
 }
 
-// ── АВТОДОПОЛНЕНИЕ ──
 function onAddrInput(type) {
   const val = document.getElementById(type === 'from' ? 'fromInput' : 'toInput').value.trim();
   clearTimeout(sugTimers[type]);
@@ -309,7 +300,6 @@ function closeSug(type) {
   document.getElementById(type === 'from' ? 'sugFrom' : 'sugTo').classList.remove('open');
 }
 
-// ── МАРКЕРЫ ──
 function setMarker(type, lon, lat) {
   if (type === 'from') {
     if (markerFrom) markerFrom.remove();
@@ -328,7 +318,6 @@ function fitBounds() {
   map.fitBounds(b, { padding: 80, duration: 600 });
 }
 
-// ── ЦЕНА ──
 function calcKm(lat1, lon1, lat2, lon2) {
   const R = 6371, dl = (lat2-lat1)*Math.PI/180, dg = (lon2-lon1)*Math.PI/180;
   const a = Math.sin(dl/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dg/2)**2;
@@ -354,14 +343,12 @@ function updatePriceAndBtn() {
   }
 }
 
-// ── ОПЛАТА ──
 function setPay(type) {
   payment = type;
   document.getElementById('payCash').classList.toggle('sel', type === 'cash');
   document.getElementById('payCard').classList.toggle('sel', type === 'card');
 }
 
-// ── ЗАКАЗАТЬ ──
 async function placeOrder() {
   if (!from || !to) return;
   const btn = document.getElementById('orderBtn');
@@ -398,7 +385,6 @@ async function placeOrder() {
   }
 }
 
-// ── СТАТУС ──
 const STATUS_MAP = {
   pending:   { icon:'⏳', title:'Ищем водителя...',     sub:'Обычно до 2 минут',             cancel:true  },
   accepted:  { icon:'🚖', title:'Водитель едет к вам!', sub:'Скоро будет у вас',             cancel:true  },
@@ -415,13 +401,6 @@ function showStatus(st) {
   document.getElementById('stTitle').textContent = s.title;
   document.getElementById('stSub').textContent   = s.sub;
   document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
-  
-  if (st === 'done') {
-    setTimeout(() => resetToOrder(), 3000);
-  }
-  if (st === 'cancelled') {
-    setTimeout(() => resetToOrder(), 1500);
-  }
 }
 
 async function pollStatus() {
@@ -447,60 +426,26 @@ async function pollStatus() {
   } catch {}
 }
 
-// ── ОТМЕНА ──
+// ── ОТМЕНА С ПЕРЕЗАГРУЗКОЙ ──
 async function cancelOrder() {
   if (!orderId) return;
   if (!confirm('Отменить заказ?')) return;
   try {
     await fetch(`/api/cancel_order_client/${orderId}`, { method: 'POST' });
-    clearInterval(pollTimer); pollTimer = null; orderId = null;
-    if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
-    // Показываем статус cancelled, который через 1.5 сек вызовет resetToOrder
-    showStatus('cancelled');
+    clearInterval(pollTimer);
+    orderId = null;
+    if (taxiMarker) taxiMarker.remove();
     showToast('❌ Заказ отменён');
+    setTimeout(() => location.reload(), 1500);
   } catch { showToast('❌ Ошибка'); }
 }
 
-function resetToOrder() {
-  const statusPanel = document.getElementById('statusPanel');
-  const orderPanel  = document.getElementById('orderPanel');
-  if (statusPanel) statusPanel.style.display = 'none';
-  if (orderPanel)  orderPanel.style.display  = 'block';
-  
-  from = null; to = null;
-  const fromInput = document.getElementById('fromInput');
-  const toInput = document.getElementById('toInput');
-  if (fromInput) fromInput.value = '';
-  if (toInput) toInput.value = '';
-  
-  const priceVal = document.getElementById('priceVal');
-  if (priceVal) priceVal.textContent = '—';
-  
-  const orderBtn = document.getElementById('orderBtn');
-  if (orderBtn) {
-    orderBtn.disabled = true;
-    orderBtn.textContent = '🚖 Заказать такси';
-  }
-  
-  if (markerFrom) { markerFrom.remove(); markerFrom = null; }
-  if (markerTo)   { markerTo.remove();   markerTo = null; }
-  if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
-  
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-  orderId = null;
-}
-
-// ── ТОСТ ──
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ── ПРОВЕРКА АКТИВНОГО ЗАКАЗА ──
 async function checkActiveOrder() {
   if (!CLIENT_ID) return false;
   try {
@@ -513,17 +458,15 @@ async function checkActiveOrder() {
       pollTimer = setInterval(pollStatus, 3000);
       return true;
     }
-  } catch(e) {
-    console.error('Ошибка проверки активного заказа:', e);
-  }
+  } catch(e) { console.error(e); }
   return false;
 }
 
-// ── СТАРТ ──
 initLocation();
 checkActiveOrder().then(hasActive => {
   if (!hasActive) {
-    resetToOrder();
+    document.getElementById('statusPanel').style.display = 'none';
+    document.getElementById('orderPanel').style.display = 'block';
   }
 });
 </script>
