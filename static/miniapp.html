@@ -172,7 +172,7 @@ mapboxgl.accessToken = MAPBOX;
 
 // ── СОСТОЯНИЕ ──
 let myLat = null, myLon = null;
-let from = null; // { lat, lon, address }
+let from = null;
 let to   = null;
 let payment = 'cash';
 let orderId = null;
@@ -415,6 +415,7 @@ function showStatus(st) {
   document.getElementById('stTitle').textContent = s.title;
   document.getElementById('stSub').textContent   = s.sub;
   document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
+  
   if (st === 'done') {
     setTimeout(() => resetToOrder(), 3000);
   }
@@ -454,7 +455,8 @@ async function cancelOrder() {
     await fetch(`/api/cancel_order_client/${orderId}`, { method: 'POST' });
     clearInterval(pollTimer); pollTimer = null; orderId = null;
     if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
-    resetToOrder();
+    // Показываем статус cancelled, который через 1.5 сек вызовет resetToOrder
+    showStatus('cancelled');
     showToast('❌ Заказ отменён');
   } catch { showToast('❌ Ошибка'); }
 }
@@ -498,7 +500,7 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ── ПРОВЕРКА АКТИВНОГО ЗАКАЗА (ПРИ ПРЯМОМ ОТКРЫТИИ) ──
+// ── ПРОВЕРКА АКТИВНОГО ЗАКАЗА ──
 async function checkActiveOrder() {
   if (!CLIENT_ID) return false;
   try {
