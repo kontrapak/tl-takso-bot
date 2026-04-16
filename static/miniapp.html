@@ -415,7 +415,12 @@ function showStatus(st) {
   document.getElementById('stTitle').textContent = s.title;
   document.getElementById('stSub').textContent   = s.sub;
   document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
-  if (st === 'done') setTimeout(() => resetToOrder(), 3000);
+  if (st === 'done') {
+    setTimeout(() => resetToOrder(), 3000);
+  }
+  if (st === 'cancelled') {
+    setTimeout(() => resetToOrder(), 1500);
+  }
 }
 
 async function pollStatus() {
@@ -426,7 +431,6 @@ async function pollStatus() {
     const d = await r.json();
     if (!d.ok) return;
     showStatus(d.status);
-    // Маркер такси
     if (d.driver_lat && d.driver_lon) {
       if (!taxiMarker) {
         const el = document.createElement('div');
@@ -456,17 +460,35 @@ async function cancelOrder() {
 }
 
 function resetToOrder() {
-  document.getElementById('statusPanel').style.display = 'none';
-  document.getElementById('orderPanel').style.display  = 'block';
-  // Сбрасываем поля
+  const statusPanel = document.getElementById('statusPanel');
+  const orderPanel  = document.getElementById('orderPanel');
+  if (statusPanel) statusPanel.style.display = 'none';
+  if (orderPanel)  orderPanel.style.display  = 'block';
+  
   from = null; to = null;
-  document.getElementById('fromInput').value = '';
-  document.getElementById('toInput').value   = '';
-  document.getElementById('priceVal').textContent = '—';
-  document.getElementById('orderBtn').disabled = true;
-  document.getElementById('orderBtn').textContent = '🚖 Заказать такси';
+  const fromInput = document.getElementById('fromInput');
+  const toInput = document.getElementById('toInput');
+  if (fromInput) fromInput.value = '';
+  if (toInput) toInput.value = '';
+  
+  const priceVal = document.getElementById('priceVal');
+  if (priceVal) priceVal.textContent = '—';
+  
+  const orderBtn = document.getElementById('orderBtn');
+  if (orderBtn) {
+    orderBtn.disabled = true;
+    orderBtn.textContent = '🚖 Заказать такси';
+  }
+  
   if (markerFrom) { markerFrom.remove(); markerFrom = null; }
   if (markerTo)   { markerTo.remove();   markerTo = null; }
+  if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
+  
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  orderId = null;
 }
 
 // ── ТОСТ ──
@@ -476,8 +498,32 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+// ── ПРОВЕРКА АКТИВНОГО ЗАКАЗА (ПРИ ПРЯМОМ ОТКРЫТИИ) ──
+async function checkActiveOrder() {
+  if (!CLIENT_ID) return false;
+  try {
+    const res = await fetch(`/api/active_order?user_id=${CLIENT_ID}`);
+    const data = await res.json();
+    if (data.ok && data.order_id) {
+      orderId = data.order_id;
+      showStatus(data.status);
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(pollStatus, 3000);
+      return true;
+    }
+  } catch(e) {
+    console.error('Ошибка проверки активного заказа:', e);
+  }
+  return false;
+}
+
 // ── СТАРТ ──
 initLocation();
+checkActiveOrder().then(hasActive => {
+  if (!hasActive) {
+    resetToOrder();
+  }
+});
 </script>
 </body>
 </html>
