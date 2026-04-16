@@ -19,8 +19,21 @@ body, html { margin:0; padding:0; height:100%; font-family:sans-serif; backgroun
   left:50%;
   transform:translateX(-50%);
   display:flex;
+  flex-direction: column;
   gap:10px;
   z-index:2;
+  width: 90%;
+  max-width: 300px;
+  background: rgba(0,0,0,0.7);
+  padding: 12px;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
 }
 
 button {
@@ -34,6 +47,18 @@ button {
 #callTaxi { background:#FFD600; color:#000; }
 #cancelRide { background:#FF3B30; color:#fff; }
 #contactDriver { background:#00E676; color:#000; }
+
+#fromAddress {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: white;
+  font-size: 14px;
+  box-sizing: border-box;
+  text-align: center;
+}
 
 .toast {
   position:fixed;
@@ -52,7 +77,7 @@ button {
 
 .status-panel {
   position:absolute;
-  bottom:80px;
+  bottom:120px;
   left:50%;
   transform:translateX(-50%);
   background:#1a1a1a;
@@ -73,9 +98,12 @@ button {
 <div id="map"></div>
 
 <div class="controls">
-  <button id="callTaxi">🚖 Вызвать</button>
-  <button id="cancelRide">❌ Отмена</button>
-  <button id="contactDriver">📞 Водитель</button>
+  <input type="text" id="fromAddress" placeholder="📍 Адрес отправки (например, Таллинн, ул. Лай, 1)" value="Моя точка">
+  <div class="buttons">
+    <button id="callTaxi">🚖 Вызвать</button>
+    <button id="cancelRide">❌ Отмена</button>
+    <button id="contactDriver">📞 Водитель</button>
+  </div>
 </div>
 
 <div class="status-panel" id="statusPanel">
@@ -117,6 +145,15 @@ map = new mapboxgl.Map({
 navigator.geolocation.watchPosition(pos => {
   myLat = pos.coords.latitude;
   myLon = pos.coords.longitude;
+  
+  // Обновляем маркер пользователя
+  if (window.userMarker) {
+    window.userMarker.setLngLat([myLon, myLat]);
+  } else {
+    window.userMarker = new mapboxgl.Marker({ color: '#4CAF50' })
+      .setLngLat([myLon, myLat])
+      .addTo(map);
+  }
 }, ()=>{}, {enableHighAccuracy:true});
 
 // ── TOAST ──
@@ -146,10 +183,16 @@ function showStatusPanel(status) {
   title.textContent = s.title;
   sub.textContent = s.sub;
   
+  // ⚠️ ИЗМЕНЕНИЕ: tg.close() УДАЛЁН — пользователь ОСТАЁТСЯ на странице
   if (status === 'done') {
+    // Показываем кнопку "Новый заказ" через 3 секунды
     setTimeout(() => {
-      tg.close();
-    }, 2500);
+      hideStatusPanel();
+      // Сбрасываем состояние для нового заказа
+      orderId = null;
+      if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
+      showToast("✅ Заказ завершён! Можете заказать снова");
+    }, 3000);
   }
 }
 
@@ -163,7 +206,6 @@ async function pollOrderStatus() {
   try {
     const res = await fetch(`/api/order_status/${orderId}`);
     if (res.status === 404) {
-      // Заказ исчез
       stopPolling();
       orderId = null;
       if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
@@ -174,7 +216,6 @@ async function pollOrderStatus() {
     if (data.ok) {
       showStatusPanel(data.status);
       
-      // Если водитель принял заказ и есть его позиция
       if (data.status === 'accepted' && data.driver_lat && data.driver_lon) {
         if (!taxiMarker) {
           taxiMarker = new mapboxgl.Marker({ color: '#FFD600' })
@@ -185,13 +226,10 @@ async function pollOrderStatus() {
         }
       }
       
-      // Если заказ завершён или отменён
       if (data.status === 'done' || data.status === 'cancelled') {
         stopPolling();
         if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
-        if (data.status === 'done') {
-          setTimeout(() => hideStatusPanel(), 3000);
-        } else if (data.status === 'cancelled') {
+        if (data.status === 'cancelled') {
           setTimeout(() => hideStatusPanel(), 2000);
         }
         orderId = null;
@@ -212,7 +250,7 @@ function stopPolling() {
   pollTimer = null;
 }
 
-// ── ПРОВЕРКА АКТИВНОГО ЗАКАЗА (ПРИ ПРЯМОМ ОТКРЫТИИ) ──
+// ── ПРОВЕРКА АКТИВНОГО ЗАКАЗА ──
 async function checkActiveOrder() {
   if (!USER_ID) return false;
   try {
@@ -232,9 +270,14 @@ async function checkActiveOrder() {
 
 // ── ВЫЗОВ ТАКСИ ──
 document.getElementById('callTaxi').onclick = async () => {
-  // Если уже есть активный заказ
   if (orderId) {
     showToast("У вас уже есть активный заказ!");
+    return;
+  }
+  
+  const fromAddress = document.getElementById('fromAddress').value.trim();
+  if (!fromAddress) {
+    showToast("📍 Введите адрес отправки");
     return;
   }
   
@@ -247,7 +290,7 @@ document.getElementById('callTaxi').onclick = async () => {
         client_name: USER_NAME,
         from_lat: myLat,
         from_lon: myLon,
-        from_address: "Моя точка",
+        from_address: fromAddress,
         to_address: "Не указано",
         price: 8,
         driver_gets: 7,
@@ -309,7 +352,6 @@ document.getElementById('contactDriver').onclick = () => {
 };
 
 // ── ЗАПУСК ──
-// Сначала проверяем, есть ли активный заказ
 checkActiveOrder().then(hasActive => {
   if (!hasActive) {
     hideStatusPanel();
