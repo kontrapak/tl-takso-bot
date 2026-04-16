@@ -4,15 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TL.TAKSO — Клиент</title>
-
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
 <style>
 body, html { margin:0; padding:0; height:100%; font-family:sans-serif; background:#121212; }
 #map { position:absolute; top:0; bottom:0; width:100%; }
-
 .controls {
   position:absolute;
   bottom:15px;
@@ -29,13 +26,11 @@ body, html { margin:0; padding:0; height:100%; font-family:sans-serif; backgroun
   border-radius: 16px;
   backdrop-filter: blur(10px);
 }
-
 .buttons {
   display: flex;
   gap: 10px;
   justify-content: center;
 }
-
 button {
   padding:12px 18px;
   border:none;
@@ -43,11 +38,9 @@ button {
   font-weight:700;
   cursor:pointer;
 }
-
 #callTaxi { background:#FFD600; color:#000; }
 #cancelRide { background:#FF3B30; color:#fff; }
 #contactDriver { background:#00E676; color:#000; }
-
 #fromAddress, #toAddress {
   width: 100%;
   padding: 12px;
@@ -59,7 +52,6 @@ button {
   box-sizing: border-box;
   text-align: center;
 }
-
 .toast {
   position:fixed;
   top:20px;
@@ -74,7 +66,6 @@ button {
   z-index:100;
 }
 .toast.show { opacity:1; }
-
 .status-panel {
   position:absolute;
   bottom:160px;
@@ -94,9 +85,7 @@ button {
 </style>
 </head>
 <body>
-
 <div id="map"></div>
-
 <div class="controls">
   <input type="text" id="fromAddress" placeholder="📍 Откуда едем?" value="Моя точка">
   <input type="text" id="toAddress" placeholder="🏁 Куда едем?">
@@ -106,14 +95,11 @@ button {
     <button id="contactDriver">📞 Водитель</button>
   </div>
 </div>
-
 <div class="status-panel" id="statusPanel">
   <div class="status-title" id="statusTitle">Ищем водителя...</div>
   <div class="status-sub" id="statusSub">Обычно до 2 минут</div>
 </div>
-
 <div class="toast" id="toast"></div>
-
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready();
