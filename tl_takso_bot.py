@@ -17,7 +17,7 @@ if not BOT_TOKEN:
 MAPBOX_TOKEN = os.environ.get("MAPBOX_TOKEN", "pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA")
 RAILWAY_DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN") or os.environ.get("RAILWAY_STATIC_URL", "web-production-f5a52.up.railway.app")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", BOT_TOKEN.split(':')[1][:16])
-MINI_APP_URL = f"https://{RAILWAY_DOMAIN}/static/miniapp.html"
+MINI_APP_URL = f"https://{RAILWAY_DOMAIN}/static/клиент.html"
 DRIVER_MAP_URL = f"https://{RAILWAY_DOMAIN}/static/driver.html"
 TRACKING_URL = f"https://{RAILWAY_DOMAIN}/static/tracking.html"
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "1873195803"))
