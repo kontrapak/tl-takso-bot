@@ -160,6 +160,29 @@ def api_orders():
         })
     return jsonify(result)
 
+# ═══════════════════════════════════════════════════════════════
+# НОВЫЙ ЭНДПОИНТ ДЛЯ ПРОВЕРКИ АКТИВНОГО ЗАКАЗА (ПРЯМОЕ ОТКРЫТИЕ)
+# ═══════════════════════════════════════════════════════════════
+@app.route('/api/active_order', methods=['GET'])
+def api_active_order():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'ok': False, 'error': 'No user_id'}), 400
+    user_id = int(user_id)
+
+    for oid, order in orders.items():
+        if order.get('client_id') == user_id and order.get('status') in ['pending', 'accepted', 'arrived']:
+            return jsonify({
+                'ok': True,
+                'order_id': oid,
+                'status': order['status'],
+                'driver_name': order.get('driver_name'),
+                'price': order.get('price'),
+                'from': order.get('from'),
+                'to': order.get('to')
+            })
+    return jsonify({'ok': True, 'order_id': None})
+
 @app.route('/api/create_order', methods=['POST'])
 def api_create_order():
     try:
@@ -1169,3 +1192,4 @@ if __name__ == "__main__":
     setup_webhook()
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port, threaded=True, debug=False)
+    
