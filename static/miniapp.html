@@ -430,47 +430,67 @@ async function pollStatus() {
 // ═══════════════ ОТМЕНА ЗАКАЗА (КЛИЕНТ) ════════════════════════
 // ═══════════════════════════════════════════════════════════════
 
+
 async function cancelOrder() {
-  if (!orderId) return;
-  
+  if (!orderId) {
+    showToast('❌ Нет активного заказа');
+    // Возвращаем форму
+    document.getElementById('statusPanel').style.display = 'none';
+    document.getElementById('orderPanel').style.display = 'block';
+    if (pollTimer) clearInterval(pollTimer);
+    return;
+  }
+
   if (!confirm('Отменить заказ?')) return;
-  
+
   try {
-    const res = await fetch('/api/cancel_order', {
+    // Используем правильный API из bot.py
+    const res = await fetch(`/api/cancel_order_client/${orderId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: orderId, user_id: CLIENT_ID })
+      body: JSON.stringify({})
     });
-    
+
     const data = await res.json();
-    
+
     if (data.ok) {
       showToast('❌ Заказ отменён');
-      
+
       if (pollTimer) {
         clearInterval(pollTimer);
         pollTimer = null;
       }
-      
+
       orderId = null;
-      
+
       if (taxiMarker) {
         taxiMarker.remove();
         taxiMarker = null;
       }
-      
+
+      // Возвращаем форму заказа
       document.getElementById('statusPanel').style.display = 'none';
       document.getElementById('orderPanel').style.display = 'block';
-      
+
     } else {
       showToast('❌ ' + (data.error || 'Ошибка отмены'));
+      // Всё равно возвращаем форму
+      document.getElementById('statusPanel').style.display = 'none';
+      document.getElementById('orderPanel').style.display = 'block';
+      if (pollTimer) clearInterval(pollTimer);
+      orderId = null;
     }
   } catch(e) {
     showToast('❌ Ошибка сети');
     console.error(e);
+    // Принудительно возвращаем форму
+    document.getElementById('statusPanel').style.display = 'none';
+    document.getElementById('orderPanel').style.display = 'block';
+    if (pollTimer) clearInterval(pollTimer);
+    orderId = null;
   }
 }
-
+  
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
