@@ -427,18 +427,25 @@ async function pollStatus() {
 }
 
 // ── ОТМЕНА С ПЕРЕЗАГРУЗКОЙ ──
-async function cancelOrder() {
-  if (!orderId) return;
-  if (!confirm('Отменить заказ?')) return;
+async function rejectOrder() {
+  if (!cur тоrentOrder) return;
   try {
-    await fetch(`/api/cancel_order_client/${orderId}`, { method: 'POST' });
-    clearInterval(pollTimer);
-    orderId = null;
-    if (taxiMarker) taxiMarker.remove();
-    showToast('❌ Заказ отменён');
-    setTimeout(() => location.reload(), 1500);
-  } catch { showToast('❌ Ошибка'); }
-}
+    await fetch(`/api/reject_order/${currentOrder.id}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ driver_id: DRIVER_ID })
+    });
+  } catch(e) {}
+  
+  showToast('❌ Заказ отклонён');
+  hideNewOrder();           // скрывает карточку заказа
+  currentOrder = null;      // сбрасывает текущий заказ
+  
+  // Возвращаем статус "онлайн" и разрешаем принимать новые заказы
+  if (isOnline) {
+    startPolling();         // возобновляем поиск заказов
+  }
+}⁶
 
 function showToast(msg) {
   const t = document.getElementById('toast');
