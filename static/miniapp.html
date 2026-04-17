@@ -426,23 +426,48 @@ async function pollStatus() {
   } catch {}
 }
 
-// ── ОТМЕНА С ПЕРЕЗАГРУЗКОЙ ──
-async function rejectOrder() {
-  if (!currentOrder) return;
+// ═══════════════════════════════════════════════════════════════
+// ═══════════════ ОТМЕНА ЗАКАЗА (КЛИЕНТ) ════════════════════════
+// ═══════════════════════════════════════════════════════════════
+
+async function cancelOrder() {
+  if (!orderId) return;
+  
+  if (!confirm('Отменить заказ?')) return;
+  
   try {
-    await fetch(`/api/reject_order/${currentOrder.id}`, {
+    const res = await fetch('/api/cancel_order', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId, user_id: CLIENT_ID })
     });
-  } catch(e) {}
-  
-  showToast('❌ Заказ отклонён');
-  hideNewOrder();
-  currentOrder = null;
-  
-  if (isOnline) {
-    startPolling();
+    
+    const data = await res.json();
+    
+    if (data.ok) {
+      showToast('❌ Заказ отменён');
+      
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+      
+      orderId = null;
+      
+      if (taxiMarker) {
+        taxiMarker.remove();
+        taxiMarker = null;
+      }
+      
+      document.getElementById('statusPanel').style.display = 'none';
+      document.getElementById('orderPanel').style.display = 'block';
+      
+    } else {
+      showToast('❌ ' + (data.error || 'Ошибка отмены'));
+    }
+  } catch(e) {
+    showToast('❌ Ошибка сети');
+    console.error(e);
   }
 }
 
