@@ -420,9 +420,14 @@ async function pollStatus() {
       } else { taxiMarker.setLngLat([d.driver_lon, d.driver_lat]); }
     }
     if (['done', 'cancelled'].includes(d.status)) {
-      clearInterval(pollTimer); pollTimer = null; orderId = null;
-      if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
-    }
+  clearInterval(pollTimer);
+  pollTimer = null;
+  orderId = null;
+  if (taxiMarker) {
+    taxiMarker.remove();
+    taxiMarker = null;
+  }
+  
   } catch {}
 }
 
