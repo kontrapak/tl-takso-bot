@@ -428,7 +428,7 @@ async function pollStatus() {
 
 // ── ОТМЕНА С ПЕРЕЗАГРУЗКОЙ ──
 async function rejectOrder() {
-  if (!cur тоrentOrder) return;
+  if (!currentOrder) return;
   try {
     await fetch(`/api/reject_order/${currentOrder.id}`, {
       method: 'POST',
@@ -438,14 +438,13 @@ async function rejectOrder() {
   } catch(e) {}
   
   showToast('❌ Заказ отклонён');
-  hideNewOrder();           // скрывает карточку заказа
-  currentOrder = null;      // сбрасывает текущий заказ
+  hideNewOrder();
+  currentOrder = null;
   
-  // Возвращаем статус "онлайн" и разрешаем принимать новые заказы
   if (isOnline) {
-    startPolling();         // возобновляем поиск заказов
+    startPolling();
   }
-}⁶
+}
 
 function showToast(msg) {
   const t = document.getElementById('toast');
