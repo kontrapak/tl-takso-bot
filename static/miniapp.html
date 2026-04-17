@@ -403,7 +403,6 @@ function showStatus(st) {
   document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
 }
 
-
 async function pollStatus() {
   if (!orderId) return;
   try {
@@ -422,7 +421,7 @@ async function pollStatus() {
         taxiMarker.setLngLat([d.driver_lon, d.driver_lat]);
       }
     }
-    if (['done', 'cancelled'].includes(d.status)) {
+    if (d.status === 'done' || d.status === 'cancelled') {
       clearInterval(pollTimer);
       pollTimer = null;
       orderId = null;
@@ -430,15 +429,15 @@ async function pollStatus() {
         taxiMarker.remove();
         taxiMarker = null;
       }
-      // Возвращаем форму заказа
+      // Возврат в форму заказа
       document.getElementById('statusPanel').style.display = 'none';
       document.getElementById('orderPanel').style.display = 'block';
-      showToast('✅ Поездка завершена. Спасибо!');
     }
-  } catch (e) {
-    console.error('pollStatus error:', e);
+  } catch(e) {
+    console.error(e);
   }
 }
+
 // ═══════════════════════════════════════════════════════════════
 // ═══════════════ ОТМЕНА ЗАКАЗА (КЛИЕНТ) ════════════════════════
 // ═══════════════════════════════════════════════════════════════
