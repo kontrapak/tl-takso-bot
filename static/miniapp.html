@@ -403,41 +403,19 @@ function showStatus(st) {
   document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
 }
 
-async function pollStatus() {
-  if (!orderId) return;
-  try {
-    const r = await fetch(`/api/order_status/${orderId}`);
-    if (!r.ok) return;
-    const d = await r.json();
-    if (!d.ok) return;
-    showStatus(d.status);
-    if (d.driver_lat && d.driver_lon) {
-      if (!taxiMarker) {
-        const el = document.createElement('div');
-        el.style.cssText = 'font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8))';
-        el.textContent = '🚖';
-        taxiMarker = new mapboxgl.Marker({ element: el }).setLngLat([d.driver_lon, d.driver_lat]).addTo(map);
-      } else {
-        taxiMarker.setLngLat([d.driver_lon, d.driver_lat]);
-      }
-    }
-    if (d.status === 'done' || d.status === 'cancelled') {
-      clearInterval(pollTimer);
-      pollTimer = null;
-      orderId = null;
-      if (taxiMarker) {
-        taxiMarker.remove();
-        taxiMarker = null;
-      }
-      // Возврат в форму заказа
-      document.getElementById('statusPanel').style.display = 'none';
-      document.getElementById('orderPanel').style.display = 'block';
-    }
-  } catch(e) {
-    console.error(e);
-  }
-}
 
+async function cancelOrder() {
+  if (!orderId) return;
+  if (!confirm('Отменить заказ?')) return;
+  try {
+    await fetch(`/api/cancel_order_client/${orderId}`, { method: 'POST' });
+    clearInterval(pollTimer);
+    orderId = null;
+    if (taxiMarker) taxiMarker.remove();
+    showToast('❌ Заказ отменён');
+    setTimeout(() => location.reload(), 1500);
+  } catch { showToast('❌ Ошибка'); }
+}
 // ═══════════════════════════════════════════════════════════════
 // ═══════════════ ОТМЕНА ЗАКАЗА (КЛИЕНТ) ════════════════════════
 // ═══════════════════════════════════════════════════════════════
