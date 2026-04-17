@@ -465,9 +465,6 @@ def telegram_webhook():
 @app.route('/health')
 def health_check():
     return jsonify({'status': 'ok', 'orders': len(orders), 'drivers': len(drivers)}), 200
-@app.route('/health')
-def health_check():
-    return jsonify({'status': 'ok', 'orders': len(orders), 'drivers': len(drivers)}), 200
 
 # ═══════════════════════════════════════════════════════════════
 # ══════════════ API ДЛЯ MINI APP (клиент) ═══════════════════════
