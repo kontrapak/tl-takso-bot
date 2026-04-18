@@ -175,6 +175,8 @@ let pollTimer = null;
 let markerFrom = null, markerTo = null, markerMe = null;
 let taxiMarker = null;
 let sugTimers = { from: null, to: null };
+let userMovedCamera = false;
+let routeRequestId = 0;
 
 const map = new mapboxgl.Map({
   container: 'map',
@@ -182,6 +184,8 @@ const map = new mapboxgl.Map({
   center: [24.7536, 59.4370], zoom: 13,
   attributionControl: false
 });
+
+map.on('moveend', () => { userMovedCamera = true; });
 
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
@@ -416,7 +420,6 @@ async function pollStatus() {
     if (data.driver_lat && data.driver_lon) {
       const driverLngLat = [data.driver_lon, data.driver_lat];
       
-      // Создаём или обновляем маркер водителя
       if (!taxiMarker) {
         const el = document.createElement('div');
         el.style.cssText = 'width:28px;height:28px;background:#FFD600;border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.5)';
@@ -428,13 +431,11 @@ async function pollStatus() {
         taxiMarker.setLngLat(driverLngLat);
       }
       
-      // Строим маршрут от водителя до точки посадки (from)
       if (from && from.lat && from.lon) {
-        drawRoute(driverLngLat, [from.lon, from.lat]);
+        updateRoute(driverLngLat, [from.lon, from.lat]);
       }
       
-      // Центрируем карту на водителе
-      if (data.status === 'accepted') {
+      if (data.status === 'accepted' && !userMovedCamera) {
         map.flyTo({ center: driverLngLat, zoom: 14, duration: 1000 });
       }
     }
@@ -443,49 +444,55 @@ async function pollStatus() {
       clearInterval(pollTimer);
       pollTimer = null;
       orderId = null;
-      // Удаляем маршрут
-      if (map.getLayer('route')) map.removeLayer('route');
-      if (map.getSource('route')) map.removeSource('route');
+      removeRoute();
       setTimeout(() => location.reload(), 3000);
     }
   } catch(e) { console.error(e); }
 }
 
-// Функция для рисования маршрута
-function drawRoute(start, end) {
+function updateRoute(start, end) {
   if (!start || !end) return;
   
-  // Удаляем старый маршрут
-  if (map.getLayer('route')) map.removeLayer('route');
-  if (map.getSource('route')) map.removeSource('route');
-  
-  // Запрашиваем маршрут у Mapbox
+  const requestId = ++routeRequestId;
   const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?geometries=geojson&access_token=${MAPBOX}`;
   
   fetch(url)
     .then(res => res.json())
     .then(data => {
+      if (requestId !== routeRequestId) return;
       if (!data.routes || !data.routes[0]) return;
       const route = data.routes[0].geometry;
       
-      map.addSource('route', {
-        type: 'geojson',
-        data: {
+      if (map.getSource('route')) {
+        map.getSource('route').setData({
           type: 'Feature',
           properties: {},
           geometry: route
-        }
-      });
-      
-      map.addLayer({
-        id: 'route',
-        type: 'line',
-        source: 'route',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#00E676', 'line-width': 4, 'line-opacity': 0.8 }
-      });
+        });
+      } else {
+        map.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route
+          }
+        });
+        map.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#00E676', 'line-width': 4, 'line-opacity': 0.8 }
+        });
+      }
     })
     .catch(e => console.error('Ошибка маршрута:', e));
+}
+
+function removeRoute() {
+  if (map.getLayer('route')) map.removeLayer('route');
+  if (map.getSource('route')) map.removeSource('route');
 }
 
 // ── ОТМЕНА ЗАКАЗА (КЛИЕНТ) ──
