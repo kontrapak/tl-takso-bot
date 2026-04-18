@@ -416,15 +416,12 @@ async function pollStatus() {
 
     // Маркер водителя на карте
     if (data.driver_lat && data.driver_lon) {
-      if (!taxiMarker) {
-        const el = document.createElement('div');
-        el.style.cssText = 'width:28px;height:28px;background:#FFD600;border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.5)';
-        el.textContent = '🚖';
-        taxiMarker = new mapboxgl.Marker({ element: el })
-          .setLngLat([data.driver_lon, data.driver_lat]).addTo(map);
-      } else {
-        taxiMarker.setLngLat([data.driver_lon, data.driver_lat]);
-      }
+      if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
+      const el = document.createElement('div');
+      el.style.cssText = 'width:28px;height:28px;background:#FFD600;border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.5)';
+      el.textContent = '🚖';
+      taxiMarker = new mapboxgl.Marker({ element: el })
+        .setLngLat([data.driver_lon, data.driver_lat]).addTo(map);
     }
 
     if (data.status === 'done' || data.status === 'cancelled') {
