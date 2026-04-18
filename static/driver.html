@@ -521,12 +521,20 @@ async function markArrived() {
     const res = await r.json();
     if (res.ok) {
       showToast('📍 Клиент уведомлён!');
-      btn.textContent = '✅ Уведомлён';
-      // Перестраиваем маршрут к точке назначения
-      switchRouteToDest();
+      btn.disabled = false;
+      btn.textContent = '🚀 Начать поездку';
+      btn.style.background = '#FFD600';
+      btn.style.color = '#000';
+      btn.onclick = function() {
+        switchRouteToDest();
+        btn.disabled = true;
+        btn.textContent = '✅ Едем';
+        document.getElementById('statusText').textContent = '🚖 Везу клиента';
+      };
     } else { btn.disabled = false; }
   } catch(e) { showToast('❌ Ошибка'); btn.disabled = false; }
 }
+
 
 async function completeOrder() {
   if (!activeOrderId) return;
