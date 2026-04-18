@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -323,6 +324,7 @@ function calcKm(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dl/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dg/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
+
 function getPrice() {
   if (!from || !to) return 0;
   return Math.max(8, Math.round(calcKm(from.lat, from.lon, to.lat, to.lon)));
@@ -403,28 +405,27 @@ function showStatus(st) {
   document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
 }
 
-
-async function cancelOrder() {
+// ── ОПРОС СТАТУСА ЗАКАЗА ──
+async function pollStatus() {
   if (!orderId) return;
-  if (!confirm('Отменить заказ?')) return;
   try {
-    await fetch(`/api/cancel_order_client/${orderId}`, { method: 'POST' });
-    clearInterval(pollTimer);
-    orderId = null;
-    if (taxiMarker) taxiMarker.remove();
-    showToast('❌ Заказ отменён');
-    setTimeout(() => location.reload(), 1500);
-  } catch { showToast('❌ Ошибка'); }
+    const res = await fetch(`/api/order_status/${orderId}`);
+    const data = await res.json();
+    if (!data.ok) return;
+    showStatus(data.status);
+    if (data.status === 'done' || data.status === 'cancelled') {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      orderId = null;
+      setTimeout(() => location.reload(), 3000);
+    }
+  } catch(e) { console.error(e); }
 }
-// ═══════════════════════════════════════════════════════════════
-// ═══════════════ ОТМЕНА ЗАКАЗА (КЛИЕНТ) ════════════════════════
-// ═══════════════════════════════════════════════════════════════
 
-
+// ── ОТМЕНА ЗАКАЗА (КЛИЕНТ) ──
 async function cancelOrder() {
   if (!orderId) {
     showToast('❌ Нет активного заказа');
-    // Возвращаем форму
     document.getElementById('statusPanel').style.display = 'none';
     document.getElementById('orderPanel').style.display = 'block';
     if (pollTimer) clearInterval(pollTimer);
@@ -434,7 +435,6 @@ async function cancelOrder() {
   if (!confirm('Отменить заказ?')) return;
 
   try {
-    // Используем правильный API из bot.py
     const res = await fetch(`/api/cancel_order_client/${orderId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -445,42 +445,21 @@ async function cancelOrder() {
 
     if (data.ok) {
       showToast('❌ Заказ отменён');
-
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-
-      orderId = null;
-
-      if (taxiMarker) {
-        taxiMarker.remove();
-        taxiMarker = null;
-      }
-
-      // Возвращаем форму заказа
-      document.getElementById('statusPanel').style.display = 'none';
-      document.getElementById('orderPanel').style.display = 'block';
-
     } else {
       showToast('❌ ' + (data.error || 'Ошибка отмены'));
-      // Всё равно возвращаем форму
-      document.getElementById('statusPanel').style.display = 'none';
-      document.getElementById('orderPanel').style.display = 'block';
-      if (pollTimer) clearInterval(pollTimer);
-      orderId = null;
     }
   } catch(e) {
     showToast('❌ Ошибка сети');
     console.error(e);
-    // Принудительно возвращаем форму
-    document.getElementById('statusPanel').style.display = 'none';
-    document.getElementById('orderPanel').style.display = 'block';
-    if (pollTimer) clearInterval(pollTimer);
-    orderId = null;
   }
+
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  orderId = null;
+  if (taxiMarker) { taxiMarker.remove(); taxiMarker = null; }
+  document.getElementById('statusPanel').style.display = 'none';
+  document.getElementById('orderPanel').style.display = 'block';
 }
-  
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
