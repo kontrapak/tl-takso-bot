@@ -1,3 +1,4 @@
+
 import telebot
 from telebot import types
 import datetime
@@ -24,6 +25,37 @@ ADMIN_ID = int(os.environ.get("ADMIN_ID", "1873195803"))
 
 DATA_FILE = "/mnt/data/tltakso_data.json"
 data_lock = threading.Lock()
+
+# ── TELEGRAM AUTH ──
+import hashlib
+import hmac
+import urllib.parse
+
+def check_telegram_auth(init_data):
+    if not init_data:
+        return False
+
+    data = dict(urllib.parse.parse_qsl(init_data))
+    hash_ = data.pop('hash', None)
+
+    secret = hashlib.sha256(BOT_TOKEN.encode()).digest()
+    check_string = '\n'.join([f"{k}={v}" for k, v in sorted(data.items())])
+
+    h = hmac.new(secret, check_string.encode(), hashlib.sha256).hexdigest()
+
+    return h == hash_
+
+
+def get_user():
+    init_data = request.headers.get('X-Telegram-Init-Data')
+
+    if not check_telegram_auth(init_data):
+        return None
+
+    data = dict(urllib.parse.parse_qsl(init_data))
+    user = json.loads(data.get('user'))
+
+    return user
 
 # Хранилище геопозиций водителей: {order_id: {lat, lon, updated}}
 driver_locations = {}
@@ -428,24 +460,6 @@ def api_cancel_order_client(order_id):
             user_state[client_id].pop("current_order", None)
         save_data()
         return jsonify({'ok': True})
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-@app.route('/api/active_order', methods=['GET'])
-def api_active_order():
-    """Проверяет есть ли у клиента активный заказ"""
-    try:
-        user_id = request.args.get('user_id')
-        if not user_id:
-            return jsonify({'ok': False}), 400
-        user_id = int(user_id)
-        oid = user_state.get(user_id, {}).get('current_order')
-        if oid and oid in orders:
-            order = orders[oid]
-            if order.get('status') in ['pending', 'accepted', 'arrived']:
-                return jsonify({'ok': True, 'order_id': oid, 'status': order['status']})
-        return jsonify({'ok': False})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -1156,3 +1170,5 @@ if __name__ == "__main__":
     setup_webhook()
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port, threaded=True, debug=False)
+
+
