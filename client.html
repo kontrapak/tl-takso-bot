@@ -134,12 +134,10 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
     <div class="suggestions" id="sugFrom"></div>
   </div>
 
-  <!-- Кнопка "Моя геолокация" -->
   <button class="my-loc-btn" onclick="useMyLocation()">
     📡 Использовать мою геолокацию
   </button>
 
-  <!-- Переключатель: куда вставлять адрес с карты -->
   <div class="pick-toggle">
     <div class="pick-btn" id="pickFromBtn" onclick="setPickMode('from')">📍 Выбрать Откуда</div>
     <div class="pick-btn" id="pickToBtn" onclick="setPickMode('to')">🏁 Выбрать Куда</div>
@@ -194,15 +192,13 @@ let taxiMarker = null;
 let sugTimers = { from: null, to: null };
 let userMovedCamera = false;
 let routeRequestId = 0;
-
-// ── РЕЖИМ ВЫБОРА НА КАРТЕ ──
-let pickMode = 'from'; // 'from' или 'to'
+let pickMode = 'from';
 
 function setPickMode(mode) {
   pickMode = mode;
   document.getElementById('pickFromBtn').classList.toggle('active', mode === 'from');
   document.getElementById('pickToBtn').classList.toggle('active', mode === 'to');
-  showToast(`📍 Тапните на карте, чтобы выбрать ${mode === 'from' ? 'откуда забрать' : 'куда ехать'}`);
+  showToast(`Тапните на карте, чтобы выбрать ${mode === 'from' ? 'ОТКУДА' : 'КУДА'}`);
 }
 
 const map = new mapboxgl.Map({
@@ -213,7 +209,6 @@ const map = new mapboxgl.Map({
   attributionControl: false
 });
 
-// ── ВЫБОР АДРЕСА НА КАРТЕ ──
 map.on('click', async (e) => {
   const { lng, lat } = e.lngLat;
   const address = await reverseGeocode(lat, lng);
@@ -229,12 +224,11 @@ map.on('click', async (e) => {
   }
   updatePriceAndBtn();
   fitBounds();
-  showToast(`✅ Выбрано: ${address.substring(0, 40)}`);
+  showToast(`✅ ${address.substring(0, 40)}`);
 });
 
 map.on('moveend', () => { userMovedCamera = true; });
 
-// ── ОСТАЛЬНОЙ КОД (геолокация, геокодинг, автодополнение, заказ и т.д.) ──
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
     tg.LocationManager.init(() => {
@@ -609,9 +603,7 @@ checkActiveOrder().then(hasActive => {
   }
 });
 
-// Установка режима по умолчанию
 setPickMode('from');
 </script>
 </body>
 </html>
-
