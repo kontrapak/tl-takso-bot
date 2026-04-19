@@ -203,6 +203,9 @@ const map = new mapboxgl.Map({
 
 // ── ГЕОЛОКАЦИЯ ──
 
+
+// ── ГЕОЛОКАЦИЯ ──
+
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
     tg.LocationManager.init(() => {
@@ -213,49 +216,96 @@ function initLocation() {
 }
 
 function getTelegramLocation() {
-  tg.LocationManager.getLocation(loc => { if (loc) updatePosition(loc.latitude, loc.longitude); });
+  tg.LocationManager.getLocation(loc => { 
+    if (loc) updatePosition(loc.latitude, loc.longitude); 
+  });
 }
 
 function startBrowserLocation() {
   if (!navigator.geolocation) return;
-  if (browserWatchId !== null) navigator.geolocation.clearWatch(browserWatchId);
+
+  if (browserWatchId !== null) {
+    navigator.geolocation.clearWatch(browserWatchId);
+  }
+
   browserWatchId = navigator.geolocation.watchPosition(
     pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
     err => console.warn(err.message),
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0 // 🔥 ВАЖНО: убрали кэш
+    }
   );
 }
 
 function updatePosition(lat, lon) {
-  myLat = lat; myLon = lon;
+  console.log("GPS UPDATE:", lat, lon); // 🔥 лог для проверки
+
+  myLat = lat;
+  myLon = lon;
+
   if (!userMarker) {
     const el = document.createElement('div');
     el.style.cssText = 'width:20px;height:20px;background:#FFD600;border:3px solid white;border-radius:50%;box-shadow:0 0 0 5px rgba(255,214,0,0.25)';
-    userMarker = new mapboxgl.Marker(el).setLngLat([lon, lat]).addTo(map);
+    userMarker = new mapboxgl.Marker(el)
+      .setLngLat([lon, lat])
+      .addTo(map);
+
     map.flyTo({ center: [lon, lat], zoom: 14 });
   } else {
     userMarker.setLngLat([lon, lat]);
   }
+
   if (activeOrderId) sendLocation(lat, lon);
 }
 
+// 🔥 ограничение, чтобы не спамить сервер
+let lastSent = 0;
+
 function sendLocation(lat, lon) {
+  const now = Date.now();
+  if (now - lastSent < 1000) return; // максимум 1 раз в секунду
+  lastSent = now;
+
   fetch(`/api/driver_location/${activeOrderId}`, {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ lat, lon })
   }).catch(() => {});
 }
 
+// 🔥 ВАЖНО: fallback для Telegram (фикс зависания GPS)
+setInterval(() => {
+  if (!activeOrderId) return;
+
+  navigator.geolocation.getCurrentPosition(
+    pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
+    () => {},
+    { enableHighAccuracy: true }
+  );
+}, 2000);
+
+// 🔥 дополнительный fallback через Telegram API
+setInterval(() => {
+  if (!activeOrderId) return;
+
+  if (tg.LocationManager && tg.LocationManager.isInited) {
+    tg.LocationManager.getLocation(loc => {
+      if (loc) updatePosition(loc.latitude, loc.longitude);
+    });
+  }
+}, 2000);
+
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    if (tg.LocationManager && tg.LocationManager.isInited) getTelegramLocation();
-    else startBrowserLocation();
+    if (tg.LocationManager && tg.LocationManager.isInited) {
+      getTelegramLocation();
+    } else {
+      startBrowserLocation();
+    }
   }
 });
-
-setInterval(() => {
-  if (activeOrderId && myLat && myLon) sendLocation(myLat, myLon);
-}, 5000);
 
 initLocation();
 
