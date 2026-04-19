@@ -176,7 +176,7 @@ map.on('click', async (e) => {
   showToast(`✅ ${address.substring(0, 40)}`);
 });
 
-map.on('moveend', () => { userMovedCamera = true; });
+map.on('dragend', () => { userMovedCamera = true; });
 
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
