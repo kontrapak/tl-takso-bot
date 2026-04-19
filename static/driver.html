@@ -257,7 +257,8 @@ function updatePosition(lat, lon) {
     userMarker.setLngLat([lon, lat]);
   }
 
-  if (activeOrderId) sendLocation(lat, lon);
+  if (activeOrderId && activeOrderData?.to_lat && activeOrderData?.to_lon) {
+  updateLiveRoute(lat, lon);
 }
 
 // 🔥 ограничение, чтобы не спамить сервер
