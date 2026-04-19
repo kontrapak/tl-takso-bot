@@ -255,7 +255,7 @@ function updatePosition(lat, lon) {
     map.flyTo({ center: [lon, lat], zoom: 14 });
   } else {
     userMarker.setLngLat([lon, lat]);
-  }
+if (activeOrderId) map.easeTo({ center: [lon, lat], duration: 1000 });
 
   if (activeOrderId && activeOrderData?.to_lat && activeOrderData?.to_lon) {
   updateLiveRoute(lat, lon);
