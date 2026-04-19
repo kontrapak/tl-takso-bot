@@ -201,7 +201,6 @@ const map = new mapboxgl.Map({
   attributionControl: false
 });
 
-// ── ГЕОЛОКАЦИЯ ──
 
 
 // ── ГЕОЛОКАЦИЯ ──
@@ -275,7 +274,7 @@ function sendLocation(lat, lon) {
   }).catch(() => {});
 }
 
-// 🔥 ВАЖНО: fallback для Telegram (фикс зависания GPS)
+// 🔥 : fallback для Telegram (фикс зависания GPS)
 setInterval(() => {
   if (!activeOrderId) return;
 
