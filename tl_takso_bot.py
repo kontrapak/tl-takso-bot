@@ -25,7 +25,7 @@ DRIVER_MAP_URL = f"https://{RAILWAY_DOMAIN}/static/driver.html"
 TRACKING_URL = f"https://{RAILWAY_DOMAIN}/static/tracking.html"
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "1873195803"))
 
-DATA_FILE = "/mnt/data/tltakso_data.json"
+DATA_FILE = "/data/tltakso_data.json"
 data_lock = threading.Lock()
 
 # ── TELEGRAM AUTH ──
