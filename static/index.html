@@ -1,103 +1,242 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <title>Taxi Mini App</title>
-
-  <!-- Telegram -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <!-- Mapbox -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-
-  <style>
-    body { margin:0; font-family: Arial; }
-    #map { width:100%; height:80vh; }
-    #panel {
-      padding:10px;
-      background:#fff;
-      position:fixed;
-      bottom:0;
-      width:100%;
-      box-shadow:0 -2px 10px rgba(0,0,0,0.1);
-    }
-    button {
-      width:100%;
-      padding:15px;
-      font-size:18px;
-      background:#28a745;
-      color:white;
-      border:none;
-      border-radius:10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TL.TAKSO — Заказ такси</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:-apple-system, sans-serif; background:#121212; color:#fff; height:100dvh; overflow:hidden; }
+        #map { position:absolute; inset:0; }
+        .panel {
+            position:absolute; bottom:0; left:0; right:0;
+            background:#1a1a1a; border-radius:20px 20px 0 0;
+            border-top:3px solid #FFD600; padding:16px; z-index:10;
+        }
+        .input-wrap { position:relative; margin-bottom:12px; }
+        .addr-input {
+            width:100%; padding:14px 14px 14px 40px;
+            background:#111; border:1px solid #333; border-radius:12px;
+            color:#fff; font-size:15px; outline:none;
+        }
+        .addr-input:focus { border-color:#FFD600; }
+        .input-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); }
+        .pick-toggle { display:flex; gap:8px; margin-bottom:12px; }
+        .pick-btn {
+            flex:1; padding:10px; background:#111; border:1px solid #333;
+            border-radius:10px; color:#fff; font-size:13px; cursor:pointer;
+        }
+        .pick-btn.active { border-color:#FFD600; background:#1f1a00; color:#FFD600; }
+        .price-row { display:flex; justify-content:space-between; margin:15px 0; }
+        .price-val { font-size:28px; font-weight:700; color:#FFD600; }
+        .pay-row { display:flex; gap:10px; margin-bottom:15px; }
+        .pay-btn {
+            flex:1; padding:12px; background:#111; border:1px solid #333;
+            border-radius:10px; text-align:center; cursor:pointer;
+        }
+        .pay-btn.active { border-color:#FFD600; background:#1f1a00; color:#FFD600; }
+        .order-btn {
+            width:100%; padding:16px; background:#FFD600; color:#000;
+            border:none; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer;
+        }
+        .order-btn:disabled { background:#333; color:#666; }
+        #locBtn {
+            position:absolute; right:16px; bottom:320px; z-index:10;
+            width:44px; height:44px; background:#1a1a1a; border:1px solid #333;
+            border-radius:12px; display:flex; align-items:center; justify-content:center;
+            font-size:22px; cursor:pointer;
+        }
+        .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib { display:none !important; }
+        .toast {
+            position:fixed; top:20px; left:50%; transform:translateX(-50%);
+            background:#FFD600; color:#000; padding:10px 20px; border-radius:30px;
+            font-weight:600; z-index:100; opacity:0; transition:opacity 0.3s;
+        }
+        .toast.show { opacity:1; }
+    </style>
 </head>
-
 <body>
-
 <div id="map"></div>
+<div id="locBtn" onclick="goToMe()">📍</div>
+<div id="toast" class="toast"></div>
 
-<div id="panel">
-  <div id="info">Выберите точку назначения</div>
-  <button onclick="sendOrder()">🚖 Заказать</button>
+<div class="panel">
+    <div class="input-wrap">
+        <span class="input-icon">🟢</span>
+        <input class="addr-input" id="fromInput" placeholder="Откуда?" readonly>
+    </div>
+    <div class="input-wrap">
+        <span class="input-icon">🔴</span>
+        <input class="addr-input" id="toInput" placeholder="Куда?" readonly>
+    </div>
+    <div class="pick-toggle">
+        <button class="pick-btn active" id="pickFromBtn" onclick="setPickMode('from')">📍 Выбрать Откуда</button>
+        <button class="pick-btn" id="pickToBtn" onclick="setPickMode('to')">🏁 Выбрать Куда</button>
+    </div>
+    <div class="price-row">
+        <span>Стоимость</span>
+        <span class="price-val" id="priceVal">—</span>
+    </div>
+    <div class="pay-row">
+        <div class="pay-btn active" id="payCash" onclick="setPay('cash')">💵 Наличные</div>
+        <div class="pay-btn" id="payCard" onclick="setPay('card')">💳 Карта</div>
+    </div>
+    <button class="order-btn" id="orderBtn" disabled onclick="placeOrder()">🚖 Заказать</button>
 </div>
 
 <script>
-  const tg = window.Telegram.WebApp;
-  tg.expand();
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
 
-  // ⚠️ ВСТАВЬ СЮДА СВОЙ ТОКЕН Mapbox
-  mapboxgl.accessToken = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA;
+const MAPBOX = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
+const CLIENT_ID = tg.initDataUnsafe?.user?.id || 0;
+const CLIENT_NAME = tg.initDataUnsafe?.user?.first_name || 'Клиент';
 
-  let userLocation = null;
-  let destination = null;
-
-  const map = new mapboxgl.Map({
+mapboxgl.accessToken = MAPBOX;
+const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v11',
-    center: [24.7536, 59.4370], // Tallinn
-    zoom: 12
-  });
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [24.7536, 59.4370],
+    zoom: 13
+});
 
-  // Получаем текущую позицию
-  navigator.geolocation.getCurrentPosition(pos => {
-    userLocation = [pos.coords.longitude, pos.coords.latitude];
+let myLat = null, myLon = null;
+let from = null, to = null;
+let payment = 'cash';
+let pickMode = 'from';
+let markerFrom = null, markerTo = null, markerMe = null;
 
-    map.setCenter(userLocation);
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
 
-    new mapboxgl.Marker({ color: 'blue' })
-      .setLngLat(userLocation)
-      .addTo(map);
-  });
-
-  // Клик по карте = выбор точки назначения
-  map.on('click', function (e) {
-    destination = [e.lngLat.lng, e.lngLat.lat];
-
-    new mapboxgl.Marker({ color: 'red' })
-      .setLngLat(destination)
-      .addTo(map);
-
-    document.getElementById("info").innerText = "Точка выбрана";
-  });
-
-  function sendOrder() {
-    if (!userLocation || !destination) {
-      alert("Выберите маршрут");
-      return;
+map.on('click', async (e) => {
+    const { lng, lat } = e.lngLat;
+    showToast('Получаем адрес...');
+    const addr = await reverseGeocode(lat, lng);
+    
+    if (pickMode === 'from') {
+        from = { lat, lon: lng, address: addr };
+        document.getElementById('fromInput').value = addr;
+        if (markerFrom) markerFrom.remove();
+        markerFrom = new mapboxgl.Marker({color: '#4CAF50'}).setLngLat([lng, lat]).addTo(map);
+        showToast('✅ Откуда: ' + addr.substring(0, 30));
+    } else {
+        to = { lat, lon: lng, address: addr };
+        document.getElementById('toInput').value = addr;
+        if (markerTo) markerTo.remove();
+        markerTo = new mapboxgl.Marker({color: '#FF3B30'}).setLngLat([lng, lat]).addTo(map);
+        showToast('✅ Куда: ' + addr.substring(0, 30));
     }
+    
+    updatePrice();
+    if (from && to) fitBounds();
+});
 
-    const data = {
-      from_lat: userLocation[1],
-      from_lon: userLocation[0],
-      to_lat: destination[1],
-      to_lon: destination[0]
-    };
+function setPickMode(mode) {
+    pickMode = mode;
+    document.getElementById('pickFromBtn').classList.toggle('active', mode === 'from');
+    document.getElementById('pickToBtn').classList.toggle('active', mode === 'to');
+}
 
-    tg.sendData(JSON.stringify(data));
-  }
+function setPay(type) {
+    payment = type;
+    document.getElementById('payCash').classList.toggle('active', type === 'cash');
+    document.getElementById('payCard').classList.toggle('active', type === 'card');
+}
+
+function updatePrice() {
+    if (from && to) {
+        const dist = calcDistance(from.lat, from.lon, to.lat, to.lon);
+        const price = Math.max(8, Math.round(5 + dist * 0.8));
+        document.getElementById('priceVal').textContent = price + '€';
+        document.getElementById('orderBtn').disabled = false;
+    }
+}
+
+function calcDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+async function reverseGeocode(lat, lon) {
+    try {
+        const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${MAPBOX}&language=ru`);
+        const d = await r.json();
+        return d.features?.[0]?.place_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    } catch { return `${lat.toFixed(4)}, ${lon.toFixed(4)}`; }
+}
+
+function fitBounds() {
+    const bounds = new mapboxgl.LngLatBounds();
+    bounds.extend([from.lon, from.lat]);
+    bounds.extend([to.lon, to.lat]);
+    map.fitBounds(bounds, {padding: 100});
+}
+
+function goToMe() {
+    if (myLat) map.flyTo({center: [myLon, myLat], zoom: 15});
+    else {
+        navigator.geolocation.getCurrentPosition(p => {
+            myLat = p.coords.latitude;
+            myLon = p.coords.longitude;
+            if (markerMe) markerMe.remove();
+            const el = document.createElement('div');
+            el.style.cssText = 'width:16px;height:16px;background:#4CAF50;border:3px solid #fff;border-radius:50%';
+            markerMe = new mapboxgl.Marker({element: el}).setLngLat([myLon, myLat]).addTo(map);
+            map.flyTo({center: [myLon, myLat], zoom: 15});
+        });
+    }
+}
+
+async function placeOrder() {
+    if (!from || !to) return;
+    const btn = document.getElementById('orderBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Отправляем...';
+    
+    const dist = calcDistance(from.lat, from.lon, to.lat, to.lon);
+    const price = Math.max(8, Math.round(5 + dist * 0.8));
+    
+    const res = await fetch('/api/create_order', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            client_id: CLIENT_ID,
+            client_name: CLIENT_NAME,
+            from_address: from.address,
+            to_address: to.address,
+            from_lat: from.lat, from_lon: from.lon,
+            to_lat: to.lat, to_lon: to.lon,
+            price, driver_gets: price - 1, payment
+        })
+    });
+    
+    const data = await res.json();
+    if (data.ok) {
+        showToast('✅ Заказ создан! Ищем водителя...');
+        setTimeout(() => tg.close(), 1500);
+    } else {
+        showToast('❌ Ошибка');
+        btn.disabled = false;
+        btn.textContent = '🚖 Заказать';
+    }
+}
+
+navigator.geolocation.getCurrentPosition(p => {
+    myLat = p.coords.latitude;
+    myLon = p.coords.longitude;
+    map.flyTo({center: [myLon, myLat], zoom: 14});
+});
 </script>
-
 </body>
 </html>
