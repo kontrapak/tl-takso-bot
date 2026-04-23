@@ -1,5 +1,3 @@
-Driver.html. 19.04
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -203,17 +201,26 @@ const map = new mapboxgl.Map({
   attributionControl: false
 });
 
-
-
-// ── ГЕОЛОКАЦИЯ ──
+// ── ГЕОЛОКАЦИЯ (ИСПРАВЛЕНО: убраны лишние setInterval) ──
 
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
     tg.LocationManager.init(() => {
-      if (tg.LocationManager.isLocationAvailable) getTelegramLocation();
-      else startBrowserLocation();
+      if (tg.LocationManager.isLocationAvailable) {
+        getTelegramLocation();
+        // Подписываемся на обновления Telegram, если есть
+        if (tg.LocationManager.startLocationUpdates) {
+          tg.LocationManager.startLocationUpdates(loc => {
+            if (loc) updatePosition(loc.latitude, loc.longitude);
+          });
+        }
+      } else {
+        startBrowserLocation();
+      }
     });
-  } else startBrowserLocation();
+  } else {
+    startBrowserLocation();
+  }
 }
 
 function getTelegramLocation() {
@@ -225,24 +232,27 @@ function getTelegramLocation() {
 function startBrowserLocation() {
   if (!navigator.geolocation) return;
 
+  // Очищаем старый watch, если был
   if (browserWatchId !== null) {
     navigator.geolocation.clearWatch(browserWatchId);
+    browserWatchId = null;
   }
 
   browserWatchId = navigator.geolocation.watchPosition(
     pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
-    err => console.warn(err.message),
+    err => {
+      console.warn('Geolocation error:', err.message);
+      // Если доступ запрещён — не спамим, просто молча ждём
+    },
     {
       enableHighAccuracy: true,
       timeout: 15000,
-      maximumAge: 0 // 🔥 ВАЖНО: убрали кэш
+      maximumAge: 10000 // 10 секунд кэша — не спрашиваем лишний раз
     }
   );
 }
 
 function updatePosition(lat, lon) {
-  console.log("GPS UPDATE:", lat, lon); // 🔥 лог для проверки
-
   myLat = lat;
   myLon = lon;
 
@@ -261,12 +271,11 @@ function updatePosition(lat, lon) {
   if (activeOrderId) sendLocation(lat, lon);
 }
 
-// 🔥 ограничение, чтобы не спамить сервер
+// Ограничение частоты отправки на сервер
 let lastSent = 0;
-
 function sendLocation(lat, lon) {
   const now = Date.now();
-  if (now - lastSent < 1000) return; // максимум 1 раз в секунду
+  if (now - lastSent < 3000) return; // максимум 1 раз в 3 секунды
   lastSent = now;
 
   fetch(`/api/driver_location/${activeOrderId}`, {
@@ -276,35 +285,22 @@ function sendLocation(lat, lon) {
   }).catch(() => {});
 }
 
-// 🔥 : fallback для Telegram (фикс зависания GPS)
-setInterval(() => {
-  if (!activeOrderId) return;
-
-  navigator.geolocation.getCurrentPosition(
-    pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
-    () => {},
-    { enableHighAccuracy: true }
-  );
-}, 2000);
-
-// 🔥 дополнительный fallback через Telegram API
-setInterval(() => {
-  if (!activeOrderId) return;
-
-  if (tg.LocationManager && tg.LocationManager.isInited) {
-    tg.LocationManager.getLocation(loc => {
-      if (loc) updatePosition(loc.latitude, loc.longitude);
-    });
-  }
-}, 2000);
-
+// Обновление геолокации только при возврате на вкладку (без спама)
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
+    // Страница снова активна — одиночный запрос, не цикл
     if (tg.LocationManager && tg.LocationManager.isInited) {
       getTelegramLocation();
-    } else {
+    } else if (navigator.geolocation && browserWatchId === null) {
       startBrowserLocation();
     }
+  }
+});
+
+// Очистка при закрытии страницы
+window.addEventListener('beforeunload', () => {
+  if (browserWatchId !== null) {
+    navigator.geolocation.clearWatch(browserWatchId);
   }
 });
 
@@ -325,7 +321,6 @@ async function buildRoute(fromLat, fromLon, toLat, toLon) {
     const route = d.routes[0];
     const mins = Math.round(route.duration / 60);
 
-    // Рисуем линию
     map.addSource('route', {
       type: 'geojson',
       data: { type: 'Feature', properties: {}, geometry: route.geometry }
@@ -343,10 +338,8 @@ async function buildRoute(fromLat, fromLon, toLat, toLon) {
       paint: { 'line-color': '#FFD600', 'line-width': 4 }
     });
 
-    // ETA
     document.getElementById('etaBar').textContent = `🏁 ~${mins} мин`;
 
-    // Подгоняем карту
     const bounds = new mapboxgl.LngLatBounds();
     bounds.extend([fromLon, fromLat]);
     bounds.extend([toLon, toLat]);
@@ -434,11 +427,9 @@ function showActiveOrder(order) {
   document.getElementById('btnArrived').disabled = false;
   document.getElementById('btnArrived').textContent = '📍 Прибыл';
 
-  // Карта на весь экран
   document.body.classList.add('driving');
   map.resize();
 
-  // Маркеры A и B
   if (order.from_lat && order.from_lon) {
     fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
       .setLngLat([order.from_lon, order.from_lat]).addTo(map);
@@ -448,7 +439,6 @@ function showActiveOrder(order) {
       .setLngLat([order.to_lon, order.to_lat]).addTo(map);
   }
 
-  // Строим маршрут: водитель → точка A (клиент)
   if (myLat && order.from_lat) {
     map.once('idle', () => buildRoute(myLat, myLon, order.from_lat, order.from_lon));
   }
@@ -468,14 +458,11 @@ function hideActiveOrder() {
   map.resize();
 }
 
-// Переключение шторки (потяни вверх = подробности)
 let sheetExpanded = false;
 function toggleSheet() {
   sheetExpanded = !sheetExpanded;
-  // Можно расширить при необходимости
 }
 
-// После нажатия "Прибыл" — перестраиваем маршрут к точке B
 function switchRouteToDest() {
   if (!activeOrderData || !myLat) return;
   if (activeOrderData.to_lat && activeOrderData.to_lon) {
@@ -585,7 +572,6 @@ async function markArrived() {
     } else { btn.disabled = false; }
   } catch(e) { showToast('❌ Ошибка'); btn.disabled = false; }
 }
-
 
 async function completeOrder() {
   if (!activeOrderId) return;
