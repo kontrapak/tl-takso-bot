@@ -412,7 +412,20 @@ async function pollStatus() {
         el.textContent = '🚖';
         taxiMarker = new mapboxgl.Marker({ element: el }).setLngLat(driverLngLat).addTo(map);
       } else {
-        taxiMarker.setLngLat(driverLngLat);
+        function animateMarker(marker, [toLon, toLat], duration = 1000) {
+  const [fromLon, fromLat] = marker.getLngLat().toArray();
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    marker.setLngLat([
+      fromLon + (toLon - fromLon) * ease,
+      fromLat + (toLat - fromLat) * ease
+    ]);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
       }
       if (from && from.lat && from.lon) updateRoute(driverLngLat, [from.lon, from.lat]);
       if (data.status === 'accepted' && !userMovedCamera) map.flyTo({ center: driverLngLat, zoom: 14, duration: 1000 });
