@@ -1,3 +1,4 @@
+Driver.html. 19.04
 
 <!DOCTYPE html>
 <html lang="ru">
@@ -240,6 +241,8 @@ function startBrowserLocation() {
 }
 
 function updatePosition(lat, lon) {
+  console.log("GPS UPDATE:", lat, lon); // 🔥 лог для проверки
+
   myLat = lat;
   myLon = lon;
 
@@ -249,10 +252,10 @@ function updatePosition(lat, lon) {
     userMarker = new mapboxgl.Marker(el)
       .setLngLat([lon, lat])
       .addTo(map);
+
     map.flyTo({ center: [lon, lat], zoom: 14 });
   } else {
     userMarker.setLngLat([lon, lat]);
-    if (activeOrderId) map.easeTo({ center: [lon, lat], duration: 1000 });
   }
 
   if (activeOrderId) sendLocation(lat, lon);
