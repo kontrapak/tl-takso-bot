@@ -39,7 +39,7 @@ mapboxgl.accessToken = 'ТВОЙ_TOKEN';
 
 const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/dark-v11',
+    style: 'mapbox://styles/mapbox/streets-v12',
     center: [24.7536, 59.4370], // Таллин
     zoom: 12
 });
