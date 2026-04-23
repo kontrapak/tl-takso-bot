@@ -1,5 +1,15 @@
 {
+  "build": {
+    "builder": "NIXPACKS"
+  },
   "deploy": {
-    "startCommand": "python tl_takso_bot.py"
+    "numReplicas": 1,
+    "restartPolicyType": "ALWAYS",
+    "healthcheckPath": "/health"
+  },
+  "volumes": {
+    "data": {
+      "mountPath": "/data"
+    }
   }
 }
