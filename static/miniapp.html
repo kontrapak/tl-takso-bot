@@ -1,5 +1,3 @@
-MINIAPP рабочая 19.04
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -155,7 +153,7 @@ function setPickMode(mode) {
 
 const map = new mapboxgl.Map({
   container: 'map',
-  style: 'mapbox://styles/mapbox/light-v11',
+  style: 'mapbox://styles/mapbox/streets-v12',
   center: [24.7536, 59.4370],
   zoom: 13,
   attributionControl: false
@@ -202,7 +200,9 @@ function onPos(lat, lon) {
     el.style.cssText = 'width:14px;height:14px;background:#4CAF50;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 6px rgba(76,175,80,0.2)';
     markerMe = new mapboxgl.Marker({ element: el }).setLngLat([lon, lat]).addTo(map);
     map.flyTo({ center: [lon, lat], zoom: 14 });
-  } else { markerMe.setLngLat([lon, lat]); }
+  } else {
+    animateMarker(markerMe, [lon, lat]);
+  }
 }
 
 document.addEventListener('visibilitychange', () => { if (!document.hidden) initLocation(); });
@@ -397,6 +397,22 @@ function showStatus(st) {
   document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
 }
 
+// ── ПЛАВНОЕ ДВИЖЕНИЕ МАРКЕРА ──
+function animateMarker(marker, [toLon, toLat], duration = 1000) {
+  const [fromLon, fromLat] = marker.getLngLat().toArray();
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    marker.setLngLat([
+      fromLon + (toLon - fromLon) * ease,
+      fromLat + (toLat - fromLat) * ease
+    ]);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 async function pollStatus() {
   if (!orderId) return;
   try {
@@ -412,20 +428,7 @@ async function pollStatus() {
         el.textContent = '🚖';
         taxiMarker = new mapboxgl.Marker({ element: el }).setLngLat(driverLngLat).addTo(map);
       } else {
-        function animateMarker(marker, [toLon, toLat], duration = 1000) {
-  const [fromLon, fromLat] = marker.getLngLat().toArray();
-  const start = performance.now();
-  function step(now) {
-    const t = Math.min((now - start) / duration, 1);
-    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-    marker.setLngLat([
-      fromLon + (toLon - fromLon) * ease,
-      fromLat + (toLat - fromLat) * ease
-    ]);
-    if (t < 1) requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-}
+        animateMarker(taxiMarker, driverLngLat);
       }
       if (from && from.lat && from.lon) updateRoute(driverLngLat, [from.lon, from.lat]);
       if (data.status === 'accepted' && !userMovedCamera) map.flyTo({ center: driverLngLat, zoom: 14, duration: 1000 });
