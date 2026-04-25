@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>TL.TAKSO — Водитель</title>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -189,9 +189,6 @@ tg.setHeaderColor('#ffffff');
 tg.setBackgroundColor('#f5f5f5');
 tg.expand();
 
-// ПРИНУДИТЕЛЬНО ОТКЛЮЧАЕМ ТЁМНУЮ ТЕМУ TELEGRAM
-document.documentElement.style.colorScheme = 'light';
-
 const DRIVER_ID   = tg.initDataUnsafe?.user?.id;
 const DRIVER_NAME = tg.initDataUnsafe?.user?.first_name || 'Водитель';
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
@@ -211,21 +208,16 @@ let drivingToDest = false;
 let routeRebuildTimer = null;
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
-
-// ✅ ГЛАВНОЕ ИСПРАВЛЕНИЕ: используем light-v11 вместо streets-v12
 const map = new mapboxgl.Map({
   container: 'map',
-  style: 'mapbox://styles/mapbox/light-v11',
+  style: 'mapbox://styles/mapbox/streets-v12',
   center: TALLINN, zoom: 12,
-  attributionControl: false
-});
-
-// Дополнительная страховка: если карта загрузилась тёмной — переключаем
-map.on('load', () => {
-  if (map.getStyle().name !== 'Light') {
-    map.setStyle('mapbox://styles/mapbox/light-v11');
+  attributionControl: false,
+  config: {
+    basemap: {
+      lightPreset: 'day'
+    }
   }
-  map.resize();
 });
 
 // ── ГЕОЛОКАЦИЯ ──
@@ -427,7 +419,7 @@ function showNewOrder(order) {
   document.getElementById('btnAccept').disabled = false;
   document.getElementById('btnAccept').textContent = '✅ ПРИНЯТЬ';
   document.getElementById('btnAccept').style.background = '';
-  document.getElementById('btnAccept').onclick = () => acceptOrder();
+  document.getElementById('btnAccept').onclick = acceptOrder;
   if (order.from_lat && order.from_lon) {
     if (fromMarker) fromMarker.remove();
     fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
@@ -528,14 +520,14 @@ async function acceptOrder() {
       btn.disabled = false;
       btn.style.background = '#FF9800';
       btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
-      btn.onclick = () => confirmOrder();
+      btn.onclick = confirmOrder;
       reserveTimer = setInterval(() => {
         reserveCountdown--;
         if (reserveCountdown > 0) {
           btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
         } else {
           clearInterval(reserveTimer); reserveTimer = null; reservedOrderId = null;
-          btn.style.background = ''; btn.textContent = '✅ ПРИНЯТЬ'; btn.onclick = () => acceptOrder();
+          btn.style.background = ''; btn.textContent = '✅ ПРИНЯТЬ'; btn.onclick = acceptOrder;
           showToast('⏰ Время вышло');
           hideNewOrder();
         }
@@ -565,14 +557,14 @@ async function confirmOrder() {
     if (res.ok) {
       trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1);
       updateUI(); showToast('✅ Заказ принят!');
-      btn.style.background = ''; btn.onclick = () => acceptOrder();
+      btn.style.background = ''; btn.onclick = acceptOrder;
       const order = currentOrder; reservedOrderId = null;
       hideNewOrder();
       showActiveOrder(order);
     } else if (res.error === 'Reserve expired') {
-      showToast('⏰ Резерв истёк'); btn.style.background = ''; btn.onclick = () => acceptOrder(); reservedOrderId = null; hideNewOrder();
+      showToast('⏰ Резерв истёк'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
     } else if (res.error === 'Already taken') {
-      showToast('❌ Уже взят'); btn.style.background = ''; btn.onclick = () => acceptOrder(); reservedOrderId = null; hideNewOrder();
+      showToast('❌ Уже взят'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
     } else {
       showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false; btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
     }
