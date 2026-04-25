@@ -9,19 +9,19 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#121212; color:#fff; font-family:sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+body { background:#f5f5f5 !important; color:#000 !important; font-family:sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
 
-/* ── ШАПКА (скрывается во время поездки) ── */
-.header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#1a1a1a; border-bottom:1px solid #2a2a2a; z-index:20; transition:all 0.3s; }
-.logo { font-size:18px; font-weight:700; color:#FFD600; letter-spacing:2px; }
-.balance { font-size:16px; font-weight:700; color:#FFD600; }
+/* ── ШАПКА ── */
+.header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#fff !important; border-bottom:1px solid #ddd !important; z-index:20; transition:all 0.3s; }
+.logo { font-size:18px; font-weight:700; color:#2196F3 !important; letter-spacing:2px; }
+.balance { font-size:16px; font-weight:700; color:#2196F3 !important; }
 
-.statusbar { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:#111; border-bottom:1px solid #2a2a2a; z-index:20; transition:all 0.3s; }
-.status-left { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
-.dot { width:8px; height:8px; border-radius:50%; background:#00E676; }
-.dot.off { background:#FF3B30; }
-.toggle-btn { width:50px; height:26px; background:#00E676; border-radius:13px; border:none; cursor:pointer; position:relative; transition:background 0.3s; }
-.toggle-btn.off { background:#333; }
+.statusbar { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:#fff !important; border-bottom:1px solid #ddd !important; z-index:20; transition:all 0.3s; }
+.status-left { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#000 !important; }
+.dot { width:8px; height:8px; border-radius:50%; background:#4CAF50 !important; }
+.dot.off { background:#f44336 !important; }
+.toggle-btn { width:50px; height:26px; background:#4CAF50 !important; border-radius:13px; border:none; cursor:pointer; position:relative; transition:background 0.3s; }
+.toggle-btn.off { background:#ccc !important; }
 .toggle-btn::after { content:''; position:absolute; width:20px; height:20px; background:#fff; border-radius:50%; top:3px; left:3px; transition:left 0.3s; }
 .toggle-btn.off::after { left:27px; }
 
@@ -34,80 +34,66 @@ body.driving .statusbar,
 body.driving .stats { display:none !important; }
 body.driving #map { flex:1; }
 
-/* ── ETA плашка (только во время поездки) ── */
+/* ── ETA плашка ── */
 #etaBar {
   display:none;
   position:absolute; top:10px; left:50%; transform:translateX(-50%);
-  background:rgba(0,0,0,0.75); backdrop-filter:blur(6px);
-  border:1px solid #333; border-radius:20px;
+  background:rgba(255,255,255,0.9) !important; backdrop-filter:blur(6px);
+  border:1px solid #ddd !important; border-radius:20px;
   padding:8px 18px; z-index:25;
-  font-size:14px; font-weight:700; color:#FFD600;
+  font-size:14px; font-weight:700; color:#2196F3 !important;
   white-space:nowrap;
 }
 body.driving #etaBar { display:block; }
 
 /* ── КАРТОЧКА НОВОГО ЗАКАЗА ── */
-.order-card { position:absolute; bottom:0; left:0; right:0; background:#1a1a1a; border-top:3px solid #FFD600; border-radius:20px 20px 0 0; padding:16px; z-index:30; transform:translateY(100%); transition:transform 0.4s ease; }
+.order-card { position:absolute; bottom:0; left:0; right:0; background:#fff !important; border-top:3px solid #2196F3 !important; border-radius:20px 20px 0 0; padding:16px; z-index:30; transform:translateY(100%); transition:transform 0.4s ease; }
 .order-card.show { transform:translateY(0); }
-.order-card-title { font-size:13px; font-weight:700; color:#FFD600; letter-spacing:1px; margin-bottom:10px; }
-.order-price-big { font-size:36px; font-weight:700; color:#FFD600; margin-bottom:10px; }
-.order-route { background:#111; border-radius:10px; padding:10px 12px; margin-bottom:12px; }
-.route-line { display:flex; gap:10px; align-items:flex-start; padding:5px 0; font-size:13px; }
-.route-line+.route-line { border-top:1px solid #2a2a2a; }
+.order-card-title { font-size:13px; font-weight:700; color:#2196F3 !important; letter-spacing:1px; margin-bottom:10px; }
+.order-price-big { font-size:36px; font-weight:700; color:#2196F3 !important; margin-bottom:10px; }
+.order-route { background:#f5f5f5 !important; border-radius:10px; padding:10px 12px; margin-bottom:12px; }
+.route-line { display:flex; gap:10px; align-items:flex-start; padding:5px 0; font-size:13px; color:#000 !important; }
+.route-line+.route-line { border-top:1px solid #ddd !important; }
 .rdot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:3px; }
-.rdot.from { background:#4CAF50; }
-.rdot.to { background:#FFD600; }
+.rdot.from { background:#4CAF50 !important; }
+.rdot.to { background:#2196F3 !important; }
 .order-btns { display:flex; gap:10px; }
-.btn-yes { flex:2; height:50px; background:#FFD600; color:#000; border:none; border-radius:12px; font-size:18px; font-weight:700; cursor:pointer; }
-.btn-yes:disabled { background:#444; color:#888; }
-.btn-no { flex:1; height:50px; background:transparent; color:#FF3B30; border:2px solid #FF3B30; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
+.btn-yes { flex:2; height:50px; background:#2196F3 !important; color:#fff !important; border:none; border-radius:12px; font-size:18px; font-weight:700; cursor:pointer; }
+.btn-yes:disabled { background:#90caf9 !important; color:#fff !important; }
+.btn-no { flex:1; height:50px; background:transparent !important; color:#f44336 !important; border:2px solid #f44336 !important; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
 
-/* ── ШТОРКА АКТИВНОГО ЗАКАЗА (компактная, снизу) ── */
+/* ── ШТОРКА АКТИВНОГО ЗАКАЗА ── */
 .active-sheet {
   position:absolute; bottom:0; left:0; right:0;
-  background:#1a1a1a; border-top:3px solid #00E676;
+  background:#fff !important; border-top:3px solid #4CAF50 !important;
   border-radius:20px 20px 0 0;
   padding:0; z-index:30;
   display:none;
   transition:height 0.3s ease;
 }
 .active-sheet.show { display:block; }
-
-/* Ручка для потягивания */
-.sheet-handle {
-  width:36px; height:4px; background:#333; border-radius:2px;
-  margin:10px auto 0;
-  cursor:pointer;
-}
-
-/* Компактный режим — только важное */
-.sheet-compact {
-  padding:6px 14px 12px;
-}
-.sheet-dest {
-  font-size:13px; color:#ccc;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  margin-bottom:10px;
-}
-.sheet-dest span { color:#FFD600; }
+.sheet-handle { width:36px; height:4px; background:#ccc !important; border-radius:2px; margin:10px auto 0; cursor:pointer; }
+.sheet-compact { padding:6px 14px 12px; }
+.sheet-dest { font-size:13px; color:#666 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:10px; }
+.sheet-dest span { color:#2196F3 !important; }
 .sheet-btns-row { display:flex; gap:8px; }
-.btn-arrived { flex:1; height:46px; background:#00E676; color:#000; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
-.btn-arrived:disabled { background:#1a3a2a; color:#2a5a3a; }
-.btn-done { flex:1; height:46px; background:#FFD600; color:#000; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
-.btn-cancel-sm { height:36px; padding:0 14px; background:transparent; color:#FF3B30; border:1px solid #FF3B30; border-radius:10px; font-size:13px; cursor:pointer; white-space:nowrap; }
+.btn-arrived { flex:1; height:46px; background:#4CAF50 !important; color:#fff !important; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
+.btn-arrived:disabled { background:#a5d6a7 !important; color:#fff !important; }
+.btn-done { flex:1; height:46px; background:#2196F3 !important; color:#fff !important; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
+.btn-cancel-sm { height:36px; padding:0 14px; background:transparent !important; color:#f44336 !important; border:1px solid #f44336 !important; border-radius:10px; font-size:13px; cursor:pointer; white-space:nowrap; }
 
 /* ── СТАТИСТИКА ── */
-.stats { background:#1a1a1a; border-top:1px solid #2a2a2a; padding:10px 14px; display:flex; gap:10px; z-index:20; }
-.stat { flex:1; background:#111; border-radius:8px; padding:8px; text-align:center; }
-.stat-label { font-size:9px; color:#555; text-transform:uppercase; }
-.stat-val { font-size:20px; font-weight:700; margin-top:2px; }
-.stat-val.y { color:#FFD600; }
+.stats { background:#fff !important; border-top:1px solid #ddd !important; padding:10px 14px; display:flex; gap:10px; z-index:20; }
+.stat { flex:1; background:#f5f5f5 !important; border-radius:8px; padding:8px; text-align:center; }
+.stat-label { font-size:9px; color:#999 !important; text-transform:uppercase; }
+.stat-val { font-size:20px; font-weight:700; margin-top:2px; color:#000 !important; }
+.stat-val.y { color:#2196F3 !important; }
 
-.no-orders { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#555; pointer-events:none; font-size:14px; }
+.no-orders { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#999 !important; pointer-events:none; font-size:14px; }
 .no-orders-icon { font-size:40px; margin-bottom:8px; }
 
 .mapboxgl-ctrl-logo,.mapboxgl-ctrl-attrib,.mapboxgl-ctrl-group { display:none !important; }
-.toast { position:fixed; top:12px; left:50%; transform:translateX(-50%) translateY(-20px); background:#FFD600; color:#000; padding:10px 20px; border-radius:30px; font-weight:700; font-size:14px; z-index:100; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; }
+.toast { position:fixed; top:12px; left:50%; transform:translateX(-50%) translateY(-20px); background:#2196F3 !important; color:#fff !important; padding:10px 20px; border-radius:30px; font-weight:700; font-size:14px; z-index:100; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
@@ -127,15 +113,12 @@ body.driving #etaBar { display:block; }
 </div>
 
 <div id="map">
-  <!-- ETA плашка сверху — только во время поездки -->
   <div id="etaBar">🚖 Едем...</div>
-
   <div class="no-orders" id="noOrders">
     <div class="no-orders-icon">🚕</div>
     <div>Ждём заказов...</div>
   </div>
 
-  <!-- Карточка нового заказа -->
   <div class="order-card" id="orderCard">
     <div class="order-card-title">📋 НОВЫЙ ЗАКАЗ</div>
     <div class="order-price-big" id="orderPrice">—€</div>
@@ -149,7 +132,6 @@ body.driving #etaBar { display:block; }
     </div>
   </div>
 
-  <!-- Компактная шторка активного заказа -->
   <div class="active-sheet" id="activeSheet">
     <div class="sheet-handle" onclick="toggleSheet()"></div>
     <div class="sheet-compact">
@@ -174,6 +156,8 @@ body.driving #etaBar { display:block; }
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready();
+tg.setHeaderColor('#ffffff');
+tg.setBackgroundColor('#f5f5f5');
 tg.expand();
 
 const DRIVER_ID   = tg.initDataUnsafe?.user?.id;
@@ -191,11 +175,7 @@ let browserWatchId = null;
 let myLat = null, myLon = null;
 let pollInterval = null;
 let reserveTimer = null, reservedOrderId = null, reserveCountdown = 0;
-
-// ── ФЛАГ: едем к клиенту (false) или везём клиента (true) ──
 let drivingToDest = false;
-
-// ── ТАЙМЕР ПЕРЕСТРОЙКИ МАРШРУТА ──
 let routeRebuildTimer = null;
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -203,7 +183,12 @@ const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/streets-v12',
   center: TALLINN, zoom: 12,
-  attributionControl: false
+  attributionControl: false,
+  config: {
+    basemap: {
+      lightPreset: 'day'
+    }
+  }
 });
 
 // ── ГЕОЛОКАЦИЯ ──
@@ -252,7 +237,7 @@ function updatePosition(lat, lon) {
 
   if (!userMarker) {
     const el = document.createElement('div');
-    el.style.cssText = 'width:20px;height:20px;background:#FFD600;border:3px solid white;border-radius:50%;box-shadow:0 0 0 5px rgba(255,214,0,0.25)';
+    el.style.cssText = 'width:20px;height:20px;background:#2196F3;border:3px solid white;border-radius:50%;box-shadow:0 0 0 5px rgba(33,150,243,0.25)';
     userMarker = new mapboxgl.Marker(el)
       .setLngLat([lon, lat])
       .addTo(map);
@@ -263,8 +248,6 @@ function updatePosition(lat, lon) {
 
   if (activeOrderId) {
     sendLocation(lat, lon);
-
-    // Перестраиваем маршрут не чаще раза в 10 секунд
     if (!routeRebuildTimer) {
       routeRebuildTimer = setTimeout(() => {
         routeRebuildTimer = null;
@@ -274,23 +257,19 @@ function updatePosition(lat, lon) {
   }
 }
 
-// Пересчитать маршрут от текущей позиции к нужной цели
 function rebuildRouteFromCurrentPos() {
   if (!activeOrderData || myLat === null) return;
   if (drivingToDest) {
-    // Везём клиента — маршрут до пункта назначения
     if (activeOrderData.to_lat && activeOrderData.to_lon) {
       buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
     }
   } else {
-    // Едем к клиенту — маршрут до точки посадки
     if (activeOrderData.from_lat && activeOrderData.from_lon) {
       buildRoute(myLat, myLon, activeOrderData.from_lat, activeOrderData.from_lon);
     }
   }
 }
 
-// Ограничение частоты отправки на сервер
 let lastSent = 0;
 function sendLocation(lat, lon) {
   const now = Date.now();
@@ -343,13 +322,13 @@ async function buildRoute(fromLat, fromLon, toLat, toLon) {
       id: 'route-outline',
       type: 'line', source: 'route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#000', 'line-width': 7, 'line-opacity': 0.5 }
+      paint: { 'line-color': '#1565C0', 'line-width': 7, 'line-opacity': 0.3 }
     });
     map.addLayer({
       id: 'route',
       type: 'line', source: 'route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#FFD600', 'line-width': 4 }
+      paint: { 'line-color': '#2196F3', 'line-width': 4 }
     });
 
     document.getElementById('etaBar').textContent = `🏁 ~${mins} мин`;
@@ -433,7 +412,7 @@ function hideNewOrder() {
 function showActiveOrder(order) {
   activeOrderId   = order.id;
   activeOrderData = order;
-  drivingToDest   = false; // Сначала едем к клиенту
+  drivingToDest   = false;
 
   document.getElementById('activeTo').textContent = order.to_address || order.to || '—';
   document.getElementById('activeSheet').classList.add('show');
@@ -450,11 +429,10 @@ function showActiveOrder(order) {
       .setLngLat([order.from_lon, order.from_lat]).addTo(map);
   }
   if (order.to_lat && order.to_lon) {
-    toMarker = new mapboxgl.Marker({ color: '#FF3B30' })
+    toMarker = new mapboxgl.Marker({ color: '#f44336' })
       .setLngLat([order.to_lon, order.to_lat]).addTo(map);
   }
 
-  // Маршрут к точке посадки
   if (myLat && order.from_lat) {
     map.once('idle', () => buildRoute(myLat, myLon, order.from_lat, order.from_lon));
   }
@@ -467,7 +445,6 @@ function hideActiveOrder() {
   activeOrderData = null;
   drivingToDest = false;
 
-  // Очищаем таймер перестройки маршрута
   if (routeRebuildTimer) {
     clearTimeout(routeRebuildTimer);
     routeRebuildTimer = null;
@@ -488,10 +465,9 @@ function toggleSheet() {
   sheetExpanded = !sheetExpanded;
 }
 
-// Переключить маршрут на пункт назначения (вызывается после посадки клиента)
 function switchRouteToDest() {
   if (!activeOrderData || myLat === null) return;
-  drivingToDest = true; // Теперь везём клиента
+  drivingToDest = true;
   if (activeOrderData.to_lat && activeOrderData.to_lon) {
     buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
   }
@@ -513,7 +489,7 @@ async function acceptOrder() {
       reservedOrderId = currentOrder.id;
       reserveCountdown = 10;
       btn.disabled = false;
-      btn.style.background = '#FF6B00';
+      btn.style.background = '#FF9800';
       btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
       btn.onclick = confirmOrder;
       reserveTimer = setInterval(() => {
@@ -588,10 +564,9 @@ async function markArrived() {
       showToast('📍 Клиент уведомлён!');
       btn.disabled = false;
       btn.textContent = '🚀 Начать поездку';
-      btn.style.background = '#FFD600';
-      btn.style.color = '#000';
+      btn.style.background = '#2196F3';
+      btn.style.color = '#fff';
       btn.onclick = function() {
-        // Переключаем маршрут на пункт назначения
         switchRouteToDest();
         btn.disabled = true;
         btn.textContent = '✅ Едем';
@@ -661,4 +636,3 @@ startPolling();
 </script>
 </body>
 </html>
-
