@@ -115,7 +115,7 @@ body.driving #etaBar { display:block; }
 /* ── СТАТИСТИКА ── */
 .stats { background:#fff !important; border-top:1px solid #ddd !important; padding:10px 14px; display:flex; gap:10px; z-index:20; }
 .stat { flex:1; background:#f5f5f5 !important; border-radius:8px; padding:8px; text-align:center; }
-.stat-label { font-size:10px; color:#999 !important; text-transform:uppercase; }
+.stat-label { font-size:9px; color:#999 !important; text-transform:uppercase; }
 .stat-val { font-size:20px; font-weight:700; margin-top:2px; color:#000 !important; }
 .stat-val.y { color:#2196F3 !important; }
 
@@ -233,7 +233,6 @@ const map = new mapboxgl.Map({
   attributionControl: false
 });
 
-// Принудительно переключаем стиль ещё раз после загрузки
 map.on('load', () => {
   map.setStyle('mapbox://styles/mapbox/light-v11');
   map.resize();
@@ -350,51 +349,29 @@ initLocation();
 async function buildRoute(fromLat, fromLon, toLat, toLon) {
   clearRoute();
   try {
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-      `${fromLon},${fromLat};${toLon},${toLat}` +
-      `?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${fromLon},${fromLat};${toLon},${toLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
     const r = await fetch(url);
     const d = await r.json();
     if (!d.routes?.[0]) return;
-
     const route = d.routes[0];
     const mins = Math.round(route.duration / 60);
-
-    map.addSource('route', {
-      type: 'geojson',
-      data: { type: 'Feature', properties: {}, geometry: route.geometry }
-    });
-    map.addLayer({
-      id: 'route-outline',
-      type: 'line', source: 'route',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#1565C0', 'line-width': 7, 'line-opacity': 0.3 }
-    });
-    map.addLayer({
-      id: 'route',
-      type: 'line', source: 'route',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#2196F3', 'line-width': 4 }
-    });
-
+    map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+    map.addLayer({ id: 'route-outline', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#1565C0', 'line-width': 7, 'line-opacity': 0.3 } });
+    map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#2196F3', 'line-width': 4 } });
     document.getElementById('etaBar').textContent = `🏁 ~${mins} мин`;
-
     const bounds = new mapboxgl.LngLatBounds();
     bounds.extend([fromLon, fromLat]);
     bounds.extend([toLon, toLat]);
     if (myLat) bounds.extend([myLon, myLat]);
     map.fitBounds(bounds, { padding: { top: 60, bottom: 120, left: 30, right: 30 }, duration: 800 });
-
   } catch(e) { console.error('Route error', e); }
 }
 
 function clearRoute() {
-  ['route', 'route-outline'].forEach(id => {
-    if (map.getLayer(id)) map.removeLayer(id);
-  });
+  ['route', 'route-outline'].forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
   if (map.getSource('route')) map.removeSource('route');
   if (fromMarker) { fromMarker.remove(); fromMarker = null; }
-  if (toMarker)   { toMarker.remove();   toMarker = null; }
+  if (toMarker) { toMarker.remove(); toMarker = null; }
 }
 
 function updateUI() {
@@ -405,9 +382,9 @@ function updateUI() {
 
 function toggleStatus() {
   isOnline = !isOnline;
-  const dot  = document.getElementById('statusDot');
+  const dot = document.getElementById('statusDot');
   const text = document.getElementById('statusText');
-  const btn  = document.getElementById('toggleBtn');
+  const btn = document.getElementById('toggleBtn');
   const icon = document.getElementById('statIcon');
   if (isOnline) {
     dot.className = 'dot'; text.textContent = 'Онлайн — жду заказ';
@@ -428,17 +405,16 @@ function showNewOrder(order) {
   currentOrder = order;
   document.getElementById('orderPrice').textContent = (order.price || '?') + '€';
   document.getElementById('orderFrom').textContent = order.from_address || '—';
-  document.getElementById('orderTo').textContent   = order.to_address   || '—';
+  document.getElementById('orderTo').textContent = order.to_address || '—';
   document.getElementById('orderCard').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
   document.getElementById('btnAccept').disabled = false;
   document.getElementById('btnAccept').textContent = '✅ ПРИНЯТЬ';
   document.getElementById('btnAccept').style.background = '';
-  document.getElementById('btnAccept').onclick = acceptOrder;
+  document.getElementById('btnAccept').onclick = () => acceptOrder();
   if (order.from_lat && order.from_lon) {
     if (fromMarker) fromMarker.remove();
-    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
-      .setLngLat([order.from_lon, order.from_lat]).addTo(map);
+    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
     map.flyTo({ center: [order.from_lon, order.from_lat], zoom: 13 });
   }
 }
@@ -454,29 +430,23 @@ function hideNewOrder() {
 }
 
 function showActiveOrder(order) {
-  activeOrderId   = order.id;
+  activeOrderId = order.id;
   activeOrderData = order;
-  drivingToDest   = false;
-
+  drivingToDest = false;
   document.getElementById('activeTo').textContent = order.to_address || order.to || '—';
   document.getElementById('activeSheet').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
   document.getElementById('statusText').textContent = '🚖 Едем к клиенту';
   document.getElementById('btnArrived').disabled = false;
   document.getElementById('btnArrived').textContent = '📍 Прибыл';
-
   document.body.classList.add('driving');
   map.resize();
-
   if (order.from_lat && order.from_lon) {
-    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
-      .setLngLat([order.from_lon, order.from_lat]).addTo(map);
+    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
   }
   if (order.to_lat && order.to_lon) {
-    toMarker = new mapboxgl.Marker({ color: '#f44336' })
-      .setLngLat([order.to_lon, order.to_lat]).addTo(map);
+    toMarker = new mapboxgl.Marker({ color: '#f44336' }).setLngLat([order.to_lon, order.to_lat]).addTo(map);
   }
-
   if (myLat && order.from_lat) {
     map.once('idle', () => buildRoute(myLat, myLon, order.from_lat, order.from_lon));
   }
@@ -485,15 +455,8 @@ function showActiveOrder(order) {
 function hideActiveOrder() {
   document.getElementById('activeSheet').classList.remove('show');
   document.body.classList.remove('driving');
-  activeOrderId = null;
-  activeOrderData = null;
-  drivingToDest = false;
-
-  if (routeRebuildTimer) {
-    clearTimeout(routeRebuildTimer);
-    routeRebuildTimer = null;
-  }
-
+  activeOrderId = null; activeOrderData = null; drivingToDest = false;
+  if (routeRebuildTimer) { clearTimeout(routeRebuildTimer); routeRebuildTimer = null; }
   document.getElementById('statusText').textContent = 'Онлайн — жду заказ';
   clearRoute();
   document.getElementById('etaBar').textContent = '🚖 Едем...';
@@ -505,16 +468,12 @@ function hideActiveOrder() {
 }
 
 let sheetExpanded = false;
-function toggleSheet() {
-  sheetExpanded = !sheetExpanded;
-}
+function toggleSheet() { sheetExpanded = !sheetExpanded; }
 
 function switchRouteToDest() {
   if (!activeOrderData || myLat === null) return;
   drivingToDest = true;
-  if (activeOrderData.to_lat && activeOrderData.to_lon) {
-    buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
-  }
+  if (activeOrderData.to_lat && activeOrderData.to_lon) buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
 }
 
 async function acceptOrder() {
@@ -533,16 +492,14 @@ async function acceptOrder() {
       btn.disabled = false;
       btn.style.background = '#FF9800';
       btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
-      btn.onclick = confirmOrder;
+      btn.onclick = () => confirmOrder();
       reserveTimer = setInterval(() => {
         reserveCountdown--;
-        if (reserveCountdown > 0) {
-          btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
-        } else {
+        if (reserveCountdown > 0) btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
+        else {
           clearInterval(reserveTimer); reserveTimer = null; reservedOrderId = null;
-          btn.style.background = ''; btn.textContent = '✅ ПРИНЯТЬ'; btn.onclick = acceptOrder;
-          showToast('⏰ Время вышло');
-          hideNewOrder();
+          btn.style.background = ''; btn.textContent = '✅ ПРИНЯТЬ'; btn.onclick = () => acceptOrder();
+          showToast('⏰ Время вышло'); hideNewOrder();
         }
       }, 1000);
     } else if (res.error === 'Already taken' || res.error === 'Reserved') {
@@ -570,14 +527,13 @@ async function confirmOrder() {
     if (res.ok) {
       trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1);
       updateUI(); showToast('✅ Заказ принят!');
-      btn.style.background = ''; btn.onclick = acceptOrder;
+      btn.style.background = ''; btn.onclick = () => acceptOrder();
       const order = currentOrder; reservedOrderId = null;
-      hideNewOrder();
-      showActiveOrder(order);
+      hideNewOrder(); showActiveOrder(order);
     } else if (res.error === 'Reserve expired') {
-      showToast('⏰ Резерв истёк'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
+      showToast('⏰ Резерв истёк'); btn.style.background = ''; btn.onclick = () => acceptOrder(); reservedOrderId = null; hideNewOrder();
     } else if (res.error === 'Already taken') {
-      showToast('❌ Уже взят'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
+      showToast('❌ Уже взят'); btn.style.background = ''; btn.onclick = () => acceptOrder(); reservedOrderId = null; hideNewOrder();
     } else {
       showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false; btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
     }
