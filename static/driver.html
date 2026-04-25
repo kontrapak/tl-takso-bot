@@ -9,49 +9,36 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#f5f5f5 !important; color:#000 !important; font-family:sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+body { background:#f5f5f5; color:#000; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
 
-/* ── ШАПКА ── */
-.header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#fff !important; border-bottom:1px solid #ddd !important; z-index:20; transition:all 0.3s; }
-.logo { font-size:18px; font-weight:700; color:#2196F3 !important; letter-spacing:2px; }
-.balance { font-size:16px; font-weight:700; color:#2196F3 !important; }
+.header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#fff; border-bottom:1px solid #ddd; z-index:20; }
+.logo { font-size:18px; font-weight:700; color:#2196F3; letter-spacing:2px; }
+.balance { font-size:16px; font-weight:700; color:#2196F3; }
 
-.statusbar { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:#fff !important; border-bottom:1px solid #ddd !important; z-index:20; transition:all 0.3s; }
-.status-left { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#000 !important; }
-.dot { width:8px; height:8px; border-radius:50%; background:#4CAF50 !important; }
-.dot.off { background:#f44336 !important; }
-.toggle-btn { width:50px; height:26px; background:#4CAF50 !important; border-radius:13px; border:none; cursor:pointer; position:relative; transition:background 0.3s; }
-.toggle-btn.off { background:#ccc !important; }
+.statusbar { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:#fafafa; border-bottom:1px solid #ddd; z-index:20; }
+.status-left { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#000; }
+.dot { width:8px; height:8px; border-radius:50%; background:#4CAF50; }
+.dot.off { background:#f44336; }
+.toggle-btn { width:50px; height:26px; background:#4CAF50; border-radius:13px; border:none; cursor:pointer; position:relative; }
+.toggle-btn.off { background:#ccc; }
 .toggle-btn::after { content:''; position:absolute; width:20px; height:20px; background:#fff; border-radius:50%; top:3px; left:3px; transition:left 0.3s; }
 .toggle-btn.off::after { left:27px; }
 
-/* ── КАРТА ── */
 #map { flex:1; position:relative; min-height:0; }
 
-/* Режим "карта на весь экран" — скрывает шапку */
-body.driving .header,
-body.driving .statusbar,
-body.driving .stats { display:none !important; }
+body.driving .header, body.driving .statusbar, body.driving .stats { display:none !important; }
 body.driving #map { flex:1; }
 
-/* ── АНИМИРОВАННЫЙ МАРКЕР ВОДИТЕЛЯ ── */
 .driver-marker {
-  width: 20px;
-  height: 20px;
-  background: #2196F3;
-  border: 3px solid white;
-  border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  position: relative;
-  z-index: 10;
+  width: 20px; height: 20px;
+  background: #2196F3; border: 3px solid white;
+  border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  position: relative; z-index: 10;
 }
 .driver-marker::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
+  content: ''; position: absolute;
+  top: 50%; left: 50%;
+  width: 20px; height: 20px;
   margin: -10px 0 0 -10px;
   background: rgba(33, 150, 243, 0.4);
   border-radius: 50%;
@@ -63,66 +50,63 @@ body.driving #map { flex:1; }
   100% { transform: scale(4); opacity: 0; }
 }
 
-/* ── ETA плашка ── */
 #etaBar {
-  display:none;
-  position:absolute; top:10px; left:50%; transform:translateX(-50%);
-  background:rgba(255,255,255,0.9) !important; backdrop-filter:blur(6px);
-  border:1px solid #ddd !important; border-radius:20px;
+  display:none; position:absolute; top:10px; left:50%; transform:translateX(-50%);
+  background:rgba(255,255,255,0.95); backdrop-filter:blur(6px);
+  border:1px solid #ddd; border-radius:20px;
   padding:8px 18px; z-index:25;
-  font-size:14px; font-weight:700; color:#2196F3 !important;
-  white-space:nowrap;
+  font-size:14px; font-weight:700; color:#2196F3; white-space:nowrap;
 }
 body.driving #etaBar { display:block; }
 
-/* ── КАРТОЧКА НОВОГО ЗАКАЗА ── */
-.order-card { position:absolute; bottom:0; left:0; right:0; background:#fff !important; border-top:3px solid #2196F3 !important; border-radius:20px 20px 0 0; padding:16px; z-index:30; transform:translateY(100%); transition:transform 0.4s ease; }
+.order-card {
+  position:absolute; bottom:0; left:0; right:0;
+  background:#fff; border-top:3px solid #2196F3;
+  border-radius:20px 20px 0 0; padding:16px; z-index:30;
+  transform:translateY(100%); transition:transform 0.4s ease;
+}
 .order-card.show { transform:translateY(0); }
-.order-card-title { font-size:13px; font-weight:700; color:#2196F3 !important; letter-spacing:1px; margin-bottom:10px; }
-.order-price-big { font-size:36px; font-weight:700; color:#2196F3 !important; margin-bottom:10px; }
-.order-route { background:#f5f5f5 !important; border-radius:10px; padding:10px 12px; margin-bottom:12px; }
-.route-line { display:flex; gap:10px; align-items:flex-start; padding:5px 0; font-size:13px; color:#000 !important; }
-.route-line+.route-line { border-top:1px solid #ddd !important; }
+.order-card-title { font-size:13px; font-weight:700; color:#2196F3; letter-spacing:1px; margin-bottom:10px; }
+.order-price-big { font-size:36px; font-weight:700; color:#2196F3; margin-bottom:10px; }
+.order-route { background:#f5f5f5; border-radius:10px; padding:10px 12px; margin-bottom:12px; }
+.route-line { display:flex; gap:10px; align-items:flex-start; padding:5px 0; font-size:13px; color:#000; }
+.route-line+.route-line { border-top:1px solid #ddd; }
 .rdot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:3px; }
-.rdot.from { background:#4CAF50 !important; }
-.rdot.to { background:#2196F3 !important; }
+.rdot.from { background:#4CAF50; }
+.rdot.to { background:#2196F3; }
 .order-btns { display:flex; gap:10px; }
-.btn-yes { flex:2; height:50px; background:#2196F3 !important; color:#fff !important; border:none; border-radius:12px; font-size:18px; font-weight:700; cursor:pointer; }
-.btn-yes:disabled { background:#90caf9 !important; color:#fff !important; }
-.btn-no { flex:1; height:50px; background:transparent !important; color:#f44336 !important; border:2px solid #f44336 !important; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
+.btn-yes { flex:2; height:50px; background:#2196F3; color:#fff; border:none; border-radius:12px; font-size:18px; font-weight:700; cursor:pointer; }
+.btn-yes:disabled { background:#90caf9; color:#fff; }
+.btn-no { flex:1; height:50px; background:transparent; color:#f44336; border:2px solid #f44336; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
 
-/* ── ШТОРКА АКТИВНОГО ЗАКАЗА ── */
 .active-sheet {
   position:absolute; bottom:0; left:0; right:0;
-  background:#fff !important; border-top:3px solid #4CAF50 !important;
-  border-radius:20px 20px 0 0;
-  padding:0; z-index:30;
+  background:#fff; border-top:3px solid #4CAF50;
+  border-radius:20px 20px 0 0; padding:0; z-index:30;
   display:none;
-  transition:height 0.3s ease;
 }
 .active-sheet.show { display:block; }
-.sheet-handle { width:36px; height:4px; background:#ccc !important; border-radius:2px; margin:10px auto 0; cursor:pointer; }
+.sheet-handle { width:36px; height:4px; background:#ccc; border-radius:2px; margin:10px auto 0; cursor:pointer; }
 .sheet-compact { padding:6px 14px 12px; }
-.sheet-dest { font-size:13px; color:#666 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:10px; }
-.sheet-dest span { color:#2196F3 !important; }
+.sheet-dest { font-size:13px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:10px; }
+.sheet-dest span { color:#2196F3; }
 .sheet-btns-row { display:flex; gap:8px; }
-.btn-arrived { flex:1; height:46px; background:#4CAF50 !important; color:#fff !important; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
-.btn-arrived:disabled { background:#a5d6a7 !important; color:#fff !important; }
-.btn-done { flex:1; height:46px; background:#2196F3 !important; color:#fff !important; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
-.btn-cancel-sm { height:36px; padding:0 14px; background:transparent !important; color:#f44336 !important; border:1px solid #f44336 !important; border-radius:10px; font-size:13px; cursor:pointer; white-space:nowrap; }
+.btn-arrived { flex:1; height:46px; background:#4CAF50; color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
+.btn-arrived:disabled { background:#a5d6a7; color:#fff; }
+.btn-done { flex:1; height:46px; background:#2196F3; color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
+.btn-cancel-sm { height:36px; padding:0 14px; background:transparent; color:#f44336; border:1px solid #f44336; border-radius:10px; font-size:13px; cursor:pointer; white-space:nowrap; }
 
-/* ── СТАТИСТИКА ── */
-.stats { background:#fff !important; border-top:1px solid #ddd !important; padding:10px 14px; display:flex; gap:10px; z-index:20; }
-.stat { flex:1; background:#f5f5f5 !important; border-radius:8px; padding:8px; text-align:center; }
-.stat-label { font-size:9px; color:#999 !important; text-transform:uppercase; }
-.stat-val { font-size:20px; font-weight:700; margin-top:2px; color:#000 !important; }
-.stat-val.y { color:#2196F3 !important; }
+.stats { background:#fff; border-top:1px solid #ddd; padding:10px 14px; display:flex; gap:10px; z-index:20; }
+.stat { flex:1; background:#f5f5f5; border-radius:8px; padding:8px; text-align:center; }
+.stat-label { font-size:9px; color:#999; text-transform:uppercase; }
+.stat-val { font-size:20px; font-weight:700; margin-top:2px; color:#000; }
+.stat-val.y { color:#2196F3; }
 
-.no-orders { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#999 !important; pointer-events:none; font-size:14px; }
+.no-orders { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#999; pointer-events:none; font-size:14px; }
 .no-orders-icon { font-size:40px; margin-bottom:8px; }
 
 .mapboxgl-ctrl-logo,.mapboxgl-ctrl-attrib,.mapboxgl-ctrl-group { display:none !important; }
-.toast { position:fixed; top:12px; left:50%; transform:translateX(-50%) translateY(-20px); background:#2196F3 !important; color:#fff !important; padding:10px 20px; border-radius:30px; font-weight:700; font-size:14px; z-index:100; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; }
+.toast { position:fixed; top:12px; left:50%; transform:translateX(-50%) translateY(-20px); background:#2196F3; color:#fff; padding:10px 20px; border-radius:30px; font-weight:700; font-size:14px; z-index:100; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
@@ -212,15 +196,8 @@ const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/streets-v12',
   center: TALLINN, zoom: 12,
-  attributionControl: false,
-  config: {
-    basemap: {
-      lightPreset: 'day'
-    }
-  }
+  attributionControl: false
 });
-
-// ── ГЕОЛОКАЦИЯ ──
 
 function initLocation() {
   if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
@@ -232,13 +209,9 @@ function initLocation() {
             if (loc) updatePosition(loc.latitude, loc.longitude);
           });
         }
-      } else {
-        startBrowserLocation();
-      }
+      } else startBrowserLocation();
     });
-  } else {
-    startBrowserLocation();
-  }
+  } else startBrowserLocation();
 }
 
 function getTelegramLocation() {
@@ -261,20 +234,15 @@ function startBrowserLocation() {
 }
 
 function updatePosition(lat, lon) {
-  myLat = lat;
-  myLon = lon;
-
+  myLat = lat; myLon = lon;
   if (!userMarker) {
     const el = document.createElement('div');
     el.className = 'driver-marker';
-    userMarker = new mapboxgl.Marker(el)
-      .setLngLat([lon, lat])
-      .addTo(map);
+    userMarker = new mapboxgl.Marker(el).setLngLat([lon, lat]).addTo(map);
     map.flyTo({ center: [lon, lat], zoom: 14 });
   } else {
     userMarker.setLngLat([lon, lat]);
   }
-
   if (activeOrderId) {
     sendLocation(lat, lon);
     if (!routeRebuildTimer) {
@@ -313,11 +281,8 @@ function sendLocation(lat, lon) {
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    if (tg.LocationManager && tg.LocationManager.isInited) {
-      getTelegramLocation();
-    } else if (navigator.geolocation && browserWatchId === null) {
-      startBrowserLocation();
-    }
+    if (tg.LocationManager && tg.LocationManager.isInited) getTelegramLocation();
+    else if (navigator.geolocation && browserWatchId === null) startBrowserLocation();
   }
 });
 
@@ -328,59 +293,32 @@ window.addEventListener('beforeunload', () => {
 
 initLocation();
 
-// ── МАРШРУТ ──
-
 async function buildRoute(fromLat, fromLon, toLat, toLon) {
   clearRoute();
   try {
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-      `${fromLon},${fromLat};${toLon},${toLat}` +
-      `?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${fromLon},${fromLat};${toLon},${toLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
     const r = await fetch(url);
     const d = await r.json();
     if (!d.routes?.[0]) return;
-
     const route = d.routes[0];
     const mins = Math.round(route.duration / 60);
-
-    map.addSource('route', {
-      type: 'geojson',
-      data: { type: 'Feature', properties: {}, geometry: route.geometry }
-    });
-    map.addLayer({
-      id: 'route-outline',
-      type: 'line', source: 'route',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#1565C0', 'line-width': 7, 'line-opacity': 0.3 }
-    });
-    map.addLayer({
-      id: 'route',
-      type: 'line', source: 'route',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#2196F3', 'line-width': 4 }
-    });
-
+    map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+    map.addLayer({ id: 'route-outline', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#1565C0', 'line-width': 7, 'line-opacity': 0.3 } });
+    map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#2196F3', 'line-width': 4 } });
     document.getElementById('etaBar').textContent = `🏁 ~${mins} мин`;
-
     const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend([fromLon, fromLat]);
-    bounds.extend([toLon, toLat]);
+    bounds.extend([fromLon, fromLat]); bounds.extend([toLon, toLat]);
     if (myLat) bounds.extend([myLon, myLat]);
     map.fitBounds(bounds, { padding: { top: 60, bottom: 120, left: 30, right: 30 }, duration: 800 });
-
   } catch(e) { console.error('Route error', e); }
 }
 
 function clearRoute() {
-  ['route', 'route-outline'].forEach(id => {
-    if (map.getLayer(id)) map.removeLayer(id);
-  });
+  ['route', 'route-outline'].forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
   if (map.getSource('route')) map.removeSource('route');
   if (fromMarker) { fromMarker.remove(); fromMarker = null; }
-  if (toMarker)   { toMarker.remove();   toMarker = null; }
+  if (toMarker) { toMarker.remove(); toMarker = null; }
 }
-
-// ── UI ──
 
 function updateUI() {
   document.getElementById('balanceVal').textContent = balance + '€';
@@ -390,16 +328,13 @@ function updateUI() {
 
 function toggleStatus() {
   isOnline = !isOnline;
-  const dot  = document.getElementById('statusDot');
-  const text = document.getElementById('statusText');
-  const btn  = document.getElementById('toggleBtn');
-  const icon = document.getElementById('statIcon');
+  const dot = document.getElementById('statusDot'), text = document.getElementById('statusText'),
+        btn = document.getElementById('toggleBtn'), icon = document.getElementById('statIcon');
   if (isOnline) {
     dot.className = 'dot'; text.textContent = 'Онлайн — жду заказ';
     btn.className = 'toggle-btn'; icon.textContent = '🟢';
     document.getElementById('noOrders').style.display = 'block';
-    showToast('🟢 Вы онлайн');
-    startPolling();
+    showToast('🟢 Вы онлайн'); startPolling();
   } else {
     dot.className = 'dot off'; text.textContent = 'Офлайн';
     btn.className = 'toggle-btn off'; icon.textContent = '🔴';
@@ -413,7 +348,7 @@ function showNewOrder(order) {
   currentOrder = order;
   document.getElementById('orderPrice').textContent = (order.price || '?') + '€';
   document.getElementById('orderFrom').textContent = order.from_address || '—';
-  document.getElementById('orderTo').textContent   = order.to_address   || '—';
+  document.getElementById('orderTo').textContent = order.to_address || '—';
   document.getElementById('orderCard').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
   document.getElementById('btnAccept').disabled = false;
@@ -422,8 +357,7 @@ function showNewOrder(order) {
   document.getElementById('btnAccept').onclick = acceptOrder;
   if (order.from_lat && order.from_lon) {
     if (fromMarker) fromMarker.remove();
-    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
-      .setLngLat([order.from_lon, order.from_lat]).addTo(map);
+    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
     map.flyTo({ center: [order.from_lon, order.from_lat], zoom: 13 });
   }
 }
@@ -439,49 +373,26 @@ function hideNewOrder() {
 }
 
 function showActiveOrder(order) {
-  activeOrderId   = order.id;
-  activeOrderData = order;
-  drivingToDest   = false;
-
+  activeOrderId = order.id; activeOrderData = order; drivingToDest = false;
   document.getElementById('activeTo').textContent = order.to_address || order.to || '—';
   document.getElementById('activeSheet').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
   document.getElementById('statusText').textContent = '🚖 Едем к клиенту';
   document.getElementById('btnArrived').disabled = false;
   document.getElementById('btnArrived').textContent = '📍 Прибыл';
-
-  document.body.classList.add('driving');
-  map.resize();
-
-  if (order.from_lat && order.from_lon) {
-    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
-      .setLngLat([order.from_lon, order.from_lat]).addTo(map);
-  }
-  if (order.to_lat && order.to_lon) {
-    toMarker = new mapboxgl.Marker({ color: '#f44336' })
-      .setLngLat([order.to_lon, order.to_lat]).addTo(map);
-  }
-
-  if (myLat && order.from_lat) {
-    map.once('idle', () => buildRoute(myLat, myLon, order.from_lat, order.from_lon));
-  }
+  document.body.classList.add('driving'); map.resize();
+  if (order.from_lat && order.from_lon) fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
+  if (order.to_lat && order.to_lon) toMarker = new mapboxgl.Marker({ color: '#f44336' }).setLngLat([order.to_lon, order.to_lat]).addTo(map);
+  if (myLat && order.from_lat) map.once('idle', () => buildRoute(myLat, myLon, order.from_lat, order.from_lon));
 }
 
 function hideActiveOrder() {
   document.getElementById('activeSheet').classList.remove('show');
   document.body.classList.remove('driving');
-  activeOrderId = null;
-  activeOrderData = null;
-  drivingToDest = false;
-
-  if (routeRebuildTimer) {
-    clearTimeout(routeRebuildTimer);
-    routeRebuildTimer = null;
-  }
-
+  activeOrderId = null; activeOrderData = null; drivingToDest = false;
+  if (routeRebuildTimer) { clearTimeout(routeRebuildTimer); routeRebuildTimer = null; }
   document.getElementById('statusText').textContent = 'Онлайн — жду заказ';
-  clearRoute();
-  document.getElementById('etaBar').textContent = '🚖 Едем...';
+  clearRoute(); document.getElementById('etaBar').textContent = '🚖 Едем...';
   if (isOnline) {
     document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div>Ждём заказов...</div>';
     document.getElementById('noOrders').style.display = 'block';
@@ -489,179 +400,81 @@ function hideActiveOrder() {
   map.resize();
 }
 
-let sheetExpanded = false;
-function toggleSheet() {
-  sheetExpanded = !sheetExpanded;
-}
+function toggleSheet() {}
 
 function switchRouteToDest() {
   if (!activeOrderData || myLat === null) return;
   drivingToDest = true;
-  if (activeOrderData.to_lat && activeOrderData.to_lon) {
-    buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
-  }
+  if (activeOrderData.to_lat && activeOrderData.to_lon) buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
 }
-
-// ── ДЕЙСТВИЯ ──
 
 async function acceptOrder() {
   if (!currentOrder) return;
-  const btn = document.getElementById('btnAccept');
-  btn.disabled = true; btn.textContent = 'Резервируем...';
+  const btn = document.getElementById('btnAccept'); btn.disabled = true; btn.textContent = 'Резервируем...';
   try {
-    const r = await fetch(`/api/reserve_order/${currentOrder.id}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
-    });
+    const r = await fetch(`/api/reserve_order/${currentOrder.id}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME }) });
     const res = await r.json();
     if (res.ok) {
-      reservedOrderId = currentOrder.id;
-      reserveCountdown = 10;
-      btn.disabled = false;
-      btn.style.background = '#FF9800';
-      btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
+      reservedOrderId = currentOrder.id; reserveCountdown = 10;
+      btn.disabled = false; btn.style.background = '#FF9800'; btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
       btn.onclick = confirmOrder;
       reserveTimer = setInterval(() => {
         reserveCountdown--;
-        if (reserveCountdown > 0) {
-          btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
-        } else {
-          clearInterval(reserveTimer); reserveTimer = null; reservedOrderId = null;
-          btn.style.background = ''; btn.textContent = '✅ ПРИНЯТЬ'; btn.onclick = acceptOrder;
-          showToast('⏰ Время вышло');
-          hideNewOrder();
-        }
+        if (reserveCountdown > 0) btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
+        else { clearInterval(reserveTimer); reserveTimer = null; reservedOrderId = null; btn.style.background = ''; btn.textContent = '✅ ПРИНЯТЬ'; btn.onclick = acceptOrder; showToast('⏰ Время вышло'); hideNewOrder(); }
       }, 1000);
-    } else if (res.error === 'Already taken' || res.error === 'Reserved') {
-      showToast('❌ Уже взят другим водителем'); hideNewOrder();
-    } else {
-      showToast('❌ ' + (res.error || 'Ошибка'));
-      btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
-    }
-  } catch(e) {
-    showToast('❌ Ошибка соединения'); btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
-  }
+    } else { showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ'; }
+  } catch(e) { showToast('❌ Ошибка соединения'); btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ'; }
 }
 
 async function confirmOrder() {
   if (!reservedOrderId) return;
-  const btn = document.getElementById('btnAccept');
-  btn.disabled = true; btn.textContent = 'Принимаем...';
+  const btn = document.getElementById('btnAccept'); btn.disabled = true; btn.textContent = 'Принимаем...';
   clearInterval(reserveTimer); reserveTimer = null;
   try {
-    const r = await fetch(`/api/confirm_order/${reservedOrderId}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
-    });
+    const r = await fetch(`/api/confirm_order/${reservedOrderId}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME }) });
     const res = await r.json();
-    if (res.ok) {
-      trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1);
-      updateUI(); showToast('✅ Заказ принят!');
-      btn.style.background = ''; btn.onclick = acceptOrder;
-      const order = currentOrder; reservedOrderId = null;
-      hideNewOrder();
-      showActiveOrder(order);
-    } else if (res.error === 'Reserve expired') {
-      showToast('⏰ Резерв истёк'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
-    } else if (res.error === 'Already taken') {
-      showToast('❌ Уже взят'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
-    } else {
-      showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false; btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
-    }
+    if (res.ok) { trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1); updateUI(); showToast('✅ Заказ принят!'); btn.style.background = ''; btn.onclick = acceptOrder; const order = currentOrder; reservedOrderId = null; hideNewOrder(); showActiveOrder(order); }
+    else { showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false; }
   } catch(e) { showToast('❌ Ошибка соединения'); btn.disabled = false; }
 }
 
 async function rejectOrder() {
-  if (!currentOrder) return;
-  try {
-    await fetch(`/api/reject_order/${currentOrder.id}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID })
-    });
-  } catch(e) {}
+  try { await fetch(`/api/reject_order/${currentOrder.id}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ driver_id: DRIVER_ID }) }); } catch(e) {}
   showToast('❌ Отклонён'); hideNewOrder();
 }
 
 async function markArrived() {
-  if (!activeOrderId) return;
-  const btn = document.getElementById('btnArrived');
-  btn.disabled = true;
+  const btn = document.getElementById('btnArrived'); btn.disabled = true;
   try {
     const r = await fetch(`/api/arrived/${activeOrderId}`, { method: 'POST' });
-    const res = await r.json();
-    if (res.ok) {
-      showToast('📍 Клиент уведомлён!');
-      btn.disabled = false;
-      btn.textContent = '🚀 Начать поездку';
-      btn.style.background = '#2196F3';
-      btn.style.color = '#fff';
-      btn.onclick = function() {
-        switchRouteToDest();
-        btn.disabled = true;
-        btn.textContent = '✅ Едем';
-        document.getElementById('statusText').textContent = '🚖 Везу клиента';
-      };
-    } else { btn.disabled = false; }
+    if ((await r.json()).ok) { showToast('📍 Клиент уведомлён!'); btn.disabled = false; btn.textContent = '🚀 Начать поездку'; btn.style.background = '#2196F3'; btn.style.color = '#fff'; btn.onclick = function() { switchRouteToDest(); btn.disabled = true; btn.textContent = '✅ Едем'; document.getElementById('statusText').textContent = '🚖 Везу клиента'; }; }
+    else btn.disabled = false;
   } catch(e) { showToast('❌ Ошибка'); btn.disabled = false; }
 }
 
 async function completeOrder() {
-  if (!activeOrderId) return;
-  try {
-    const r = await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' });
-    const res = await r.json();
-    if (res.ok) {
-      showToast('🏁 Поездка завершена!');
-      hideActiveOrder(); startPolling();
-    }
-  } catch(e) { showToast('❌ Ошибка'); }
+  try { await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' }); showToast('🏁 Поездка завершена!'); hideActiveOrder(); startPolling(); } catch(e) { showToast('❌ Ошибка'); }
 }
 
 async function cancelActiveOrder() {
-  if (!activeOrderId) return;
   if (!confirm('Отменить заказ?')) return;
-  try {
-    const r = await fetch(`/api/cancel_order_driver/${activeOrderId}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID })
-    });
-    const res = await r.json();
-    if (res.ok) {
-      trips = Math.max(0, trips - 1); updateUI();
-      showToast('❌ Заказ отменён');
-      hideActiveOrder(); startPolling();
-    }
-  } catch(e) { showToast('❌ Ошибка'); }
+  try { await fetch(`/api/cancel_order_driver/${activeOrderId}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ driver_id: DRIVER_ID }) }); trips = Math.max(0, trips - 1); updateUI(); showToast('❌ Заказ отменён'); hideActiveOrder(); startPolling(); } catch(e) { showToast('❌ Ошибка'); }
 }
-
-// ── POLLING ──
 
 async function pollOrders() {
   if (!isOnline || activeOrderId) return;
   try {
     const res = await fetch('/api/orders');
-    if (res.ok) {
-      const list = await res.json();
-      if (list.length > 0 && !currentOrder) showNewOrder(list[0]);
-      else if (list.length === 0 && currentOrder) hideNewOrder();
-    }
+    if (res.ok) { const list = await res.json(); if (list.length > 0 && !currentOrder) showNewOrder(list[0]); else if (list.length === 0 && currentOrder) hideNewOrder(); }
   } catch(e) {}
 }
 
-function startPolling() {
-  clearInterval(pollInterval);
-  pollInterval = setInterval(pollOrders, 3000);
-  pollOrders();
-}
+function startPolling() { clearInterval(pollInterval); pollInterval = setInterval(pollOrders, 3000); pollOrders(); }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
 
-updateUI();
-startPolling();
+updateUI(); startPolling();
 </script>
 </body>
 </html>
