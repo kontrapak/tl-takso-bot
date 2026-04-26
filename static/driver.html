@@ -8,7 +8,6 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-#map canvas { filter: invert(1) hue-rotate(180deg) !important; }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#f5f5f5 !important; color:#000 !important; font-family:sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
 
@@ -184,6 +183,15 @@ body.driving #etaBar { display:block; }
 <div class="toast" id="toast"></div>
 
 <script>
+// Блокируем автоопределение тёмной темы для Mapbox
+const originalMatchMedia = window.matchMedia;
+window.matchMedia = (query) => {
+  if (query.includes('prefers-color-scheme')) {
+    return { matches: false, addListener: () => {}, removeListener: () => {} };
+  }
+  return originalMatchMedia(query);
+};
+
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.setHeaderColor('#ffffff');
@@ -207,12 +215,18 @@ let pollInterval = null;
 let reserveTimer = null, reservedOrderId = null, reserveCountdown = 0;
 let drivingToDest = false;
 let routeRebuildTimer = null;
+
 mapboxgl.accessToken = MAPBOX_TOKEN;
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/streets-v12',
   center: TALLINN, zoom: 12,
-  attributionControl: false
+  attributionControl: false,
+  config: {
+    basemap: {
+      lightPreset: 'day'
+    }
+  }
 });
 
 // ── ГЕОЛОКАЦИЯ ──
