@@ -1,7 +1,7 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "echo rebuild"
+    "buildCommand": "pip install -r requirements.txt"
   },
   "deploy": {
     "numReplicas": 1,
