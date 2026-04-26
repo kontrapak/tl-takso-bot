@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -183,15 +184,6 @@ body.driving #etaBar { display:block; }
 <div class="toast" id="toast"></div>
 
 <script>
-// Блокируем автоопределение тёмной темы для Mapbox
-const originalMatchMedia = window.matchMedia;
-window.matchMedia = (query) => {
-  if (query.includes('prefers-color-scheme')) {
-    return { matches: false, addListener: () => {}, removeListener: () => {} };
-  }
-  return originalMatchMedia(query);
-};
-
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.setHeaderColor('#ffffff');
