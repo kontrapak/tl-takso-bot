@@ -9,6 +9,12 @@ from flask import Flask, send_from_directory, request, abort, jsonify
 import re
 
 app = Flask(__name__)
+app = Flask(__name__)
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "ok"}), 200
+
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 if not BOT_TOKEN:
