@@ -329,6 +329,22 @@ window.addEventListener('beforeunload', () => {
 
 initLocation();
 
+// Принудительный опрос GPS каждые 3 сек при активном заказе
+setInterval(() => {
+  if (!activeOrderId) return;
+  if (tg.LocationManager && tg.LocationManager.isInited) {
+    tg.LocationManager.getLocation(loc => {
+      if (loc) updatePosition(loc.latitude, loc.longitude);
+    });
+  } else if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
+      () => {},
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  }
+}, 3000);
+
 // ── МАРШРУТ ──
 
 async function buildRoute(fromLat, fromLon, toLat, toLon) {
