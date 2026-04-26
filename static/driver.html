@@ -207,7 +207,7 @@ let pollInterval = null;
 let reserveTimer = null, reservedOrderId = null, reserveCountdown = 0;
 let drivingToDest = false;
 let routeRebuildTimer = null;
-
+mapboxgl.accessToken = MAPBOX_TOKEN;
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/streets-v12',
