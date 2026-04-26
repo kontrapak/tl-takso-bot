@@ -1,9 +1,10 @@
- {
+{
   "build": {
     "builder": "NIXPACKS",
     "buildCommand": "pip install -r requirements.txt"
   },
   "deploy": {
+    "startCommand": "python tl_takso_bot.py",
     "numReplicas": 1,
     "restartPolicyType": "ALWAYS",
     "healthcheckPath": "/"
