@@ -277,15 +277,7 @@ function updatePosition(lat, lon) {
   }
 
   // Камера следит за водителем при активном заказе
-  if (activeOrderId) {
-    map.easeTo({
-      center: [lon, lat],
-      zoom: 16,
-      duration: 1500,
-      pitch: 45,  // наклон для эффекта навигатора
-      bearing: 0
-    });
-  }
+  if (activeOrderId) map.easeTo({ center: [lon, lat], zoom: 16, duration: 800 });
   if (activeOrderId) {
     sendLocation(lat, lon);
     if (!routeRebuildTimer) {
