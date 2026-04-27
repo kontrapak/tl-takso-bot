@@ -385,8 +385,7 @@ async function buildRoute(fromLat, fromLon, toLat, toLon) {
     bounds.extend([fromLon, fromLat]);
     bounds.extend([toLon, toLat]);
     if (myLat) bounds.extend([myLon, myLat]);
-    map.fitBounds(bounds, { padding: { top: 60, bottom: 120, left: 30, right: 30 }, duration: 800 });
-
+    
   } catch(e) { console.error('Route error', e); }
 }
 
