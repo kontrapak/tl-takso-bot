@@ -428,7 +428,7 @@ async function pollStatus() {
         el.textContent = '🚖';
         taxiMarker = new mapboxgl.Marker({ element: el }).setLngLat(driverLngLat).addTo(map);
       } else {
-        animateMarker(taxiMarker, driverLngLat);
+        animateMarker(taxiMarker, driverLngLat, 2500);
       }
       if (from && from.lat && from.lon) updateRoute(driverLngLat, [from.lon, from.lat]);
       if (data.status === 'accepted' && !userMovedCamera) map.flyTo({ center: driverLngLat, zoom: 14, duration: 1000 });
