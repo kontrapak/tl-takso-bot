@@ -351,12 +351,7 @@ async function buildRoute(fromLat, fromLon, toLat, toLon) {
       type: 'geojson',
       data: { type: 'Feature', properties: {}, geometry: route.geometry }
     });
-    map.addLayer({
-      id: 'route-outline',
-      type: 'line', source: 'route',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#2196F3', 'line-width': 6, 'line-opacity': 1 }
-    });
+    
     map.addLayer({
       id: 'route',
       type: 'line', source: 'route',
