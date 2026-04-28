@@ -376,7 +376,7 @@ async function buildRoute(fromLat, fromLon, toLat, toLon) {
       id: 'route',
       type: 'line', source: 'route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#2196F3', 'line-width': 4 }
+      paint: { 'line-color': '#2196F3', 'line-width': 6, 'line-opacity': 1 }
     });
 
     document.getElementById('etaBar').textContent = `🏁 ~${mins} мин`;
