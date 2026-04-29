@@ -168,6 +168,7 @@ body.driving #etaBar { display:block; }
 <div class="toast" id="toast"></div>
 
 <script>
+
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.setHeaderColor('#ffffff');
@@ -192,7 +193,12 @@ let reserveTimer = null, reservedOrderId = null, reserveCountdown = 0;
 let drivingToDest = false;
 let routeRebuildTimer = null;
 let prevLat = null, prevLon = null;
-  
+let currentRouteGeometry = null; // линия маршрута
+let routeProgress = 0; // прогресс по маршруту (0-1)
+let routeCoordinates = []; // массив точек маршрута
+let animationFrame = null;
+let lastGpsUpdate = 0;
+
 mapboxgl.accessToken = MAPBOX_TOKEN;
 const map = new mapboxgl.Map({
   container: 'map',
@@ -205,6 +211,98 @@ const map = new mapboxgl.Map({
     }
   }
 });
+
+// ── ПЛАВНОЕ ДВИЖЕНИЕ ПО МАРШРУТУ ──
+
+function snapToRoute(lat, lon) {
+  if (!currentRouteGeometry || !currentRouteGeometry.coordinates || currentRouteGeometry.coordinates.length < 2) {
+    // Если нет маршрута — просто ставим маркер
+    updateMarkerPosition(lon, lat);
+    return;
+  }
+  
+  const coords = currentRouteGeometry.coordinates;
+  let minDist = Infinity;
+  let bestIdx = 0;
+  
+  // Находим ближайшую точку на маршруте
+  for (let i = 0; i < coords.length; i++) {
+    const d = distance(lat, lon, coords[i][1], coords[i][0]);
+    if (d < minDist) {
+      minDist = d;
+      bestIdx = i;
+    }
+  }
+  
+  // Вычисляем прогресс по маршруту (0-1)
+  routeProgress = bestIdx / (coords.length - 1);
+  
+  // Двигаем маркер плавно к ближайшей точке маршрута
+  animateMarkerTo(coords[bestIdx][0], coords[bestIdx][1]);
+  
+  // Если отклонились больше чем на 30 метров — перестроим маршрут
+  if (minDist > 0.0003) { // примерно 30 метров
+    if (!routeRebuildTimer) {
+      routeRebuildTimer = setTimeout(() => {
+        routeRebuildTimer = null;
+        rebuildRouteFromCurrentPos();
+      }, 5000);
+    }
+  }
+}
+
+function distance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function animateMarkerTo(lon, lat) {
+  if (!userMarker) {
+    const el = document.createElement('div');
+    el.innerHTML = '➤';
+    el.style.cssText = 'font-size:24px;color:#2196F3;transform:rotate(0deg);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));transition:all 0.5s ease';
+    userMarker = new mapboxgl.Marker(el)
+      .setLngLat([lon, lat])
+      .addTo(map);
+    map.flyTo({ center: [lon, lat], zoom: 16 });
+  } else {
+    // Плавное перемещение
+    const el = userMarker.getElement();
+    el.style.transition = 'all 0.5s ease';
+    userMarker.setLngLat([lon, lat]);
+    
+    // Поворот стрелки
+    if (prevLat !== null && prevLon !== null) {
+      const angle = Math.atan2(lon - prevLon, lat - prevLat) * 180 / Math.PI;
+      el.style.transform = `rotate(${angle}deg)`;
+    }
+  }
+  prevLat = lat;
+  prevLon = lon;
+}
+
+function updateMarkerPosition(lon, lat) {
+  if (!userMarker) {
+    const el = document.createElement('div');
+    el.innerHTML = '➤';
+    el.style.cssText = 'font-size:24px;color:#2196F3;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4))';
+    userMarker = new mapboxgl.Marker(el)
+      .setLngLat([lon, lat])
+      .addTo(map);
+    map.flyTo({ center: [lon, lat], zoom: 14 });
+  } else {
+    userMarker.setLngLat([lon, lat]);
+    if (prevLat !== null && prevLon !== null) {
+      const angle = Math.atan2(lon - prevLon, lat - prevLat) * 180 / Math.PI;
+      userMarker.getElement().style.transform = `rotate(${angle}deg)`;
+    }
+  }
+  prevLat = lat;
+  prevLon = lon;
+}
 
 // ── ГЕОЛОКАЦИЯ ──
 
@@ -242,45 +340,26 @@ function startBrowserLocation() {
   browserWatchId = navigator.geolocation.watchPosition(
     pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
     err => console.warn('Geolocation error:', err.message),
-     { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
   );
 }
 
 function updatePosition(lat, lon) {
+  if (!lat || !lon) return;
+  
   myLat = lat;
   myLon = lon;
-
-  if (!userMarker) {
-    const el = document.createElement('div');
-    el.innerHTML = '➤';
-el.style.cssText = 'font-size:24px;color:#2196F3;transform:rotate(0deg);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4))';
-    userMarker = new mapboxgl.Marker(el)
-      .setLngLat([lon, lat])
-      .addTo(map);
-    map.flyTo({ center: [lon, lat], zoom: 14 });
+  
+  // Привязываем к маршруту если он есть
+  if (activeOrderId && currentRouteGeometry) {
+    snapToRoute(lat, lon);
   } else {
-    userMarker.setLngLat([lon, lat]);
-    // Поворачиваем стрелку по направлению движения
-    if (prevLat !== null && prevLon !== null) {
-      const angle = Math.atan2(lon - prevLon, lat - prevLat) * 180 / Math.PI;
-      userMarker.getElement().style.transform = `rotate(${angle}deg)`;
-    }
-    prevLat = lat;
-    prevLon = lon;
+    updateMarkerPosition(lon, lat);
   }
-
+  
   if (activeOrderId) {
-
-  // Камера следит за водителем при активном заказе
-  if (activeOrderId) map.easeTo({ center: [lon, lat], zoom: 16, duration: 800 });
-  if (activeOrderId) {
+    map.easeTo({ center: [lon, lat], zoom: 16, duration: 800 });
     sendLocation(lat, lon);
-    if (!routeRebuildTimer) {
-      routeRebuildTimer = setTimeout(() => {
-        routeRebuildTimer = null;
-        rebuildRouteFromCurrentPos();
-      }, 10000);
-    }
   }
 }
 
@@ -347,15 +426,19 @@ setInterval(() => {
 async function buildRoute(fromLat, fromLon, toLat, toLon) {
   clearRoute();
   try {
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-      `${fromLon},${fromLat};${toLon},${toLat}` +
-      `?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${fromLon},${fromLat};${toLon},${toLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
     const r = await fetch(url);
     const d = await r.json();
     if (!d.routes?.[0]) return;
 
     const route = d.routes[0];
     const mins = Math.round(route.duration / 60);
+    const km = (route.distance / 1000).toFixed(1);
+    
+    // Сохраняем геометрию маршрута
+    currentRouteGeometry = route.geometry;
+    routeCoordinates = route.geometry.coordinates;
+    routeProgress = 0;
 
     map.addSource('route', {
       type: 'geojson',
@@ -366,15 +449,16 @@ async function buildRoute(fromLat, fromLon, toLat, toLon) {
       id: 'route',
       type: 'line', source: 'route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#2196F3', 'line-width': 6, 'line-opacity': 1 }
+      paint: { 'line-color': '#2196F3', 'line-width': 6, 'line-opacity': 0.8 }
     });
 
-    document.getElementById('etaBar').textContent = `🏁 ~${mins} мин`;
+    document.getElementById('etaBar').textContent = `🏁 ${km} км · ~${mins} мин`;
 
     const bounds = new mapboxgl.LngLatBounds();
     bounds.extend([fromLon, fromLat]);
     bounds.extend([toLon, toLat]);
     if (myLat) bounds.extend([myLon, myLat]);
+    map.fitBounds(bounds, { padding: { top: 60, bottom: 120, left: 30, right: 30 }, duration: 800 });
     
   } catch(e) { console.error('Route error', e); }
 }
@@ -384,8 +468,10 @@ function clearRoute() {
     if (map.getLayer(id)) map.removeLayer(id);
   });
   if (map.getSource('route')) map.removeSource('route');
+  currentRouteGeometry = null;
+  routeCoordinates = [];
   if (fromMarker) { fromMarker.remove(); fromMarker = null; }
-  if (toMarker)   { toMarker.remove();   toMarker = null; }
+  if (toMarker) { toMarker.remove(); toMarker = null; }
 }
 
 // ── UI ──
@@ -421,7 +507,7 @@ function showNewOrder(order) {
   currentOrder = order;
   document.getElementById('orderPrice').textContent = (order.price || '?') + '€';
   document.getElementById('orderFrom').textContent = order.from_address || '—';
-  document.getElementById('orderTo').textContent   = order.to_address   || '—';
+  document.getElementById('orderTo').textContent = order.to_address || '—';
   document.getElementById('orderCard').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
   document.getElementById('btnAccept').disabled = false;
@@ -430,8 +516,7 @@ function showNewOrder(order) {
   document.getElementById('btnAccept').onclick = acceptOrder;
   if (order.from_lat && order.from_lon) {
     if (fromMarker) fromMarker.remove();
-    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
-      .setLngLat([order.from_lon, order.from_lat]).addTo(map);
+    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
     map.flyTo({ center: [order.from_lon, order.from_lat], zoom: 13 });
   }
 }
@@ -447,9 +532,9 @@ function hideNewOrder() {
 }
 
 function showActiveOrder(order) {
-  activeOrderId   = order.id;
+  activeOrderId = order.id;
   activeOrderData = order;
-  drivingToDest   = false;
+  drivingToDest = false;
 
   document.getElementById('activeTo').textContent = order.to_address || order.to || '—';
   document.getElementById('activeSheet').classList.add('show');
@@ -462,12 +547,10 @@ function showActiveOrder(order) {
   map.resize();
 
   if (order.from_lat && order.from_lon) {
-    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' })
-      .setLngLat([order.from_lon, order.from_lat]).addTo(map);
+    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
   }
   if (order.to_lat && order.to_lon) {
-    toMarker = new mapboxgl.Marker({ color: '#f44336' })
-      .setLngLat([order.to_lon, order.to_lat]).addTo(map);
+    toMarker = new mapboxgl.Marker({ color: '#f44336' }).setLngLat([order.to_lon, order.to_lat]).addTo(map);
   }
 
   if (myLat && order.from_lat) {
@@ -497,10 +580,7 @@ function hideActiveOrder() {
   map.resize();
 }
 
-let sheetExpanded = false;
-function toggleSheet() {
-  sheetExpanded = !sheetExpanded;
-}
+function toggleSheet() {}
 
 function switchRouteToDest() {
   if (!activeOrderData || myLat === null) return;
@@ -574,19 +654,14 @@ async function confirmOrder() {
     } else if (res.error === 'Already taken') {
       showToast('❌ Уже взят'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
     } else {
-      showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false; btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
+      showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false;
     }
   } catch(e) { showToast('❌ Ошибка соединения'); btn.disabled = false; }
 }
 
 async function rejectOrder() {
   if (!currentOrder) return;
-  try {
-    await fetch(`/api/reject_order/${currentOrder.id}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID })
-    });
-  } catch(e) {}
+  try { await fetch(`/api/reject_order/${currentOrder.id}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ driver_id: DRIVER_ID }) }); } catch(e) {}
   showToast('❌ Отклонён'); hideNewOrder();
 }
 
@@ -615,61 +690,29 @@ async function markArrived() {
 
 async function completeOrder() {
   if (!activeOrderId) return;
-  try {
-    const r = await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' });
-    const res = await r.json();
-    if (res.ok) {
-      showToast('🏁 Поездка завершена!');
-      hideActiveOrder(); startPolling();
-    }
-  } catch(e) { showToast('❌ Ошибка'); }
+  try { await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' }); showToast('🏁 Поездка завершена!'); hideActiveOrder(); startPolling(); } catch(e) { showToast('❌ Ошибка'); }
 }
 
 async function cancelActiveOrder() {
   if (!activeOrderId) return;
   if (!confirm('Отменить заказ?')) return;
-  try {
-    const r = await fetch(`/api/cancel_order_driver/${activeOrderId}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID })
-    });
-    const res = await r.json();
-    if (res.ok) {
-      trips = Math.max(0, trips - 1); updateUI();
-      showToast('❌ Заказ отменён');
-      hideActiveOrder(); startPolling();
-    }
-  } catch(e) { showToast('❌ Ошибка'); }
+  try { await fetch(`/api/cancel_order_driver/${activeOrderId}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ driver_id: DRIVER_ID }) }); trips = Math.max(0, trips - 1); updateUI(); showToast('❌ Заказ отменён'); hideActiveOrder(); startPolling(); } catch(e) { showToast('❌ Ошибка'); }
 }
-
-// ── POLLING ──
 
 async function pollOrders() {
   if (!isOnline || activeOrderId) return;
   try {
     const res = await fetch('/api/orders');
-    if (res.ok) {
-      const list = await res.json();
-      if (list.length > 0 && !currentOrder) showNewOrder(list[0]);
-      else if (list.length === 0 && currentOrder) hideNewOrder();
-    }
+    if (res.ok) { const list = await res.json(); if (list.length > 0 && !currentOrder) showNewOrder(list[0]); else if (list.length === 0 && currentOrder) hideNewOrder(); }
   } catch(e) {}
 }
 
-function startPolling() {
-  clearInterval(pollInterval);
-  pollInterval = setInterval(pollOrders, 3000);
-  pollOrders();
-}
+function startPolling() { clearInterval(pollInterval); pollInterval = setInterval(pollOrders, 3000); pollOrders(); }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
 
-updateUI();
-startPolling();
+updateUI(); startPolling();
+
 </script>
 </body>
 </html>
