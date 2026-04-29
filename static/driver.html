@@ -259,7 +259,16 @@ el.style.cssText = 'font-size:24px;color:#2196F3;transform:rotate(0deg);filter:d
     map.flyTo({ center: [lon, lat], zoom: 14 });
   } else {
     userMarker.setLngLat([lon, lat]);
+    // Поворачиваем стрелку по направлению движения
+    if (prevLat !== null && prevLon !== null) {
+      const angle = Math.atan2(lon - prevLon, lat - prevLat) * 180 / Math.PI;
+      userMarker.getElement().style.transform = `rotate(${angle}deg)`;
+    }
+    prevLat = lat;
+    prevLon = lon;
   }
+
+  if (activeOrderId) {
 
   // Камера следит за водителем при активном заказе
   if (activeOrderId) map.easeTo({ center: [lon, lat], zoom: 16, duration: 800 });
