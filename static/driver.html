@@ -671,7 +671,7 @@ async function pollOrders() {
 function startPolling() { clearInterval(pollInterval); pollInterval = setInterval(pollOrders, 3000); pollOrders(); }
 
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
-
+initLocation();
 updateUI(); startPolling();
 </script>
 </body>
