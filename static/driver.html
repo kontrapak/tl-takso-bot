@@ -415,22 +415,46 @@ function startBrowserLocation() {
 }
 
 function updatePosition(lat, lon) {
-  if (!lat || !lon) return;
-  
+  if (typeof lat !== 'number' || typeof lon !== 'number') return;
+
   myLat = lat;
   myLon = lon;
-  
+
+  let drawLat = lat;
+  let drawLon = lon;
+
+  if (activeOrderId && routeCoordinates.length) {
+    const snapped = snapToRoute(lat, lon);
+
+    if (snapped.distM <= 30) {
+      drawLat = snapped.lat;
+      drawLon = snapped.lon;
+    }
+
+    if (snapped.distM > 45 && Date.now() - lastRouteRebuild > 7000) {
+      lastRouteRebuild = Date.now();
+      rebuildRouteFromCurrentPos();
+    }
+  }
+
+  animateMarkerTo(drawLon, drawLat, activeOrderId ? 1100 : 850);
+
+  const cameraThrottle = activeOrderId ? 1200 : 1800;
+  if (Date.now() - lastCameraUpdate > cameraThrottle) {
+    map.easeTo({
+      center: [drawLon, drawLat],
+      zoom: activeOrderId ? 17 : 16,
+      duration: 900,
+      essential: true
+    });
+    lastCameraUpdate = Date.now();
+  }
+
   if (activeOrderId) {
-  matchToRoad(lat, lon);
-} else {
-  updateMarkerPosition(lon, lat);
-}
-  
-  if (activeOrderId) {
-    map.easeTo({ center: [lon, lat], duration: 800 });
     sendLocation(lat, lon);
   }
 }
+
 
 function rebuildRouteFromCurrentPos() {
   if (!activeOrderData || myLat === null) return;
