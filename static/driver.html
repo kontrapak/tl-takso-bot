@@ -154,7 +154,7 @@ tg.setHeaderColor('#ffffff');
 tg.setBackgroundColor('#f5f5f5');
 tg.expand();
 
-const DRIVER_ID   = tg.initDataUnsafe?.user?.id;
+const DRIVER_ID   = tg.initDataUnsafe?.user?.id || Math.floor(Math.random() * 1000000);
 const DRIVER_NAME = tg.initDataUnsafe?.user?.first_name || 'Водитель';
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
 const TALLINN = [24.7536, 59.4370];
@@ -180,7 +180,6 @@ let currentBearing = 0;
 let lastCameraUpdate = 0;
 let lastRouteRebuild = 0;
 
-
 mapboxgl.accessToken = MAPBOX_TOKEN;
 const map = new mapboxgl.Map({
   container: 'map',
@@ -189,64 +188,12 @@ const map = new mapboxgl.Map({
   attributionControl: false
 });
 
-// ── ПЛАВНОЕ ДВИЖЕНИЕ ПО МАРШРУТУ ──
-
-async function matchToRoad(lat, lon) {
-  try {
-    const url = `https://api.mapbox.com/matching/v5/mapbox/driving/${lon},${lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
-    const r = await fetch(url);
-    const d = await r.json();
-    if (d.matchings?.[0]?.geometry?.coordinates?.[0]) {
-      const [mLon, mLat] = d.matchings[0].geometry.coordinates[0];
-      animateMarkerTo(mLon, mLat);
-      if (activeOrderId) map.easeTo({ center: [mLon, mLat], zoom: 17, duration: 1000 });
-    }
-  } catch(e) {
-    updateMarkerPosition(lon, lat);
-  }
-}
-  
-  const coords = currentRouteGeometry.coordinates;
-  let minDist = Infinity;
-  let bestIdx = 0;
-  
-  for (let i = 0; i < coords.length; i++) {
-    const d = distance(lat, lon, coords[i][1], coords[i][0]);
-    if (d < minDist) {
-      minDist = d;
-      bestIdx = i;
-    }
-  }
-  
-  routeProgress = bestIdx / (coords.length - 1);
-  animateMarkerTo(coords[bestIdx][0], coords[bestIdx][1]);
-  
-  if (minDist > 0.0003) {
-    if (!routeRebuildTimer) {
-      routeRebuildTimer = setTimeout(() => {
-        routeRebuildTimer = null;
-        rebuildRouteFromCurrentPos();
-      }, 5000);
-    }
-  }
-}
-
-function distance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-
-// ── ПЛАВНОЕ ДВИЖЕНИЕ ПО МАРШРУТУ ──
-
 function distanceMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function createDriverMarker(lon, lat) {
@@ -257,11 +204,11 @@ function createDriverMarker(lon, lat) {
   const inner = document.createElement('div');
   inner.innerHTML = '➤';
   inner.style.cssText = `
-    font-size: 24px;
+    font-size: 26px;
     color: #2196F3;
     transform: rotate(0deg);
     transform-origin: center center;
-    transition: transform 0.18s linear;
+    transition: transform 0.2s linear;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
     will-change: transform;
   `;
@@ -280,16 +227,11 @@ function createDriverMarker(lon, lat) {
 function rotateMarkerToward(fromLon, fromLat, toLon, toLat) {
   const dx = toLon - fromLon;
   const dy = toLat - fromLat;
-
   if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) return;
-
-  const targetAngle = -Math.atan2(dy, dx) * 180 / Math.PI;
+  let targetAngle = -Math.atan2(dy, dx) * 180 / Math.PI;
   let delta = ((targetAngle - currentBearing + 540) % 360) - 180;
   currentBearing += delta * 0.35;
-
-  if (markerArrow) {
-    markerArrow.style.transform = `rotate(${currentBearing}deg)`;
-  }
+  if (markerArrow) markerArrow.style.transform = `rotate(${currentBearing}deg)`;
 }
 
 function animateMarkerTo(lon, lat, duration = 900) {
@@ -300,188 +242,95 @@ function animateMarkerTo(lon, lat, duration = 900) {
     prevLon = lon;
     return;
   }
-
   const start = userMarker.getLngLat();
-  const startLon = start.lng;
-  const startLat = start.lat;
-
+  const startLon = start.lng, startLat = start.lat;
   cancelAnimationFrame(markerAnimId);
-
   const startedAt = performance.now();
-
   function step(now) {
-    const t = Math.min(1, (now - startedAt) / duration);
+    let t = Math.min(1, (now - startedAt) / duration);
     const eased = 1 - Math.pow(1 - t, 3);
-
     const curLon = startLon + (lon - startLon) * eased;
     const curLat = startLat + (lat - startLat) * eased;
-
     userMarker.setLngLat([curLon, curLat]);
     rotateMarkerToward(startLon, startLat, curLon, curLat);
-
-    if (t < 1) {
-      markerAnimId = requestAnimationFrame(step);
-    } else {
-      prevLat = lat;
-      prevLon = lon;
-    }
+    if (t < 1) markerAnimId = requestAnimationFrame(step);
+    else { prevLat = lat; prevLon = lon; }
   }
-
   markerAnimId = requestAnimationFrame(step);
 }
 
 function snapToRoute(lat, lon) {
-  if (!routeCoordinates.length) {
-    return { lat, lon, distM: Infinity, index: -1 };
-  }
-
+  if (!routeCoordinates.length) return { lat, lon, distM: Infinity, index: -1 };
   const total = routeCoordinates.length - 1;
-
-  let startIdx = Math.max(0, routeProgress - 40);
-  let endIdx = Math.min(total, routeProgress + 120);
-
-  if (routeProgress === 0) {
-    startIdx = 0;
-    endIdx = Math.min(total, 250);
-  }
-
+  let startIdx = Math.max(0, Math.floor(routeProgress * total) - 80);
+  let endIdx = Math.min(total, Math.floor(routeProgress * total) + 150);
+  if (routeProgress === 0) { startIdx = 0; endIdx = Math.min(total, 300); }
   let bestIdx = startIdx;
   let bestDist = Infinity;
-
   for (let i = startIdx; i <= endIdx; i++) {
     const [rLon, rLat] = routeCoordinates[i];
     const d = distanceMeters(lat, lon, rLat, rLon);
-    if (d < bestDist) {
-      bestDist = d;
-      bestIdx = i;
-    }
+    if (d < bestDist) { bestDist = d; bestIdx = i; }
   }
-
-  if (!Number.isFinite(bestDist)) {
-    bestIdx = 0;
-    bestDist = Infinity;
-  }
-
-  routeProgress = bestIdx;
-
-  return {
-    lon: routeCoordinates[bestIdx][0],
-    lat: routeCoordinates[bestIdx][1],
-    distM: bestDist,
-    index: bestIdx
-  };
-
-
-// ── ГЕОЛОКАЦИЯ ──
-
-
-  browserWatchId = navigator.geolocation.watchPosition(
-    pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
-    err => console.warn('Geolocation error:', err.message),
-    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-  );
+  if (!Number.isFinite(bestDist)) bestIdx = 0;
+  routeProgress = bestIdx / total;
+  return { lon: routeCoordinates[bestIdx][0], lat: routeCoordinates[bestIdx][1], distM: bestDist, index: bestIdx };
 }
 
 function updatePosition(lat, lon) {
   if (typeof lat !== 'number' || typeof lon !== 'number') return;
-
-  myLat = lat;
-  myLon = lon;
-
-  let drawLat = lat;
-  let drawLon = lon;
-
+  myLat = lat; myLon = lon;
+  let drawLat = lat, drawLon = lon;
   if (activeOrderId && routeCoordinates.length) {
     const snapped = snapToRoute(lat, lon);
-
-    if (snapped.distM <= 30) {
-      drawLat = snapped.lat;
-      drawLon = snapped.lon;
-    }
-
-    if (snapped.distM > 45 && Date.now() - lastRouteRebuild > 7000) {
+    if (snapped.distM <= 40) { drawLat = snapped.lat; drawLon = snapped.lon; }
+    if (snapped.distM > 50 && Date.now() - lastRouteRebuild > 7000) {
       lastRouteRebuild = Date.now();
       rebuildRouteFromCurrentPos();
     }
   }
-
   animateMarkerTo(drawLon, drawLat, activeOrderId ? 1100 : 850);
-
   const cameraThrottle = activeOrderId ? 1200 : 1800;
   if (Date.now() - lastCameraUpdate > cameraThrottle) {
-    map.easeTo({
-      center: [drawLon, drawLat],
-      zoom: activeOrderId ? 17 : 16,
-      duration: 900,
-      essential: true
-    });
+    map.easeTo({ center: [drawLon, drawLat], zoom: activeOrderId ? 17 : 16, duration: 900, essential: true });
     lastCameraUpdate = Date.now();
   }
-
-  if (activeOrderId) {
-    sendLocation(lat, lon);
-  }
+  if (activeOrderId) sendLocation(lat, lon);
 }
 
-
-function rebuildRouteFromCurrentPos() {
-  if (!activeOrderData || myLat === null) return;
-  if (drivingToDest) {
-    if (activeOrderData.to_lat && activeOrderData.to_lon) {
-      buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
-    }
-  } else {
-    if (activeOrderData.from_lat && activeOrderData.from_lon) {
-      buildRoute(myLat, myLon, activeOrderData.from_lat, activeOrderData.from_lon);
-    }
-  }
-}
-
-let lastSent = 0;
 function sendLocation(lat, lon) {
-  const now = Date.now();
-  if (now - lastSent < 3000) return;
-  lastSent = now;
+  if (!activeOrderId) return;
   fetch(`/api/driver_location/${activeOrderId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ lat, lon })
   }).catch(() => {});
 }
 
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    if (tg.LocationManager && tg.LocationManager.isInited) {
-      getTelegramLocation();
-    } else if (navigator.geolocation && browserWatchId === null) {
-      startBrowserLocation();
-    }
-  }
-});
-
-window.addEventListener('beforeunload', () => {
-  if (browserWatchId !== null) navigator.geolocation.clearWatch(browserWatchId);
-  if (routeRebuildTimer) clearTimeout(routeRebuildTimer);
-});
-
-initLocation();
-
-setInterval(() => {
-  if (!activeOrderId) return;
+async function getTelegramLocation() {
   if (tg.LocationManager && tg.LocationManager.isInited) {
-    tg.LocationManager.getLocation(loc => {
-      if (loc) updatePosition(loc.latitude, loc.longitude);
-    });
-  } else if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
-      () => {},
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-    );
+    tg.LocationManager.getLocation(loc => { if (loc) updatePosition(loc.latitude, loc.longitude); });
   }
-}, 3000);
+}
 
-// ── МАРШРУТ ──
+function startBrowserLocation() {
+  if (browserWatchId !== null) navigator.geolocation.clearWatch(browserWatchId);
+  browserWatchId = navigator.geolocation.watchPosition(
+    pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
+    err => console.warn('Geo error', err.message),
+    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+  );
+}
+
+function initLocation() {
+  if (tg.LocationManager && tg.LocationManager.isInited) getTelegramLocation();
+  else startBrowserLocation();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) initLocation();
+});
+window.addEventListener('beforeunload', () => { if (browserWatchId !== null) navigator.geolocation.clearWatch(browserWatchId); if (routeRebuildTimer) clearTimeout(routeRebuildTimer); });
+setInterval(() => { if (!activeOrderId) return; if (tg.LocationManager?.isInited) tg.LocationManager.getLocation(loc => { if (loc) updatePosition(loc.latitude, loc.longitude); }); else if (navigator.geolocation) navigator.geolocation.getCurrentPosition(pos => updatePosition(pos.coords.latitude, pos.coords.longitude), () => {}, { enableHighAccuracy: true, timeout: 5000 }); }, 3000);
 
 async function buildRoute(fromLat, fromLon, toLat, toLon) {
   clearRoute();
@@ -490,37 +339,20 @@ async function buildRoute(fromLat, fromLon, toLat, toLon) {
     const r = await fetch(url);
     const d = await r.json();
     if (!d.routes?.[0]) return;
-
     const route = d.routes[0];
     const mins = Math.round(route.duration / 60);
     const km = (route.distance / 1000).toFixed(1);
-    
     currentRouteGeometry = route.geometry;
     routeCoordinates = route.geometry.coordinates;
     routeProgress = 0;
-
-    map.addSource('route', {
-      type: 'geojson',
-      data: { type: 'Feature', properties: {}, geometry: route.geometry }
-    });
-    
-    map.addLayer({
-      id: 'route',
-      type: 'line', source: 'route',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#2196F3', 'line-width': 6, 'line-opacity': 0.8 }
-    });
-
+    map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: route.geometry } });
+    map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#2196F3', 'line-width': 6, 'line-opacity': 0.85 } });
     document.getElementById('etaBar').textContent = `🏁 ${km} км · ~${mins} мин`;
-
-    
   } catch(e) { console.error('Route error', e); }
 }
 
 function clearRoute() {
-  ['route', 'route-outline'].forEach(id => {
-    if (map.getLayer(id)) map.removeLayer(id);
-  });
+  if (map.getLayer('route')) map.removeLayer('route');
   if (map.getSource('route')) map.removeSource('route');
   currentRouteGeometry = null;
   routeCoordinates = [];
@@ -528,7 +360,11 @@ function clearRoute() {
   if (toMarker) { toMarker.remove(); toMarker = null; }
 }
 
-// ── UI ──
+function rebuildRouteFromCurrentPos() {
+  if (!activeOrderData || myLat === null) return;
+  if (drivingToDest && activeOrderData.to_lat && activeOrderData.to_lon) buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
+  else if (!drivingToDest && activeOrderData.from_lat && activeOrderData.from_lon) buildRoute(myLat, myLon, activeOrderData.from_lat, activeOrderData.from_lon);
+}
 
 function updateUI() {
   document.getElementById('balanceVal').textContent = balance + '€';
@@ -536,38 +372,31 @@ function updateUI() {
   document.getElementById('earnVal').textContent = earned + '€';
 }
 
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
+
 function toggleStatus() {
   isOnline = !isOnline;
-  const dot  = document.getElementById('statusDot');
-  const text = document.getElementById('statusText');
-  const btn  = document.getElementById('toggleBtn');
-  const icon = document.getElementById('statIcon');
+  const dot = document.getElementById('statusDot'), text = document.getElementById('statusText'), btn = document.getElementById('toggleBtn'), icon = document.getElementById('statIcon');
   if (isOnline) {
-    dot.className = 'dot'; text.textContent = 'Онлайн — жду заказ';
-    btn.className = 'toggle-btn'; icon.textContent = '🟢';
-    document.getElementById('noOrders').style.display = 'block';
-    showToast('🟢 Вы онлайн');
-    startPolling();
+    dot.className = 'dot'; text.textContent = 'Онлайн — жду заказ'; btn.className = 'toggle-btn'; icon.textContent = '🟢';
+    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div>Ждём заказов...</div>';
+    showToast('🟢 Вы онлайн'); startPolling();
   } else {
-    dot.className = 'dot off'; text.textContent = 'Офлайн';
-    btn.className = 'toggle-btn off'; icon.textContent = '🔴';
-    hideNewOrder();
-    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">⛔</div><div>Вы офлайн</div>';
-    showToast('🔴 Вы офлайн');
+    dot.className = 'dot off'; text.textContent = 'Офлайн'; btn.className = 'toggle-btn off'; icon.textContent = '🔴';
+    hideNewOrder(); document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">⛔</div><div>Вы офлайн</div>'; showToast('🔴 Вы офлайн');
   }
 }
 
 function showNewOrder(order) {
+  if (!isOnline || activeOrderId) return;
   currentOrder = order;
   document.getElementById('orderPrice').textContent = (order.price || '?') + '€';
   document.getElementById('orderFrom').textContent = order.from_address || '—';
   document.getElementById('orderTo').textContent = order.to_address || '—';
   document.getElementById('orderCard').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
-  document.getElementById('btnAccept').disabled = false;
-  document.getElementById('btnAccept').textContent = '✅ ПРИНЯТЬ';
-  document.getElementById('btnAccept').style.background = '';
-  document.getElementById('btnAccept').onclick = acceptOrder;
+  const btn = document.getElementById('btnAccept');
+  btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ'; btn.style.background = ''; btn.onclick = acceptOrder;
   if (order.from_lat && order.from_lon) {
     if (fromMarker) fromMarker.remove();
     fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
@@ -579,58 +408,35 @@ function hideNewOrder() {
   document.getElementById('orderCard').classList.remove('show');
   currentOrder = null;
   if (fromMarker) { fromMarker.remove(); fromMarker = null; }
-  if (isOnline) {
-    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div>Ждём заказов...</div>';
-    document.getElementById('noOrders').style.display = 'block';
-  }
+  if (isOnline && !activeOrderId) document.getElementById('noOrders').style.display = 'block';
 }
 
 function showActiveOrder(order) {
   activeOrderId = order.id;
   activeOrderData = order;
   drivingToDest = false;
-
   document.getElementById('activeTo').textContent = order.to_address || order.to || '—';
   document.getElementById('activeSheet').classList.add('show');
   document.getElementById('noOrders').style.display = 'none';
   document.getElementById('statusText').textContent = '🚖 Едем к клиенту';
-  document.getElementById('btnArrived').disabled = false;
-  document.getElementById('btnArrived').textContent = '📍 Прибыл';
-
+  const btnArr = document.getElementById('btnArrived');
+  btnArr.disabled = false; btnArr.textContent = '📍 Прибыл'; btnArr.onclick = markArrived; btnArr.style.background = '#4CAF50';
   document.body.classList.add('driving');
   map.resize();
-
-  if (order.from_lat && order.from_lon) {
-    fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
-  }
-  if (order.to_lat && order.to_lon) {
-    toMarker = new mapboxgl.Marker({ color: '#f44336' }).setLngLat([order.to_lon, order.to_lat]).addTo(map);
-  }
-
-  if (myLat && order.from_lat) {
-    map.once('idle', () => buildRoute(myLat, myLon, order.from_lat, order.from_lon));
-  }
+  if (order.from_lat && order.from_lon) fromMarker = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([order.from_lon, order.from_lat]).addTo(map);
+  if (order.to_lat && order.to_lon) toMarker = new mapboxgl.Marker({ color: '#f44336' }).setLngLat([order.to_lon, order.to_lat]).addTo(map);
+  if (myLat && order.from_lat) map.once('idle', () => buildRoute(myLat, myLon, order.from_lat, order.from_lon));
 }
 
 function hideActiveOrder() {
   document.getElementById('activeSheet').classList.remove('show');
   document.body.classList.remove('driving');
-  activeOrderId = null;
-  activeOrderData = null;
-  drivingToDest = false;
-
-  if (routeRebuildTimer) {
-    clearTimeout(routeRebuildTimer);
-    routeRebuildTimer = null;
-  }
-
+  activeOrderId = null; activeOrderData = null; drivingToDest = false;
+  if (routeRebuildTimer) { clearTimeout(routeRebuildTimer); routeRebuildTimer = null; }
   document.getElementById('statusText').textContent = 'Онлайн — жду заказ';
   clearRoute();
   document.getElementById('etaBar').textContent = '🚖 Едем...';
-  if (isOnline) {
-    document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div>Ждём заказов...</div>';
-    document.getElementById('noOrders').style.display = 'block';
-  }
+  if (isOnline) { document.getElementById('noOrders').innerHTML = '<div class="no-orders-icon">🚕</div><div>Ждём заказов...</div>'; document.getElementById('noOrders').style.display = 'block'; }
   map.resize();
 }
 
@@ -639,85 +445,51 @@ function toggleSheet() {}
 function switchRouteToDest() {
   if (!activeOrderData || myLat === null) return;
   drivingToDest = true;
-  if (activeOrderData.to_lat && activeOrderData.to_lon) {
-    buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
-  }
+  if (activeOrderData.to_lat && activeOrderData.to_lon) buildRoute(myLat, myLon, activeOrderData.to_lat, activeOrderData.to_lon);
 }
-
-// ── ДЕЙСТВИЯ ──
 
 async function acceptOrder() {
   if (!currentOrder) return;
   const btn = document.getElementById('btnAccept');
   btn.disabled = true; btn.textContent = 'Резервируем...';
   try {
-    const r = await fetch(`/api/reserve_order/${currentOrder.id}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
-    });
+    const r = await fetch(`/api/reserve_order/${currentOrder.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME }) });
     const res = await r.json();
     if (res.ok) {
-      reservedOrderId = currentOrder.id;
-      reserveCountdown = 10;
-      btn.disabled = false;
-      btn.style.background = '#FF9800';
-      btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
+      reservedOrderId = currentOrder.id; reserveCountdown = 10;
+      btn.disabled = false; btn.style.background = '#FF9800'; btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
       btn.onclick = confirmOrder;
+      if (reserveTimer) clearInterval(reserveTimer);
       reserveTimer = setInterval(() => {
         reserveCountdown--;
-        if (reserveCountdown > 0) {
-          btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
-        } else {
-          clearInterval(reserveTimer); reserveTimer = null; reservedOrderId = null;
-          btn.style.background = ''; btn.textContent = '✅ ПРИНЯТЬ'; btn.onclick = acceptOrder;
-          showToast('⏰ Время вышло');
-          hideNewOrder();
-        }
+        if (reserveCountdown > 0) btn.textContent = `✅ ПОДТВЕРДИТЬ (${reserveCountdown}с)`;
+        else { clearInterval(reserveTimer); reserveTimer = null; reservedOrderId = null; btn.style.background = ''; btn.textContent = '✅ ПРИНЯТЬ'; btn.onclick = acceptOrder; showToast('⏰ Время вышло'); hideNewOrder(); }
       }, 1000);
-    } else if (res.error === 'Already taken' || res.error === 'Reserved') {
-      showToast('❌ Уже взят другим водителем'); hideNewOrder();
-    } else {
-      showToast('❌ ' + (res.error || 'Ошибка'));
-      btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
-    }
-  } catch(e) {
-    showToast('❌ Ошибка соединения'); btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ';
-  }
+    } else if (res.error === 'Already taken' || res.error === 'Reserved') { showToast('❌ Уже взят другим водителем'); hideNewOrder(); }
+    else { showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ'; }
+  } catch(e) { showToast('❌ Ошибка соединения'); btn.disabled = false; btn.textContent = '✅ ПРИНЯТЬ'; }
 }
 
 async function confirmOrder() {
   if (!reservedOrderId) return;
   const btn = document.getElementById('btnAccept');
   btn.disabled = true; btn.textContent = 'Принимаем...';
-  clearInterval(reserveTimer); reserveTimer = null;
+  if (reserveTimer) { clearInterval(reserveTimer); reserveTimer = null; }
   try {
-    const r = await fetch(`/api/confirm_order/${reservedOrderId}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME })
-    });
+    const r = await fetch(`/api/confirm_order/${reservedOrderId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ driver_id: DRIVER_ID, driver_name: DRIVER_NAME }) });
     const res = await r.json();
     if (res.ok) {
       trips++; earned += currentOrder.price || 0; balance = Math.max(0, balance - 1);
       updateUI(); showToast('✅ Заказ принят!');
-      btn.style.background = ''; btn.onclick = acceptOrder;
       const order = currentOrder; reservedOrderId = null;
-      hideNewOrder();
-      showActiveOrder(order);
-    } else if (res.error === 'Reserve expired') {
-      showToast('⏰ Резерв истёк'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
-    } else if (res.error === 'Already taken') {
-      showToast('❌ Уже взят'); btn.style.background = ''; btn.onclick = acceptOrder; reservedOrderId = null; hideNewOrder();
-    } else {
-      showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false;
-    }
-  } catch(e) { showToast('❌ Ошибка соединения'); btn.disabled = false; }
+      hideNewOrder(); showActiveOrder(order);
+    } else if (res.error === 'Reserve expired') { showToast('⏰ Резерв истёк'); hideNewOrder(); btn.style.background = ''; btn.onclick = acceptOrder; }
+    else if (res.error === 'Already taken') { showToast('❌ Уже взят'); hideNewOrder(); btn.style.background = ''; btn.onclick = acceptOrder; }
+    else { showToast('❌ ' + (res.error || 'Ошибка')); btn.disabled = false; }
+  } catch(e) { showToast('❌ Ошибка'); btn.disabled = false; }
 }
 
-async function rejectOrder() {
-  if (!currentOrder) return;
-  try { await fetch(`/api/reject_order/${currentOrder.id}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ driver_id: DRIVER_ID }) }); } catch(e) {}
-  showToast('❌ Отклонён'); hideNewOrder();
-}
+async function rejectOrder() { if (!currentOrder) return; try { await fetch(`/api/reject_order/${currentOrder.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ driver_id: DRIVER_ID }) }); } catch(e) {} showToast('❌ Отклонён'); hideNewOrder(); }
 
 async function markArrived() {
   if (!activeOrderId) return;
@@ -728,44 +500,27 @@ async function markArrived() {
     const res = await r.json();
     if (res.ok) {
       showToast('📍 Клиент уведомлён!');
-      btn.disabled = false;
-      btn.textContent = '🚀 Начать поездку';
-      btn.style.background = '#2196F3';
-      btn.style.color = '#fff';
-      btn.onclick = function() {
-        switchRouteToDest();
-        btn.disabled = true;
-        btn.textContent = '✅ Едем';
-        document.getElementById('statusText').textContent = '🚖 Везу клиента';
-      };
-    } else { btn.disabled = false; }
+      btn.disabled = false; btn.textContent = '🚀 Начать поездку'; btn.style.background = '#2196F3'; btn.style.color = '#fff';
+      btn.onclick = () => { switchRouteToDest(); btn.disabled = true; btn.textContent = '✅ Едем'; document.getElementById('statusText').textContent = '🚖 Везу клиента'; };
+    } else { btn.disabled = false; showToast('❌ Ошибка'); }
   } catch(e) { showToast('❌ Ошибка'); btn.disabled = false; }
 }
 
-async function completeOrder() {
-  if (!activeOrderId) return;
-  try { await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' }); showToast('🏁 Поездка завершена!'); hideActiveOrder(); startPolling(); } catch(e) { showToast('❌ Ошибка'); }
-}
+async function completeOrder() { if (!activeOrderId) return; try { await fetch(`/api/complete_order/${activeOrderId}`, { method: 'POST' }); showToast('🏁 Поездка завершена!'); hideActiveOrder(); startPolling(); } catch(e) { showToast('❌ Ошибка'); } }
 
 async function cancelActiveOrder() {
   if (!activeOrderId) return;
   if (!confirm('Отменить заказ?')) return;
-  try { await fetch(`/api/cancel_order_driver/${activeOrderId}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ driver_id: DRIVER_ID }) }); trips = Math.max(0, trips - 1); updateUI(); showToast('❌ Заказ отменён'); hideActiveOrder(); startPolling(); } catch(e) { showToast('❌ Ошибка'); }
+  try { await fetch(`/api/cancel_order_driver/${activeOrderId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ driver_id: DRIVER_ID }) }); trips = Math.max(0, trips-1); updateUI(); showToast('❌ Заказ отменён'); hideActiveOrder(); startPolling(); } catch(e) { showToast('❌ Ошибка'); }
 }
 
-async function pollOrders() {
-  if (!isOnline || activeOrderId) return;
-  try {
-    const res = await fetch('/api/orders');
-    if (res.ok) { const list = await res.json(); if (list.length > 0 && !currentOrder) showNewOrder(list[0]); else if (list.length === 0 && currentOrder) hideNewOrder(); }
-  } catch(e) {}
-}
+async function pollOrders() { if (!isOnline || activeOrderId) return; try { const res = await fetch('/api/orders'); if (res.ok) { const list = await res.json(); if (list.length > 0 && !currentOrder) showNewOrder(list[0]); else if (list.length === 0 && currentOrder) hideNewOrder(); } } catch(e) {} }
 
 function startPolling() { clearInterval(pollInterval); pollInterval = setInterval(pollOrders, 3000); pollOrders(); }
 
-function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
 initLocation();
-updateUI(); startPolling();
+updateUI();
+startPolling();
 </script>
 </body>
 </html>
