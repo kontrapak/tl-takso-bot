@@ -234,53 +234,145 @@ async function matchToRoad(lat, lon) {
 function distance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
+
+// ── ПЛАВНОЕ ДВИЖЕНИЕ ПО МАРШРУТУ ──
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function animateMarkerTo(lon, lat) {
-  if (!userMarker) {
-    const el = document.createElement('div');
-    el.innerHTML = '➤';
-    el.style.cssText = 'font-size:24px;color:#2196F3;transform:rotate(0deg);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));transition:all 0.5s ease';
-    userMarker = new mapboxgl.Marker(el)
-      .setLngLat([lon, lat])
-      .addTo(map);
-    map.easeTo({ center: [lon, lat], zoom: 16, duration: 800 });
-  } else {
-    const el = userMarker.getElement();
-    el.style.transition = 'all 0.5s ease';
-    userMarker.setLngLat([lon, lat]);
-    
-    if (prevLat !== null && prevLon !== null) {
-      const angle = Math.atan2(lon - prevLon, lat - prevLat) * 180 / Math.PI;
-      el.style.transform = `rotate(${angle}deg)`;
-    }
-  }
-  prevLat = lat;
-  prevLon = lon;
+function createDriverMarker(lon, lat) {
+  const outer = document.createElement('div');
+  outer.style.width = '1px';
+  outer.style.height = '1px';
+
+  const inner = document.createElement('div');
+  inner.innerHTML = '➤';
+  inner.style.cssText = `
+    font-size: 24px;
+    color: #2196F3;
+    transform: rotate(0deg);
+    transform-origin: center center;
+    transition: transform 0.18s linear;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+    will-change: transform;
+  `;
+
+  outer.appendChild(inner);
+  markerArrow = inner;
+
+  userMarker = new mapboxgl.Marker({
+    element: outer,
+    anchor: 'center'
+  })
+    .setLngLat([lon, lat])
+    .addTo(map);
 }
 
-function updateMarkerPosition(lon, lat) {
+function rotateMarkerToward(fromLon, fromLat, toLon, toLat) {
+  const dx = toLon - fromLon;
+  const dy = toLat - fromLat;
+
+  if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) return;
+
+  const targetAngle = -Math.atan2(dy, dx) * 180 / Math.PI;
+  let delta = ((targetAngle - currentBearing + 540) % 360) - 180;
+  currentBearing += delta * 0.35;
+
+  if (markerArrow) {
+    markerArrow.style.transform = `rotate(${currentBearing}deg)`;
+  }
+}
+
+function animateMarkerTo(lon, lat, duration = 900) {
   if (!userMarker) {
-    const el = document.createElement('div');
-    el.innerHTML = '➤';
-    el.style.cssText = 'font-size:24px;color:#2196F3;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4))';
-    userMarker = new mapboxgl.Marker(el)
-      .setLngLat([lon, lat])
-      .addTo(map);
-    map.easeTo({ center: [lon, lat], zoom: 16, duration: 800 });
-  } else {
-    userMarker.setLngLat([lon, lat]);
-    if (prevLat !== null && prevLon !== null) {
-      const angle = Math.atan2(lon - prevLon, lat - prevLat) * 180 / Math.PI;
-      userMarker.getElement().style.transform = `rotate(${angle}deg)`;
+    createDriverMarker(lon, lat);
+    map.jumpTo({ center: [lon, lat], zoom: 16 });
+    prevLat = lat;
+    prevLon = lon;
+    return;
+  }
+
+  const start = userMarker.getLngLat();
+  const startLon = start.lng;
+  const startLat = start.lat;
+
+  cancelAnimationFrame(markerAnimId);
+
+  const startedAt = performance.now();
+
+  function step(now) {
+    const t = Math.min(1, (now - startedAt) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+
+    const curLon = startLon + (lon - startLon) * eased;
+    const curLat = startLat + (lat - startLat) * eased;
+
+    userMarker.setLngLat([curLon, curLat]);
+    rotateMarkerToward(startLon, startLat, curLon, curLat);
+
+    if (t < 1) {
+      markerAnimId = requestAnimationFrame(step);
+    } else {
+      prevLat = lat;
+      prevLon = lon;
     }
   }
-  prevLat = lat;
-  prevLon = lon;
+
+  markerAnimId = requestAnimationFrame(step);
 }
+
+function snapToRoute(lat, lon) {
+  if (!routeCoordinates.length) {
+    return { lat, lon, distM: Infinity, index: -1 };
+  }
+
+  const total = routeCoordinates.length - 1;
+
+  let startIdx = Math.max(0, routeProgress - 40);
+  let endIdx = Math.min(total, routeProgress + 120);
+
+  if (routeProgress === 0) {
+    startIdx = 0;
+    endIdx = Math.min(total, 250);
+  }
+
+  let bestIdx = startIdx;
+  let bestDist = Infinity;
+
+  for (let i = startIdx; i <= endIdx; i++) {
+    const [rLon, rLat] = routeCoordinates[i];
+    const d = distanceMeters(lat, lon, rLat, rLon);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  }
+
+  if (!Number.isFinite(bestDist)) {
+    bestIdx = 0;
+    bestDist = Infinity;
+  }
+
+  routeProgress = bestIdx;
+
+  return {
+    lon: routeCoordinates[bestIdx][0],
+    lat: routeCoordinates[bestIdx][1],
+    distM: bestDist,
+    index: bestIdx
+  };
+}
+
+// ── ГЕОЛОКАЦИЯ ──
 
 // ── ГЕОЛОКАЦИЯ ──
 
