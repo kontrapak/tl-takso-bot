@@ -374,37 +374,7 @@ function snapToRoute(lat, lon) {
 
 // ── ГЕОЛОКАЦИЯ ──
 
-function initLocation() {
-  if (tg.LocationManager && typeof tg.LocationManager.init === 'function') {
-    tg.LocationManager.init(() => {
-      if (tg.LocationManager.isLocationAvailable) {
-        getTelegramLocation();
-        if (tg.LocationManager.startLocationUpdates) {
-          tg.LocationManager.startLocationUpdates(loc => {
-            if (loc) updatePosition(loc.latitude, loc.longitude);
-          });
-        }
-      } else {
-        startBrowserLocation();
-      }
-    });
-  } else {
-    startBrowserLocation();
-  }
-}
 
-function getTelegramLocation() {
-  tg.LocationManager.getLocation(loc => {
-    if (loc) updatePosition(loc.latitude, loc.longitude);
-  });
-}
-
-function startBrowserLocation() {
-  if (!navigator.geolocation) return;
-  if (browserWatchId !== null) {
-    navigator.geolocation.clearWatch(browserWatchId);
-    browserWatchId = null;
-  }
   browserWatchId = navigator.geolocation.watchPosition(
     pos => updatePosition(pos.coords.latitude, pos.coords.longitude),
     err => console.warn('Geolocation error:', err.message),
