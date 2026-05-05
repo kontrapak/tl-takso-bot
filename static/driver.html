@@ -186,11 +186,20 @@ const map = new mapboxgl.Map({
 
 // ── ПЛАВНОЕ ДВИЖЕНИЕ ПО МАРШРУТУ ──
 
-function snapToRoute(lat, lon) {
-  if (!currentRouteGeometry || !currentRouteGeometry.coordinates || currentRouteGeometry.coordinates.length < 2) {
+async function matchToRoad(lat, lon) {
+  try {
+    const url = `https://api.mapbox.com/matching/v5/mapbox/driving/${lon},${lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (d.matchings?.[0]?.geometry?.coordinates?.[0]) {
+      const [mLon, mLat] = d.matchings[0].geometry.coordinates[0];
+      animateMarkerTo(mLon, mLat);
+      if (activeOrderId) map.easeTo({ center: [mLon, mLat], zoom: 17, duration: 1000 });
+    }
+  } catch(e) {
     updateMarkerPosition(lon, lat);
-    return;
   }
+}
   
   const coords = currentRouteGeometry.coordinates;
   let minDist = Infinity;
