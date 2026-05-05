@@ -164,7 +164,7 @@ let currentOrder = null;
 let activeOrderId = null;
 let activeOrderData = null;
 let trips = 0, earned = 0, balance = 50;
-let userMarker = null, fromMarker = null, toMarker = null;
+let userMarker = null, markerArrow = null, fromMarker = null, toMarker = null;
 let browserWatchId = null;
 let myLat = null, myLon = null;
 let pollInterval = null;
@@ -175,6 +175,11 @@ let prevLat = null, prevLon = null;
 let currentRouteGeometry = null;
 let routeProgress = 0;
 let routeCoordinates = [];
+let markerAnimId = null;
+let currentBearing = 0;
+let lastCameraUpdate = 0;
+let lastRouteRebuild = 0;
+
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 const map = new mapboxgl.Map({
