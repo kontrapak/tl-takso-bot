@@ -323,11 +323,11 @@ function updatePosition(lat, lon) {
   myLat = lat;
   myLon = lon;
   
-  if (activeOrderId && currentRouteGeometry) {
-    snapToRoute(lat, lon);
-  } else {
-    updateMarkerPosition(lon, lat);
-  }
+  if (activeOrderId) {
+  matchToRoad(lat, lon);
+} else {
+  updateMarkerPosition(lon, lat);
+}
   
   if (activeOrderId) {
     map.easeTo({ center: [lon, lat], duration: 800 });
