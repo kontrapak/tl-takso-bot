@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>TL.TAKSO</title>
+<title>TL.TAKSO — Заказ такси</title>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -16,6 +16,7 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
   background:#1a1a1a; border-radius:20px 20px 0 0;
   border-top:2px solid #2a2a2a;
   padding:14px 14px 20px; z-index:10;
+  transition:transform 0.3s ease;
 }
 .input-wrap { position:relative; margin-bottom:8px; }
 .addr-input {
@@ -56,8 +57,11 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
 .order-btn {
   width:100%; padding:15px; background:#FFD600; color:#000;
   border:none; border-radius:14px; font-size:17px; font-weight:700; cursor:pointer;
+  display:flex; align-items:center; justify-content:space-between;
 }
 .order-btn:disabled { background:#333; color:#555; cursor:default; }
+.order-btn .btn-main { flex:1; text-align:center; }
+.order-btn .btn-summary { font-size:12px; background:rgba(0,0,0,0.1); padding:4px 8px; border-radius:20px; }
 #statusPanel { display:none; }
 .st-icon { font-size:44px; text-align:center; margin-bottom:8px; }
 .st-title { font-size:17px; font-weight:700; text-align:center; margin-bottom:4px; }
@@ -80,6 +84,34 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
 }
 #toast.show { opacity:1; }
 .mapboxgl-ctrl-logo,.mapboxgl-ctrl-attrib,.mapboxgl-ctrl-group { display:none !important; }
+.montonio-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.9); z-index:300; display:flex;
+  align-items:center; justify-content:center; padding:20px;
+  opacity:0; visibility:hidden; transition:0.2s;
+}
+.montonio-overlay.show { opacity:1; visibility:visible; }
+.montonio-card {
+  background:#1e1e1e; border-radius:24px; width:100%; max-width:320px;
+  padding:24px; border:1px solid #FFD600; text-align:center;
+}
+.montonio-title { font-size:20px; font-weight:700; margin-bottom:20px; color:#FFD600; }
+.montonio-amount { font-size:32px; font-weight:800; margin:15px 0; }
+.montonio-methods { display:flex; gap:12px; margin:20px 0; justify-content:center; }
+.montonio-method {
+  padding:10px 16px; background:#2a2a2a; border-radius:12px;
+  cursor:pointer; font-size:20px; border:2px solid transparent;
+}
+.montonio-method.sel { border-color:#FFD600; background:#1f1a00; }
+.montonio-pay-btn {
+  width:100%; padding:14px; background:#FFD600; color:#000;
+  border:none; border-radius:12px; font-size:16px; font-weight:700;
+  margin-top:16px; cursor:pointer;
+}
+.montonio-close {
+  margin-top:12px; background:transparent; border:none;
+  color:#888; font-size:13px; cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -108,12 +140,38 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
     <div class="suggestions" id="sugTo"></div>
   </div>
   
-  <div class="price-row"><div class="price-label">Стоимость</div><div class="price-val" id="priceVal">—</div></div>
+  <div class="price-row"><div class="price-label">Стоимость поездки</div><div class="price-val" id="priceVal">—</div></div>
+  
+  <!-- Раздел дополнительных услуг (Sum Up) -->
+  <div style="margin:12px 0; border-top:1px solid #2a2a2a; padding-top:10px;">
+    <div style="font-size:12px; color:#888; margin-bottom:8px;">✨ Дополнительно</div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px;">
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+        <input type="checkbox" id="extraBaby" onchange="updateSumUp()"> 👶 Детское кресло (+3€)
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+        <input type="checkbox" id="extraLuggage" onchange="updateSumUp()"> 🧳 Большой багаж (+4€)
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+        <input type="checkbox" id="extraPet" onchange="updateSumUp()"> 🐕 Животное (+2€)
+      </label>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:6px;">
+      <span style="color:#888;">Доплата:</span>
+      <span id="extraTotal" style="color:#FFD600;">0€</span>
+    </div>
+  </div>
+  
   <div class="pay-row">
     <div class="pay-btn sel" id="payCash" onclick="setPay('cash')">💵 Наличные</div>
     <div class="pay-btn" id="payCard" onclick="setPay('card')">💳 Карта</div>
+    <div class="pay-btn" id="payMontonio" onclick="setPay('montonio')">🏦 Montonio</div>
   </div>
-  <button class="order-btn" id="orderBtn" disabled onclick="placeOrder()">🚖 Заказать такси</button>
+  
+  <button class="order-btn" id="orderBtn" disabled onclick="placeOrder()">
+    <span class="btn-main">🚖 Заказать такси</span>
+    <span class="btn-summary" id="btnSummary">—</span>
+  </button>
 </div>
 
 <div class="panel" id="statusPanel">
@@ -123,12 +181,28 @@ body { font-family:sans-serif; background:#121212; color:#fff; height:100dvh; ov
   <button class="cancel-btn" id="cancelBtn" onclick="cancelOrder()">❌ Отменить заказ</button>
 </div>
 
+<!-- Модалка Montonio -->
+<div class="montonio-overlay" id="montonioOverlay">
+  <div class="montonio-card">
+    <div class="montonio-title">🏦 Montonio</div>
+    <div style="font-size:14px; color:#aaa;">Оплата через банк</div>
+    <div class="montonio-amount" id="montonioAmount">—€</div>
+    <div class="montonio-methods">
+      <div class="montonio-method" data-method="swed">🏦 Swedbank</div>
+      <div class="montonio-method" data-method="seb">🏦 SEB</div>
+      <div class="montonio-method" data-method="lhv">🏦 LHV</div>
+    </div>
+    <button class="montonio-pay-btn" onclick="processMontonioPayment()">✅ Оплатить онлайн</button>
+    <button class="montonio-close" onclick="closeMontonio()">Отмена</button>
+  </div>
+</div>
+
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready(); tg.expand();
 
 const MAPBOX = 'pk.eyJ1IjoidGx0YWtzbyIsImEiOiJjbW4zYW0yMGkxNG13MnByM2hoZng0OXh2In0.ArR_nk-dVg99VhuuatH2hA';
-const CLIENT_ID = tg.initDataUnsafe?.user?.id;
+const CLIENT_ID = tg.initDataUnsafe?.user?.id || Math.floor(Math.random() * 1000000);
 const CLIENT_NAME = tg.initDataUnsafe?.user?.first_name || 'Клиент';
 mapboxgl.accessToken = MAPBOX;
 
@@ -143,7 +217,61 @@ let sugTimers = { from: null, to: null };
 let userMovedCamera = false;
 let routeRequestId = 0;
 let pickMode = 'from';
+let extraFees = { baby: 3, luggage: 4, pet: 2 };
+let selectedMontonioBank = 'swed';
 
+// ── РАСЧЁТ СУММЫ (Sum Up) ──
+function calcBasePrice() {
+  if (!from || !to) return 0;
+  const R = 6371;
+  const dLat = (to.lat - from.lat) * Math.PI / 180;
+  const dLon = (to.lon - from.lon) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(from.lat*Math.PI/180)*Math.cos(to.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+  const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Math.max(8, Math.round(km));
+}
+
+function getExtraSum() {
+  let sum = 0;
+  if (document.getElementById('extraBaby')?.checked) sum += extraFees.baby;
+  if (document.getElementById('extraLuggage')?.checked) sum += extraFees.luggage;
+  if (document.getElementById('extraPet')?.checked) sum += extraFees.pet;
+  return sum;
+}
+
+function getTotalPrice() {
+  return calcBasePrice() + getExtraSum();
+}
+
+function updateSumUp() {
+  const base = calcBasePrice();
+  const extra = getExtraSum();
+  const total = base + extra;
+  document.getElementById('priceVal').textContent = total + '€';
+  const btn = document.getElementById('orderBtn');
+  if (from && to) {
+    btn.disabled = false;
+    const extraText = extra > 0 ? ` +${extra}€` : '';
+    document.getElementById('btnSummary').textContent = `${total}€${extraText}`;
+    btn.innerHTML = `<span class="btn-main">🚖 Заказать такси</span><span class="btn-summary">${total}€</span>`;
+  } else {
+    document.getElementById('priceVal').textContent = '—';
+    document.getElementById('btnSummary').textContent = '—';
+    btn.innerHTML = `<span class="btn-main">🚖 Заказать такси</span><span class="btn-summary">—</span>`;
+  }
+}
+
+function setPay(type) {
+  payment = type;
+  document.getElementById('payCash').classList.toggle('sel', type === 'cash');
+  document.getElementById('payCard').classList.toggle('sel', type === 'card');
+  document.getElementById('payMontonio').classList.toggle('sel', type === 'montonio');
+  if (type === 'montonio') {
+    showToast('🏦 Оплата через Montonio будет после подтверждения водителя');
+  }
+}
+
+// ── MAPBOX ──
 function setPickMode(mode) {
   pickMode = mode;
   document.getElementById('pickFromBtn').classList.toggle('active', mode === 'from');
@@ -171,7 +299,7 @@ map.on('click', async (e) => {
     document.getElementById('toInput').value = address;
     setMarker('to', lng, lat);
   }
-  updatePriceAndBtn();
+  updateSumUp();
   fitBounds();
   showToast(`✅ ${address.substring(0, 40)}`);
 });
@@ -205,8 +333,6 @@ function onPos(lat, lon) {
   }
 }
 
-document.addEventListener('visibilitychange', () => { if (!document.hidden) initLocation(); });
-
 function goToMe() {
   if (myLat) map.flyTo({ center: [myLon, myLat], zoom: 15, duration: 800 });
   else { showToast('Геолокация не получена'); initLocation(); }
@@ -218,7 +344,7 @@ function useMyLocation() {
     from = { lat: myLat, lon: myLon, address: addr };
     document.getElementById('fromInput').value = addr;
     setMarker('from', myLon, myLat);
-    updatePriceAndBtn();
+    updateSumUp();
   });
 }
 
@@ -277,30 +403,16 @@ function selectSuggestion(type, feature) {
   }
   closeSug(type);
   fitBounds();
-  updatePriceAndBtn();
+  updateSumUp();
 }
 
-function onFocus(type) {
-  const val = document.getElementById(type === 'from' ? 'fromInput' : 'toInput').value.trim();
-  if (val.length >= 2) onAddrInput(type);
-}
-
-function onBlur(type) {
-  setTimeout(() => closeSug(type), 200);
-}
-
-function closeSug(type) {
-  document.getElementById(type === 'from' ? 'sugFrom' : 'sugTo').classList.remove('open');
-}
+function onFocus(type) { const val = document.getElementById(type === 'from' ? 'fromInput' : 'toInput').value.trim(); if (val.length >= 2) onAddrInput(type); }
+function onBlur(type) { setTimeout(() => closeSug(type), 200); }
+function closeSug(type) { document.getElementById(type === 'from' ? 'sugFrom' : 'sugTo').classList.remove('open'); }
 
 function setMarker(type, lon, lat) {
-  if (type === 'from') {
-    if (markerFrom) markerFrom.remove();
-    markerFrom = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([lon, lat]).addTo(map);
-  } else {
-    if (markerTo) markerTo.remove();
-    markerTo = new mapboxgl.Marker({ color: '#FF3B30' }).setLngLat([lon, lat]).addTo(map);
-  }
+  if (type === 'from') { if (markerFrom) markerFrom.remove(); markerFrom = new mapboxgl.Marker({ color: '#4CAF50' }).setLngLat([lon, lat]).addTo(map); }
+  else { if (markerTo) markerTo.remove(); markerTo = new mapboxgl.Marker({ color: '#FF3B30' }).setLngLat([lon, lat]).addTo(map); }
 }
 
 function fitBounds() {
@@ -311,43 +423,60 @@ function fitBounds() {
   map.fitBounds(b, { padding: 80, duration: 600 });
 }
 
-function calcKm(lat1, lon1, lat2, lon2) {
-  const R = 6371, dl = (lat2-lat1)*Math.PI/180, dg = (lon2-lon1)*Math.PI/180;
-  const a = Math.sin(dl/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dg/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+// ── MONTONIO ──
+function openMontonio() {
+  const total = getTotalPrice();
+  document.getElementById('montonioAmount').textContent = total + '€';
+  document.getElementById('montonioOverlay').classList.add('show');
+  // Выбор банка
+  document.querySelectorAll('.montonio-method').forEach(el => {
+    el.classList.toggle('sel', el.dataset.method === selectedMontonioBank);
+    el.onclick = () => {
+      selectedMontonioBank = el.dataset.method;
+      document.querySelectorAll('.montonio-method').forEach(m => m.classList.remove('sel'));
+      el.classList.add('sel');
+    };
+  });
 }
 
-function getPrice() {
-  if (!from || !to) return 0;
-  return Math.max(8, Math.round(calcKm(from.lat, from.lon, to.lat, to.lon)));
+function closeMontonio() {
+  document.getElementById('montonioOverlay').classList.remove('show');
 }
 
-function updatePriceAndBtn() {
-  const ready = from && to;
-  const btn = document.getElementById('orderBtn');
-  if (ready) {
-    const p = getPrice();
-    document.getElementById('priceVal').textContent = p + '€';
-    btn.textContent = `🚖 Заказать · ${p}€`;
-    btn.disabled = false;
-  } else {
-    document.getElementById('priceVal').textContent = '—';
-    btn.textContent = '🚖 Заказать такси';
-    btn.disabled = true;
-  }
-}
-
-function setPay(type) {
-  payment = type;
-  document.getElementById('payCash').classList.toggle('sel', type === 'cash');
-  document.getElementById('payCard').classList.toggle('sel', type === 'card');
+async function processMontonioPayment() {
+  const total = getTotalPrice();
+  showToast(`🏦 Оплата ${total}€ через ${selectedMontonioBank.toUpperCase()}...`);
+  // Имитация оплаты (в реальности — запрос к бэку Montonio)
+  await new Promise(r => setTimeout(r, 1500));
+  showToast(`✅ Оплата ${total}€ прошла успешно!`);
+  closeMontonio();
+  // После успешной оплаты продолжаем заказ как с картой
+  payment = 'card';
+  document.getElementById('payCard').classList.add('sel');
+  document.getElementById('payMontonio').classList.remove('sel');
+  document.getElementById('payCash').classList.remove('sel');
+  // Автоматически размещаем заказ
+  placeOrder();
 }
 
 async function placeOrder() {
   if (!from || !to) return;
   const btn = document.getElementById('orderBtn');
-  btn.disabled = true; btn.textContent = 'Отправляем...';
-  const price = getPrice();
+  btn.disabled = true;
+  btn.innerHTML = `<span class="btn-main">⏳ Оформление...</span><span class="btn-summary"></span>`;
+  
+  const basePrice = calcBasePrice();
+  const extra = getExtraSum();
+  const totalPrice = basePrice + extra;
+  
+  // Если выбрана Montonio — сначала показываем оплату
+  if (payment === 'montonio') {
+    openMontonio();
+    btn.disabled = false;
+    updateSumUp();
+    return;
+  }
+  
   try {
     const r = await fetch('/api/create_order', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -358,8 +487,15 @@ async function placeOrder() {
         to_address: to.address,
         from_lat: from.lat, from_lon: from.lon,
         to_lat: to.lat, to_lon: to.lon,
-        price,
-        driver_gets: price - 1,
+        price: totalPrice,
+        base_price: basePrice,
+        extra_fees: extra,
+        extra_details: {
+          baby_seat: document.getElementById('extraBaby')?.checked || false,
+          luggage: document.getElementById('extraLuggage')?.checked || false,
+          pet: document.getElementById('extraPet')?.checked || false
+        },
+        driver_gets: totalPrice - 2,
         payment,
         time: 'Сейчас'
       })
@@ -371,11 +507,13 @@ async function placeOrder() {
       pollTimer = setInterval(pollStatus, 3000);
     } else {
       showToast('❌ ' + (res.error || 'Ошибка'));
-      btn.disabled = false; btn.textContent = `🚖 Заказать · ${price}€`;
+      btn.disabled = false;
+      updateSumUp();
     }
   } catch {
     showToast('❌ Ошибка сети');
-    btn.disabled = false; btn.textContent = `🚖 Заказать · ${price}€`;
+    btn.disabled = false;
+    updateSumUp();
   }
 }
 
@@ -397,17 +535,13 @@ function showStatus(st) {
   document.getElementById('cancelBtn').style.display = s.cancel ? 'block' : 'none';
 }
 
-// ── ПЛАВНОЕ ДВИЖЕНИЕ МАРКЕРА ──
 function animateMarker(marker, [toLon, toLat], duration = 1000) {
   const [fromLon, fromLat] = marker.getLngLat().toArray();
   const start = performance.now();
   function step(now) {
     const t = Math.min((now - start) / duration, 1);
     const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-    marker.setLngLat([
-      fromLon + (toLon - fromLon) * ease,
-      fromLat + (toLat - fromLat) * ease
-    ]);
+    marker.setLngLat([fromLon + (toLon - fromLon) * ease, fromLat + (toLat - fromLat) * ease]);
     if (t < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
@@ -515,7 +649,11 @@ checkActiveOrder().then(hasActive => {
 
 document.getElementById('pickFromBtn').onclick = () => setPickMode('from');
 document.getElementById('pickToBtn').onclick = () => setPickMode('to');
+document.getElementById('extraBaby').onchange = updateSumUp;
+document.getElementById('extraLuggage').onchange = updateSumUp;
+document.getElementById('extraPet').onchange = updateSumUp;
 setPickMode('from');
+updateSumUp();
 </script>
 </body>
 </html>
